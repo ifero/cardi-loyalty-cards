@@ -517,6 +517,7 @@ export const it = {
       title: 'Trovati più codici a barre',
       subtitle: 'Tocca quello che corrisponde alla tua carta fedeltà',
       cancelAccessibilityLabel: 'Annulla e chiudi il selettore di codici a barre',
+      codeAccessibilityLabel: '{{format}}, codice {{value}}',
       formats: {
         CODE128: 'Code 128',
         EAN13: 'EAN-13',
@@ -540,7 +541,7 @@ export const it = {
       retryAccessibilityLabel: "Prova a scansionare un'altra immagine",
       retry: "Prova un'altra immagine",
       manualEntryAccessibilityLabel: 'Inserisci manualmente il numero della carta',
-      manualEntry: 'Inserisci manualmente'
+      manualEntry: 'Inseriscilo manualmente'
     },
     setup: {
       catalogueAnnouncement: 'Schermata di configurazione carta',

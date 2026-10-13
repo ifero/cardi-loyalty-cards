@@ -514,6 +514,7 @@ export const en = {
       title: 'Multiple barcodes found',
       subtitle: 'Tap the one that matches your loyalty card',
       cancelAccessibilityLabel: 'Cancel, dismiss barcode picker',
+      codeAccessibilityLabel: '{{format}}, code {{value}}',
       formats: {
         CODE128: 'Code 128',
         EAN13: 'EAN-13',
@@ -540,7 +541,7 @@ export const en = {
       retryAccessibilityLabel: 'Try scanning a different image',
       retry: 'Try another image',
       manualEntryAccessibilityLabel: 'Enter the card number manually',
-      manualEntry: 'Enter manually'
+      manualEntry: 'Enter it manually'
     },
     setup: {
       catalogueAnnouncement: 'Card setup screen',
