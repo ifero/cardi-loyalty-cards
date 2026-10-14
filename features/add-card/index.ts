@@ -14,7 +14,6 @@ export { CardSetupScreen } from './screens/CardSetupScreen';
 export { BrandList } from './components/BrandList';
 export { BrandPill } from './components/BrandPill';
 export { BrandRow } from './components/BrandRow';
-export { BrandSearchBar } from './components/BrandSearchBar';
 export { FloatingBackButton } from './components/FloatingBackButton';
 export { InlineScanButton } from './components/InlineScanButton';
 export { OtherCardRow } from './components/OtherCardRow';

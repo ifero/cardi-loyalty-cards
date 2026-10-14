@@ -457,6 +457,12 @@ Flat. **No drop shadows anywhere.** Hierarchy is colour blocking plus a **1px** 
 outline (`#D6D6CB` in light, `#3A3A48` in dark). Tap feedback is a **0.98× scale**, never a
 shadow bloom.
 
+**The one exception: text set directly on a camera feed — AMENDED 2026-10-12 (Story 22.5).** The
+scanner's instruction and its "Scanning image…" line carry a text shadow, 0 / 1 / 3 at 75 % black.
+It is legibility over a background nobody controls, not decoration — the same class of exception as
+the barcode's quiet zone. It goes on nothing else: not on the scanner's action rows, its pill or its
+banner's plate, and never on the app's own ground (_Capture_).
+
 ## Components
 
 **Every component below exists as a primitive in `shared/components/ui/` — BUILT 2026-09-27
@@ -783,6 +789,132 @@ last entry alone exceeds three. So the rule to carry away is the role and its tw
 constraints — beam is always paired with ink text, never darkened or tinted, and never on a
 barcode — not an arithmetic that was only ever true of the viewfinder.
 
+### Capture
+
+**RULED 2026-10-12 (Story 22.5)**, from `frames/cardi-capture-frames.html` and
+`stitch-prompts-capture.txt` — frames A (choose), B (aim), C (no camera), D (many codes) and E (no
+code). Where they are silent, or this document overrules them, the ruling is recorded here, so the
+flow cannot drift from either without saying so.
+
+**Frame A — the brand list.** Our furniture stays quiet so the brand colours carry the page.
+
+- **Header.** 48px with no rule: the back chevron in `on-surface` on a 48px target, its drawn stroke
+  starting on the 24px margin; "Add Card" centred in `body-lg` semibold, announced as the screen's
+  heading; a 48px spacer on the right keeps it centred.
+- **Search.** The wallet's search field (_Icons_), 16px below the header and pinned: only the list
+  scrolls. A screen reader announces it as a search field.
+- **Sections.** Each section header sits 24px below the field or the surface above it, and 8px above
+  its rows. Each section is one hairline-outlined surface divided by full-width rules: POPULAR
+  CARDS, then ALL CARDS with **"Other card" as its last row**, as frame A draws it — the untitled
+  "Other card" section that sat between the two is gone. While searching, one RESULTS surface holds
+  the matches, with "Other card" as its last row; "No cards found" and "Showing results…" keep their
+  copy, on the 24px margin.
+- **Rows.** 64px, padded 0 16, with a 16px gap: a 40px circle in the brand's own hex holding its
+  initial in `body-md` semibold, white or ink by luminance; the name in `body-lg` `on-surface`, one
+  line at default sizes and wrapping under large text rather than clipping; a chevron at 24 / 1.5 in
+  muted — the size of every other row chevron in the app, not the
+  frame's drawn 9 × 16. The circle takes the card tile's rule: a very light brand takes the 1px
+  hairline in either scheme, and a near-black one takes it in dark. Rows grow under large text
+  rather than clipping; an initial is a mark sized to its circle, so it does not scale. These
+  initials, and the pill's dot initial in frame B, draw Inter as the frames do, not the display
+  face `monogram()` gives other avatars (Story 22.5).
+- **Other card.** The same row: its circle is the ground inside a 1px hairline, holding a "+" in
+  `body-md` semibold `on-surface`, and "Add a custom loyalty card" sits beneath its label in Inter 13
+  muted.
+- **Bottom.** The list's content ends 24px above the bottom inset.
+
+**Frame B — the viewfinder.** The camera surfaces ignore the scheme, so their colours are fixed
+roles, never theme tokens (`CAMERA_OVERLAY` in `shared/theme/colors.ts`): a `#000000` ground under
+both insets, a flat 40 % black scrim with no cut-out, cream `#F0F0E8` text and white corners. While
+the scanner is the focused screen it draws a light status bar.
+
+- **Back.** A 40px disc in the scrim, holding a cream chevron at 24 / 1.5, centred in a 48px
+  target, so the disc's corner sits at the left inset + 24 and the top inset + 8.
+- **Pill.** Its top at the top inset + 8 + 40 + 16. Filled with the brand's hex and padded
+  6 / 12 / 6 / 6 with an 8px gap: a 24px white dot carrying the initial in `label-bold` ink, then
+  the name in `body-md` semibold, white or ink by luminance. On a light brand the dot takes the
+  tile's rule: a 1px hairline in the light scheme's `#D6D6CB`, in either scheme. It draws no logo. A
+  custom card has no pill.
+- **Viewfinder.** Story 16.31's geometry, unchanged — 300 × 120 at 393 for a linear code, a square
+  for QR, corners 32 / 4 / 12 — and the box is centred on the whole screen.
+- **Beam.** The 2px `#FCCC0C` line sweeping the box's height, 2s each way, easing in and out. Under
+  Reduce Motion — which Reanimated reads once, at launch — it stands still at 46/120 of the box's
+  height, where the frame draws it.
+- **Instruction.** Absolute, so it no longer shifts the box: its top sits 64px below the box's bottom
+  edge, as frame B places it to clear the card being scanned. `body-md` semibold cream, because Inter
+  500 is not bundled, with the feed's text shadow (_Elevation_).
+- **Rows.** At least 48px, growing with their labels, which wrap rather than clip; the shipped
+  rule and padding. Each holds the image or keyboard glyph and a chevron, all at 24 / 1.5, and its
+  label in `body-lg` semibold with no shadow, as the frame has them. Everything is cream.
+- **Bottom region — DECIDED 2026-10-13 (ifero).** The banner and the rows share one container at
+  the bottom: the overlay's only in-flow child, never `position: absolute`. While the banner shows
+  it sits 16px above the rows because they share the container, not by a measured offset, so it
+  never waits for a measurement. The region grows with the text and, once it would come within 16px
+  of the brand pill's bottom — the back disc's, for a custom card with no pill — it scrolls instead.
+  At default sizes it draws exactly as before: the banner keeps its 24px margins and the rows their
+  24px padding. This replaces Story 16.30's measured offset with the shared container its
+  acceptance criterion 3 allows; its outcome stands — the banner 16px above the rows, never over
+  them.
+- **Pending.** Until the person has answered the system prompt — permission `null` or
+  `undetermined` — the scanner draws this frame with no camera behind it. The camera mounts only once
+  permission is granted, so a native session never starts before the answer, and no refusal is shown
+  for a question nobody has answered yet.
+- **Processing.** A cream spinner over "Scanning image…" in `body-md` semibold cream, with the
+  shadow.
+
+**Frame C — no camera — and the camera-error state.** No camera, so no dark: the scheme's own ground,
+with no status-bar override. A refusal is a choice, not an error, and neither state draws any red.
+
+- **Back.** The same disc in the same place, in `surface` inside a 1px hairline, with an `on-surface`
+  chevron.
+- **Content.** Centred between the top inset and the footer: the camera-off glyph at 48, drawn with a
+  2px stroke, in muted; 16px below it the title in `headline-sm` `on-surface`; 8px below that the
+  body in `body-md` muted, centred.
+- **Footer.** The actions anchor in the primary-action footer, as this document requires of every
+  screen with a primary action and as the wallet's empty state does — frame C's centred 52px pair is
+  overruled. A refusal: "Open Settings" as the 52px primary, then "Enter card number manually". The
+  camera-error state keeps its shipped buttons and roles: "Scan from image" as the 52px primary when
+  it is offered, then Retry — the primary when it is not — then manual entry.
+- **Open Settings** that fails is logged, never thrown: the failure goes to `logger.notify` with
+  bounded tags and no message text, because `logger.warn` is a no-op in release. **The error body**
+  is always the localised "Unable to start the camera preview."; the native message stays with
+  telemetry.
+
+**Frame D — many codes.** The shared sheet, as it is (_Sheets_): the frame's centred title, its
+12 / 4 / 20 spacing and its flat 60 % black scrim yield to it. Behind the sheet the viewfinder, beam
+and instruction hide and the camera stops scanning; the back disc and the pill stay.
+
+- **Rows.** 64px, edge to edge, with a rule under each and the 0.98× press: a barcode glyph — a QR
+  glyph for a QR code — at 24 / 1.5 in `on-surface`; 16px on, the value in `mono-code` `on-surface`,
+  exactly as decoded and cut at 28 characters with an ellipsis, with its format beneath in Inter 13
+  muted; nothing at the right. The frame's miniature bars are decoration, and a drawn strip that is
+  not the code would be a fake barcode. The list always scrolls, with no bounce at rest, because the
+  rows grow with the text.
+- **Names.** Format names come from a map over every format, with no English fallback, and a screen
+  reader hears each row as "{format}, code {value}" in the active language, the value whole.
+- **Cancel.** Centred plain `body-lg` `on-surface` on a 48px row — never red.
+
+**Frame E — no code.** The banner over frame B, 16px above the action rows in the bottom region it
+shares with them, dismissed by its × or after five seconds. The camera never stops.
+
+- **Plate.** 80 % black, 12px radius, padded 16, on the 24px margins — and no icon: the plate and the
+  sentence are the whole message.
+- **Message.** `body-md` in cream.
+- **Dismiss.** An 18px × in 60 % white, at the search field's 1.8 stroke (_Icons_), on a 48px target
+  of its own that does not grow the plate.
+- **Links.** Inter 13 in beam, 8px below the message and 16px apart. Each is at least 48px wide and
+  reaches 48px tall through its slop, without growing the plate. When they wrap, a row gap of twice
+  the slop keeps their targets apart.
+
+**Known limits.**
+
+- On a 667pt-tall phone with the square viewfinder, the instruction ends within a few points of the
+  action rows, and the banner covers it for its five seconds (#251 item 12).
+- At the largest text sizes — or on a short phone with the square box — the bottom region rises
+  over the viewfinder, and the instruction hides beneath it once the region overlaps its glyphs,
+  not the empty leading beneath them, so the plate-less rows never draw over it. The camera still
+  reads the whole frame.
+
 ### Input fields
 
 1px outline, 12px radius, label **always visible above** the field (never floating), 48px
@@ -835,7 +967,8 @@ A container that sits on the ground as a **tonal layer** — **white `#FFFFFF` o
 radius**, never by a shadow. It has no padding of its own, because what it holds pads itself
 (settings rows are 12 / 16, the account block 12 / 16, the guest block 24), and it clips to its
 radius. Rows inside it are separated by **full-width 1px hairline rules**, not by gaps. This is
-the settings list, the account block, and card detail's details card and MANAGE block.
+the settings list, the account block, card detail's details card and MANAGE block, and the brand
+list's sections (_Capture_).
 
 ### Sheets
 
@@ -888,8 +1021,10 @@ off MaterialIcons as their Epic 22 story redesigns them, and the wallet has not 
 favourite badge's filled star (`FavouriteBadge` in `Tile`) and the guest, migration and sync
 banners' icons are still `@expo/vector-icons` — MaterialIcons, and MaterialCommunityIcons for the
 guest banner's shield. Card detail moved in Story 22.3, all but the shared `ActionRow`'s chevron,
-which it shares with settings and add-card. The full-screen barcode it opens draws no icon at all since
-Story 22.4, which dropped its close ×.
+which it shares with settings — add-card no longer draws `ActionRow` since Story 22.5. The full-screen
+barcode it opens draws no icon at all since Story 22.4, which dropped its close ×. Capture moved in
+Story 22.5 — the brand list, the scanner, its banner and the multi-code picker — except
+`InlineScanButton`, the scan button card setup keeps until Story 22.6 redesigns that screen.
 
 **A glyph is filled only where the fill is its state — RULED 2026-10-09 (Story 22.3).** Two glyphs
 are: the favourited star and the brightness bulb while it is on. Neither fill is decoration — the
@@ -936,7 +1071,9 @@ dark screen is produced.
 **An accent that rises to the right (`Cardí`)** · Bottom tab bars · floating action buttons · coral, salmon, terracotta or orange · drop
 shadows · gradients · glassmorphism · darkened or muddied yellow · card accent colours used
 as chrome (except a card's own detail field — see _Three roles_) · **a card accent as the value
-of a theme token** · **anything overlaying a barcode, especially a drawn beam or scan-line** ·
+of a theme token** · **anything overlaying a barcode, especially a drawn beam or scan-line** (a
+DISPLAYED code, ours held up at the till — our own viewfinder must draw the beam over the code it
+reads; see _The beam rule, both halves_ and _Capture_) ·
 **a saturated surround on the barcode screen** · **tinting, washing or recolouring a
 branded card tile** · **replacing the PHONE home grid with a single-column list of rows** (the watch list is
 single-column rows and is correct — see the watch grammar) ·

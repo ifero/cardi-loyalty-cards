@@ -1,6 +1,7 @@
 /**
  * BrandScannerScreen
  * Story 13.4: Restyle Add Card Flow (AC3, AC4, T3)
+ * Story 22.5: The picker's visibility pauses the overlay's viewfinder and scanning (frame D)
  *
  * Full-bleed camera scanner with brand pill, viewfinder corners, and scan line.
  * Reuses useBarcodeScanner hook. On scan → auto-navigate to CardSetupScreen.
@@ -111,6 +112,10 @@ export const BrandScannerScreen: React.FC = () => {
     selectCode
   } = useImageScan({ onCodeResolved: handleScan, expectedFormat: brand?.defaultFormat });
 
+  // One list drives both: the picker shows while it holds codes, and the overlay pauses its
+  // viewfinder and its scanning for exactly as long.
+  const isPickerVisible = multiCodes.length > 0;
+
   return (
     <View style={{ flex: 1 }}>
       <ScannerOverlay
@@ -127,9 +132,10 @@ export const BrandScannerScreen: React.FC = () => {
         onImageErrorRetry={pickAndScan}
         onImageErrorManualEntry={handleManualEntry}
         expectedFormat={brand?.defaultFormat}
+        isPickerVisible={isPickerVisible}
       />
       <MultiCodePickerSheet
-        visible={multiCodes.length > 0}
+        visible={isPickerVisible}
         codes={multiCodes}
         onSelect={selectCode}
         onDismiss={dismissMultiPicker}

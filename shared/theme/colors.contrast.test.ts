@@ -64,20 +64,16 @@ describe('Theme contrast compliance', () => {
 
   /**
    * `textTertiary` was never asserted here, and it is not decoration: it is the
-   * `placeholderTextColor` of `TextField`, `BrandSearchBar` and the OTP field,
-   * plus the barcode hint. (The wallet's search placeholder, empty-state
-   * subtitle and single-card tip moved to `textSecondary` in Story 22.2.) None
-   * of that qualifies for the WCAG "large text" 3:1 exemption, so it is held to
-   * AA against every ground a FIELD uses. `backgroundSubtle` is deliberately
-   * absent, but only just: its two field consumers are genuinely inactive —
-   * `TextField`'s `disabled` branch (`editable={!disabled}`) and
-   * `VerifyEmailScreen`'s `loading` branch (`editable={!loading}`) — which 1.4.3
-   * exempts. It has a third consumer that is NOT inactive,
-   * `MultiCodePickerSheet`'s pressed row, and that one is fine on its own
-   * numbers rather than by exemption: the text it carries is
-   * `textPrimary`/`textSecondary` (14.25 / 5.97 light, 17.02 / 9.44 dark) and
-   * the only tertiary thing on it is a chevron icon, which clears the 3:1
-   * non-text threshold at 4.36.
+   * `placeholderTextColor` of `TextField` and the OTP field, plus the barcode
+   * hint. (The wallet's search placeholder, empty-state subtitle and single-card
+   * tip moved to `textSecondary` in Story 22.2, and the brand list's search
+   * field became the wallet's in Story 22.5.) None of that qualifies for the
+   * WCAG "large text" 3:1 exemption, so it is held to AA against every ground a
+   * FIELD uses. `backgroundSubtle` is deliberately absent: its two consumers are
+   * genuinely inactive fields — `TextField`'s `disabled` branch
+   * (`editable={!disabled}`) and `VerifyEmailScreen`'s `loading` branch
+   * (`editable={!loading}`) — which 1.4.3 exempts. (A third, the multi-code
+   * picker's pressed row, took the 0.98× press instead in Story 22.5.)
    */
   it('meets AA contrast for tertiary text on every active ground (>= 4.5)', () => {
     (['background', 'surface', 'surfaceElevated'] as const).forEach((ground) => {

@@ -1,69 +1,51 @@
 /**
  * BrandRow Component
  * Story 13.4: Restyle Add Card Flow (AC1)
+ * Story 22.5: Capture frame A's 64pt row
  *
- * Renders a single brand row in the Card Type Selection list.
- * Figma: 40pt colored circle (SVG logo or first-letter fallback) + brand name + chevron.
- * Separator line offset from left edge (starting at x=68 per Figma).
+ * One catalogue brand in the brand list: a 40pt circle filled with the brand's own colour and
+ * carrying its initial in whichever of white or ink reads on it, the name, and a chevron.
+ *
+ * The brand colours are the content of this screen, so the circle takes the card tile's legibility
+ * rule (`getTileAppearance`) rather than a fill of its own: a very light brand takes the 1pt
+ * hairline in either scheme, and a near-black one takes it against the dark scheme's ink surface.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
 
-import { ActionRow } from '@/shared/components/ui';
-import { MONOGRAM_TEXT_PROPS, monogram } from '@/shared/theme/typography';
+import { getTileAppearance } from '@/shared/components/ui/Tile';
+import { useTheme } from '@/shared/theme';
+import { getContrastForeground } from '@/shared/theme/luminance';
 
 import { CatalogueBrand } from '@/catalogue/types';
+
+import { BrandListCircle, BrandListRow } from './BrandListRow';
 
 interface BrandRowProps {
   brand: CatalogueBrand;
   onPress: (brand: CatalogueBrand) => void;
-  showSeparator?: boolean;
   testID?: string;
 }
 
-const CIRCLE_SIZE = 40;
-
-export const BrandRow: React.FC<BrandRowProps> = ({
-  brand,
-  onPress,
-  showSeparator = true,
-  testID
-}) => {
-  const firstLetter = brand.name.charAt(0).toUpperCase();
-
-  const leading = (
-    <View style={[styles.circle, { backgroundColor: brand.color }]}>
-      <Text {...MONOGRAM_TEXT_PROPS} style={styles.circleText}>
-        {firstLetter}
-      </Text>
-    </View>
-  );
+export const BrandRow: React.FC<BrandRowProps> = ({ brand, onPress, testID }) => {
+  const { isDark } = useTheme();
+  const { isLight, isNearBlack } = getTileAppearance(brand.color);
 
   return (
-    <ActionRow
+    <BrandListRow
       testID={testID}
-      variant="plain"
-      prefix={leading}
+      circle={
+        <BrandListCircle
+          testID={testID ? `${testID}-circle` : undefined}
+          fill={brand.color}
+          isOutlined={isLight || (isDark && isNearBlack)}
+          glyph={brand.name.charAt(0).toUpperCase()}
+          glyphColor={getContrastForeground(brand.color)}
+        />
+      }
       label={brand.name}
       onPress={() => onPress(brand)}
-      showBottomBorder={showSeparator}
       accessibilityLabel={brand.name}
     />
   );
 };
-
-const styles = StyleSheet.create({
-  circle: {
-    width: CIRCLE_SIZE,
-    height: CIRCLE_SIZE,
-    borderRadius: CIRCLE_SIZE / 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12
-  },
-  circleText: {
-    ...monogram(22),
-    color: '#FFFFFF'
-  }
-});

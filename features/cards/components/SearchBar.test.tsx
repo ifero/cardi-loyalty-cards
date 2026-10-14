@@ -136,12 +136,53 @@ describe('SearchBar', () => {
       expect(input).toBeTruthy();
     });
 
+    // A screen reader announces it as a search field, not a plain text field.
+    it('announces the input as a search field', () => {
+      render(<SearchBar {...defaultProps} />);
+
+      expect(screen.getByTestId('search-bar-input').props.accessibilityRole).toBe('search');
+    });
+
     it('clear button has correct accessibility attributes', () => {
       render(<SearchBar {...defaultProps} value="test" />);
 
       const clearBtn = screen.getByLabelText('Clear search');
       expect(clearBtn).toBeTruthy();
       expect(clearBtn.props.accessibilityRole).toBe('button');
+    });
+  });
+
+  // Story 22.5: the add-card brand list draws this same field with its own copy.
+  describe('copy passed by another screen — Story 22.5', () => {
+    const brandCopy = {
+      placeholder: 'Search by name',
+      accessibilityLabel: 'Search brands by name',
+      clearAccessibilityLabel: 'Clear brand search'
+    };
+
+    it('takes the placeholder it is given', () => {
+      render(<SearchBar {...defaultProps} {...brandCopy} />);
+
+      expect(screen.getByTestId('search-bar-input').props.placeholder).toBe('Search by name');
+    });
+
+    it('names the field and the clear button with the labels it is given', () => {
+      render(<SearchBar {...defaultProps} {...brandCopy} value="ess" />);
+
+      expect(screen.getByLabelText('Search brands by name')).toBe(
+        screen.getByTestId('search-bar-input')
+      );
+      expect(screen.getByLabelText('Clear brand search')).toBe(
+        screen.getByTestId('search-bar-clear')
+      );
+      expect(screen.queryByLabelText('Search loyalty cards')).toBeNull();
+    });
+
+    it('keeps the wallet’s copy for any label it is not given', () => {
+      render(<SearchBar {...defaultProps} placeholder="Search by name" value="ess" />);
+
+      expect(screen.getByLabelText('Search loyalty cards')).toBeTruthy();
+      expect(screen.getByLabelText('Clear search')).toBeTruthy();
     });
   });
 

@@ -2,11 +2,15 @@
  * SearchBar Component
  * Story 13.2: Restyle Home Screen — AC3 (Search Bar)
  * Story 22.2: The wallet frames' search field
+ * Story 22.5: Also the add-card brand list's field, which capture frame A draws exactly as this
  *
  * Visible when card count >= 2. The field from `cardi-wallet-frames.html`: the touch target tall,
  * a `surface` fill inside a 1px hairline at the 12pt control radius, a magnifier at the left and
  * a clear × at the right once there is something to clear. It is not a form field, so it carries
  * no visible label — its accessibility label names it instead.
+ *
+ * Its copy defaults to the wallet's. Another screen drawing the same field passes its own
+ * placeholder and labels rather than drawing the field a second time.
  */
 
 import Search from 'lucide-react-native/icons/search';
@@ -28,6 +32,12 @@ interface SearchBarProps {
   onClear: () => void;
   /** Test ID for testing */
   testID?: string;
+  /** The placeholder. Defaults to the wallet's. */
+  placeholder?: string;
+  /** The field's name for assistive technology. Defaults to the wallet's. */
+  accessibilityLabel?: string;
+  /** The clear button's name for assistive technology. Defaults to the wallet's. */
+  clearAccessibilityLabel?: string;
 }
 
 /** The control radius — buttons and inputs (`cardi-design-system.md` § _Shape_). */
@@ -45,7 +55,10 @@ export const SearchBar: React.FC<SearchBarProps> = ({
   value,
   onChangeText,
   onClear,
-  testID = 'search-bar'
+  testID = 'search-bar',
+  placeholder,
+  accessibilityLabel,
+  clearAccessibilityLabel
 }) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
@@ -83,10 +96,11 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         onChangeText={onChangeText}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        placeholder={t('cards.home.searchPlaceholder')}
+        placeholder={placeholder ?? t('cards.home.searchPlaceholder')}
         placeholderTextColor={theme.textSecondary}
         style={[styles.input, { color: theme.textPrimary }]}
-        accessibilityLabel={t('cards.home.searchAccessibilityLabel')}
+        accessibilityLabel={accessibilityLabel ?? t('cards.home.searchAccessibilityLabel')}
+        accessibilityRole="search"
         returnKeyType="search"
         autoCorrect={false}
         autoCapitalize="none"
@@ -95,7 +109,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         <Pressable
           testID={`${testID}-clear`}
           onPress={handleClear}
-          accessibilityLabel={t('cards.home.clearSearchAccessibilityLabel')}
+          accessibilityLabel={
+            clearAccessibilityLabel ?? t('cards.home.clearSearchAccessibilityLabel')
+          }
           accessibilityRole="button"
           style={styles.clearButton}
         >
@@ -125,9 +141,9 @@ const styles = StyleSheet.create({
   input: {
     ...inputFont(TYPOGRAPHY.bodyLg),
     flex: 1,
-    // The full height of the field, so a tap above or below the text still focuses it — as
-    // `BrandSearchBar`'s input does. With no platform padding, the field's own height sets the
-    // line, and the text starts where the container's padding says.
+    // The full height of the field, so a tap above or below the text still focuses it. With no
+    // platform padding, the field's own height sets the line, and the text starts where the
+    // container's padding says.
     height: '100%',
     padding: 0
   },

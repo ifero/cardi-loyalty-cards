@@ -170,6 +170,10 @@ export const inputFont = ({ fontFamily, fontSize, fontWeight, letterSpacing }: T
  * container gives them — and deliberately NO `lineHeight`: the face's natural line box keeps a
  * capital optically centred (Space Grotesk's ascent/descent midpoint sits within 0.01em of its
  * cap-height midpoint), which a fixed line height would not at every size.
+ *
+ * Not every initial takes it. The add-card brand list's circle initials (`bodyMdStrong`) and the
+ * scanner pill's dot initial (`labelBold`) draw Inter, as the capture frames do — still with
+ * `MONOGRAM_TEXT_PROPS` (Story 22.5). Neither is an oversight to bring back to this face.
  */
 export const monogram = (fontSize: number) =>
   ({ fontFamily: FONT_FAMILY.display, fontWeight: '700', fontSize }) as const satisfies Omit<

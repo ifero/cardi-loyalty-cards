@@ -3,13 +3,14 @@
  * Story 13.1: Implement Design System Tokens & Components
  * Story 21.2: Migrate the colour tokens to Ink & Beam
  * Story 21.2a: Migrate the card accents (the five CARD_COLORS keys are frozen)
+ * Story 22.5: The camera surfaces' fixed roles (CAMERA_OVERLAY)
  *
  * Primitive color records (IDENTITY_COLORS, CARD_COLORS, NEUTRAL_COLORS, and the
  * per-theme color maps) are generated from the DTCG token JSON under `tokens/`
  * via Style Dictionary — see `tokens.generated.ts` (Story 16.4). Edit the JSON
  * and run `yarn tokens:build` to change a value. The catalogue-runtime brand
- * map, the non-token `statusBar` literal, and the BARCODE_FLASH values stay
- * hand-authored here.
+ * map, the non-token `statusBar` literal, and the BARCODE_FLASH and
+ * CAMERA_OVERLAY values stay hand-authored here.
  */
 import {
   CARD_COLORS as CARD_COLORS_TOKENS,
@@ -113,4 +114,33 @@ export type Theme = typeof LIGHT_THEME | typeof DARK_THEME;
 export const BARCODE_FLASH = {
   background: '#FFFFFF',
   foreground: '#000000'
+} as const;
+
+/**
+ * The camera surfaces' fixed roles (Story 22.5) — the scanner's viewfinder (capture frame B), its
+ * scan banner (frame E) and the black ground the scanner shows before the camera starts.
+ *
+ * Deliberately not themed, for the same reason as `BARCODE_FLASH`: these surfaces sit on a live
+ * camera feed under a flat black scrim, never on the app's ground, so they look the same in both
+ * schemes. A token that flips with the theme resolves to ink in light and disappears on the feed.
+ * The beam on these surfaces is `IDENTITY_COLORS.beam`, drawn only as the scan line and the
+ * banner's two links. See docs/design/cardi/cardi-design-system.md ("Capture").
+ */
+export const CAMERA_OVERLAY = {
+  /** The ground under the feed, edge to edge under both insets. */
+  ground: NEUTRAL_COLORS.black,
+  /** The flat scrim over the feed, and the back disc's fill. */
+  scrim: `rgba(${toRgbChannels(NEUTRAL_COLORS.black)}, 0.4)`,
+  /** The scan banner's plate. */
+  plate: `rgba(${toRgbChannels(NEUTRAL_COLORS.black)}, 0.8)`,
+  /** Every glyph and line of text on the feed: cream, never pure white. */
+  text: IDENTITY_COLORS.cream,
+  /** The viewfinder's corners — a mark, not text — and the brand pill's dot. */
+  mark: NEUTRAL_COLORS.white,
+  /** The rule between the action rows. */
+  divider: `rgba(${toRgbChannels(NEUTRAL_COLORS.white)}, 0.25)`,
+  /** The banner's dismiss ×. */
+  dismiss: `rgba(${toRgbChannels(NEUTRAL_COLORS.white)}, 0.6)`,
+  /** The one shadow in the system, on text set directly on the feed. */
+  textShadow: `rgba(${toRgbChannels(NEUTRAL_COLORS.black)}, 0.75)`
 } as const;
