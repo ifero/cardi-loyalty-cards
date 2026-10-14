@@ -2,7 +2,7 @@
 title: 'Story 22.5: Capture — the five Cardì capture frames'
 type: 'feature'
 created: '2026-10-12'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '8083e1b0202a2761ded448d3144a67d8877d2003'
