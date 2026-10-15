@@ -629,8 +629,7 @@ export const en = {
     },
     add: {
       successTitle: 'Card added',
-      failedMessage: 'Failed to add card',
-      errorTitle: 'Error'
+      failedMessage: 'Failed to add card'
     },
     details: {
       copiedToClipboard: 'Copied to clipboard ✓',

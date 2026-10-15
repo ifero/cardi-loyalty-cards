@@ -624,8 +624,7 @@ export const it = {
     },
     add: {
       successTitle: 'Carta aggiunta',
-      failedMessage: 'Impossibile aggiungere la carta',
-      errorTitle: 'Errore'
+      failedMessage: 'Impossibile aggiungere la carta'
     },
     details: {
       copiedToClipboard: 'Copiato negli appunti ✓',

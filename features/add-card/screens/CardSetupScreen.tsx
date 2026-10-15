@@ -1,49 +1,50 @@
 /**
  * CardSetupScreen
  * Story 13.4: Restyle Add Card Flow (AC5, AC6, T4, T5)
+ * Story 22.6: The form pattern — drawn by `FormScreen`, from the four form frames
  *
  * Dual-mode screen:
- * - Catalogue mode: brand header + card number (pre-filled) + "Done"
- * - Custom mode: store name + card number with inline scan CTA + color picker + "Done"
+ * - Catalogue mode: the brand's own wallet tile + card number (pre-filled) + "Done"
+ * - Custom mode: store name + card number with the scan button + colour picker + "Done"
  *
- * On "Done": saves card via useAddCard, pops entire add-card stack, navigates home.
+ * On "Done": saves the card via useAddCard, which replaces the stack with Home on success. A save
+ * that fails shows in the form's request banner, and Done stays pressable.
  */
 
-import { MaterialIcons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  View,
-  Text,
+  AccessibilityInfo,
   StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-  Pressable,
-  AccessibilityInfo
+  View,
+  useWindowDimensions,
+  type TextInput
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CatalogueRepository } from '@/core/catalogue/catalogue-repository';
 import { BarcodeFormat, CardColor, DEFAULT_CARD_COLOR } from '@/core/schemas';
 import { mapHexToCardColor } from '@/core/utils';
 
-import { Button } from '@/shared/components/ui/Button';
 import { ColorPicker } from '@/shared/components/ui/ColorPicker';
-import { FieldLabel, TextField } from '@/shared/components/ui/TextField';
-import { useTheme } from '@/shared/theme';
-import { getContrastForeground } from '@/shared/theme/luminance';
-import { SPACING, LAYOUT, TOUCH_TARGET } from '@/shared/theme/spacing';
-import { MONOGRAM_TEXT_PROPS, TYPOGRAPHY, monogram } from '@/shared/theme/typography';
+import { FormField, FormScreen } from '@/shared/components/ui/FormScreen';
+import { TextField } from '@/shared/components/ui/TextField';
+import { Tile, getTileAppearance } from '@/shared/components/ui/Tile';
 
-import { BrandLogo } from '@/features/cards/components/BrandLogo';
+import { CardTileMark } from '@/features/cards/components/CardTile';
 import { useAddCard } from '@/features/cards/hooks/useAddCard';
-import { getBrandLogo } from '@/features/cards/utils/brandLogos';
+import {
+  TILE_RADIUS,
+  getGridTileHeight,
+  getGridTileWidth
+} from '@/features/cards/utils/gridLayout';
 
 import { CatalogueBrand } from '@/catalogue/types';
 
 import { InlineScanButton } from '../components/InlineScanButton';
+
+/** The card schema's cap on a card's name (`loyaltyCardSchema`), which setup never applied. */
+const STORE_NAME_MAX_LENGTH = 50;
 
 type SetupParams = {
   mode: 'catalogue' | 'custom';
@@ -55,32 +56,44 @@ type SetupParams = {
   barcodeFormat?: string;
 };
 
-/** Brand header for catalogue mode */
-const BrandHeader: React.FC<{ brand: CatalogueBrand }> = ({ brand }) => {
-  const logo = getBrandLogo(brand.logo);
-  const fgColor = getContrastForeground(brand.color);
+/**
+ * Catalogue mode's preview: the brand's own wallet tile, at the wallet grid's size on this device,
+ * centred, with its name beneath — the card exactly as it will look in the wallet. It is a picture
+ * of the card, not a control: the tile draws without a press, and a screen reader reads its name
+ * once.
+ */
+const BrandTile = ({ brand }: { brand: CatalogueBrand }) => {
+  const { width: windowWidth } = useWindowDimensions();
+  const tileWidth = getGridTileWidth(windowWidth);
+  const tileHeight = getGridTileHeight(tileWidth);
 
   return (
-    <View style={[styles.brandHeader, { backgroundColor: brand.color }]}>
-      <View style={styles.brandLogoCircle}>
-        {logo ? (
-          <BrandLogo source={logo} width={32} height={32} color={fgColor} />
-        ) : (
-          <Text {...MONOGRAM_TEXT_PROPS} style={[styles.brandFallbackLetter, { color: fgColor }]}>
-            {brand.name.charAt(0).toUpperCase()}
-          </Text>
-        )}
-      </View>
-      <Text style={[styles.brandName, { color: fgColor }]}>{brand.name}</Text>
+    <View style={styles.brandTile}>
+      <Tile
+        fill={brand.color}
+        width={tileWidth}
+        height={tileHeight}
+        radius={TILE_RADIUS}
+        label={brand.name}
+        testID="setup-brand-tile"
+      >
+        <CardTileMark
+          brand={brand}
+          name={brand.name}
+          tileWidth={tileWidth}
+          tileHeight={tileHeight}
+          color={getTileAppearance(brand.color).foreground}
+        />
+      </Tile>
     </View>
   );
 };
 
 export const CardSetupScreen: React.FC = () => {
-  const { theme } = useTheme();
   const { t } = useTranslation();
   const params = useLocalSearchParams<SetupParams>();
-  const { addCard, isLoading } = useAddCard();
+  const { addCard, isLoading, error: saveError } = useAddCard();
+  const storeNameRef = useRef<TextInput>(null);
 
   const mode = params.mode ?? 'custom';
 
@@ -114,17 +127,37 @@ export const CardSetupScreen: React.FC = () => {
   const [cardNumber, setCardNumber] = useState(params.barcode ?? '');
   const [color, setColor] = useState<CardColor>(brand ? mapHexToCardColor(brand.color) : 'blue');
   const [storeNameError, setStoreNameError] = useState('');
+  // Validation is revealed by Done; from then on the store name re-validates as it is typed.
+  const [hasPressedDone, setHasPressedDone] = useState(false);
   const barcodeFormat = (params.barcodeFormat as BarcodeFormat) ?? 'CODE128';
 
+  // Custom mode requires a store name; the card number stays optional (Story 13.4).
+  const validateStoreName = useCallback(
+    (name: string) => (name.trim() ? '' : t('addCard.setup.storeNameRequired')),
+    [t]
+  );
+
+  const handleStoreNameChange = useCallback(
+    (text: string) => {
+      setStoreName(text);
+      if (hasPressedDone) {
+        setStoreNameError(validateStoreName(text));
+      }
+    },
+    [hasPressedDone, validateStoreName]
+  );
+
   const handleDone = useCallback(async () => {
+    setHasPressedDone(true);
+
     // Validate custom mode required fields
     if (mode === 'custom') {
-      const trimmedName = storeName.trim();
-      if (!trimmedName) {
-        setStoreNameError(t('addCard.setup.storeNameRequired'));
+      const nameError = validateStoreName(storeName);
+      setStoreNameError(nameError);
+      if (nameError) {
+        storeNameRef.current?.focus();
         return;
       }
-      setStoreNameError('');
     }
 
     const name = mode === 'catalogue' ? (brand?.name ?? '') : storeName.trim();
@@ -152,7 +185,7 @@ export const CardSetupScreen: React.FC = () => {
 
     // Pop entire add-card stack and go home
     // The useAddCard hook already navigates to '/'
-  }, [mode, storeName, cardNumber, color, barcodeFormat, brand, addCard, t]);
+  }, [mode, storeName, cardNumber, color, barcodeFormat, brand, addCard, validateStoreName]);
 
   const handleBack = useCallback(() => {
     router.back();
@@ -173,178 +206,64 @@ export const CardSetupScreen: React.FC = () => {
   }, [brand]);
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-      edges={['top', 'bottom']}
+    <FormScreen
+      title={
+        mode === 'catalogue'
+          ? t('addCard.setup.catalogueHeading')
+          : t('addCard.setup.customHeading')
+      }
+      onBack={handleBack}
+      backTestID="setup-back-button"
+      primaryAction={{
+        label: t('common.actions.done'),
+        onPress: handleDone,
+        busy: isLoading,
+        testID: 'done-button'
+      }}
+      requestError={saveError}
     >
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {/* Header with back button */}
-        <View style={styles.header}>
-          <Pressable
-            onPress={handleBack}
-            style={styles.backButton}
-            accessibilityRole="button"
-            accessibilityLabel={t('addCard.selection.backAccessibilityLabel')}
-            testID="setup-back-button"
-          >
-            <MaterialIcons name="chevron-left" size={28} color={theme.textPrimary} />
-          </Pressable>
-          <Text
-            style={[styles.headerTitle, { color: theme.textPrimary }]}
-            accessibilityRole="header"
-          >
-            {mode === 'catalogue'
-              ? t('addCard.setup.catalogueHeading')
-              : t('addCard.setup.customHeading')}
-          </Text>
-          <View style={styles.headerSpacer} />
-        </View>
+      {mode === 'catalogue' && brand ? <BrandTile brand={brand} /> : null}
 
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Catalogue mode: brand header */}
-          {mode === 'catalogue' && brand && <BrandHeader brand={brand} />}
+      {mode === 'custom' ? (
+        <TextField
+          ref={storeNameRef}
+          label={t('addCard.setup.storeNameLabel')}
+          value={storeName}
+          onChangeText={handleStoreNameChange}
+          placeholder={t('addCard.setup.storeNamePlaceholder')}
+          maxLength={STORE_NAME_MAX_LENGTH}
+          error={storeNameError}
+          accessibilityLabel={t('addCard.setup.storeNameLabel')}
+          testID="store-name-field"
+        />
+      ) : null}
 
-          {/* Card preview area */}
-          <View style={styles.formSection}>
-            {/* Custom mode: Store name */}
-            {mode === 'custom' && (
-              <TextField
-                label={t('addCard.setup.storeNameLabel')}
-                value={storeName}
-                onChangeText={(text) => {
-                  setStoreName(text);
-                  if (storeNameError) setStoreNameError('');
-                }}
-                placeholder={t('addCard.setup.storeNamePlaceholder')}
-                error={storeNameError}
-                testID="store-name-field"
-              />
-            )}
+      <TextField
+        label={t('addCard.setup.cardNumberLabel')}
+        value={cardNumber}
+        onChangeText={setCardNumber}
+        placeholder={t('addCard.setup.cardNumberPlaceholder')}
+        mono
+        accessibilityLabel={t('addCard.setup.cardNumberLabel')}
+        trailing={
+          mode === 'custom' ? (
+            <InlineScanButton onPress={handleInlineScan} testID="inline-scan-button" />
+          ) : undefined
+        }
+        testID="card-number-field"
+      />
 
-            {/* Card number with optional inline scan button */}
-            <View style={styles.cardNumberRow}>
-              <View style={styles.cardNumberField}>
-                <TextField
-                  label={t('addCard.setup.cardNumberLabel')}
-                  value={cardNumber}
-                  onChangeText={setCardNumber}
-                  placeholder={t('addCard.setup.cardNumberPlaceholder')}
-                  mono
-                  testID="card-number-field"
-                />
-              </View>
-              {mode === 'custom' && (
-                <View style={styles.inlineScanContainer}>
-                  <InlineScanButton onPress={handleInlineScan} testID="inline-scan-button" />
-                </View>
-              )}
-            </View>
-
-            {/* Custom mode: Color picker */}
-            {mode === 'custom' && (
-              <View style={styles.colorSection}>
-                <FieldLabel>{t('addCard.setup.colorLabel')}</FieldLabel>
-                <ColorPicker value={color} onChange={setColor} testID="color-picker" />
-              </View>
-            )}
-          </View>
-        </ScrollView>
-
-        {/* Done button pinned to bottom */}
-        <View style={styles.bottomAction}>
-          <Button
-            variant="primary"
-            onPress={handleDone}
-            loading={isLoading}
-            disabled={isLoading}
-            testID="done-button"
-          >
-            {t('common.actions.done')}
-          </Button>
-        </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      {mode === 'custom' ? (
+        <FormField label={t('addCard.setup.colorLabel')}>
+          <ColorPicker value={color} onChange={setColor} testID="color-picker" />
+        </FormField>
+      ) : null}
+    </FormScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1
-  },
-  flex: {
-    flex: 1
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: LAYOUT.screenHorizontalMargin - 8,
-    height: TOUCH_TARGET.min
-  },
-  backButton: {
-    width: TOUCH_TARGET.min,
-    height: TOUCH_TARGET.min,
-    justifyContent: 'center',
+  brandTile: {
     alignItems: 'center'
-  },
-  headerTitle: {
-    ...TYPOGRAPHY.bodyLgStrong,
-    flex: 1,
-    textAlign: 'center'
-  },
-  headerSpacer: {
-    width: TOUCH_TARGET.min
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: LAYOUT.screenHorizontalMargin
-  },
-  brandHeader: {
-    borderRadius: 16,
-    padding: SPACING.lg,
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg
-  },
-  brandLogoCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  brandFallbackLetter: {
-    ...monogram(28)
-  },
-  brandName: {
-    ...TYPOGRAPHY.headlineSm
-  },
-  formSection: {
-    gap: SPACING.lg,
-    paddingTop: SPACING.md
-  },
-  cardNumberRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: SPACING.xs
-  },
-  cardNumberField: {
-    flex: 1
-  },
-  inlineScanContainer: {
-    paddingBottom: 2
-  },
-  colorSection: {
-    gap: SPACING.sm
-  },
-  bottomAction: {
-    paddingHorizontal: LAYOUT.screenHorizontalMargin,
-    paddingVertical: SPACING.md
   }
 });

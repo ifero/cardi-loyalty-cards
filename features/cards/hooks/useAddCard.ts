@@ -1,6 +1,7 @@
 /**
  * useAddCard Hook
  * Story 2.2: Add Card Manually
+ * Story 22.6: A failed save is reported through `error`, which the form's banner shows, not a toast
  *
  * Hook for adding a new loyalty card with haptic feedback and toast.
  */
@@ -95,18 +96,14 @@ export function useAddCard(): UseAddCardReturn {
           params: { newCardId: card.id, newCardName: card.name }
         });
       } catch (err) {
-        const message = t('cards.add.failedMessage');
-        setError(message);
+        // The form's request banner carries the failure (Story 22.6). A toast as well would be two
+        // error surfaces for one failure.
+        setError(t('cards.add.failedMessage'));
 
         logger.error('[useAddCard] Failed to add card', err);
 
         // Error feedback
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        await showToast({
-          title: t('cards.add.errorTitle'),
-          message,
-          preset: 'error'
-        });
       } finally {
         setIsLoading(false);
       }
