@@ -1,6 +1,7 @@
 /**
  * useEditCard Hook
  * Story 2.7: Edit Card
+ * Story 22.6: A failed save is reported through `error`, which the form's banner shows, not a toast
  *
  * Hook for updating an existing loyalty card with haptic feedback and toast.
  */
@@ -92,18 +93,14 @@ export function useEditCard(): UseEditCardReturn {
         // Navigate back to card details
         router.back();
       } catch (err) {
-        const message = t('cards.edit.failedMessage');
-        setError(message);
+        // The form's request banner carries the failure (Story 22.6). A toast as well would be two
+        // error surfaces for one failure.
+        setError(t('cards.edit.failedMessage'));
 
         logger.error('[useEditCard] Failed to update card', err);
 
         // Error feedback
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-        await showToast({
-          title: t('cards.edit.errorTitle'),
-          message,
-          preset: 'error'
-        });
       } finally {
         setIsLoading(false);
       }

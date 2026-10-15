@@ -28,7 +28,6 @@ export { CardTile } from './components/CardTile';
 export { EmptyState } from './components/EmptyState';
 export { CardForm } from './components/CardForm';
 export type { CardFormInput } from './components/CardForm';
-export { ColorPicker } from './components/ColorPicker';
 export { FormatPicker } from './components/FormatPicker';
 export { BarcodeScanner } from './components/BarcodeScanner';
 export { VirtualLogo } from './components/VirtualLogo';

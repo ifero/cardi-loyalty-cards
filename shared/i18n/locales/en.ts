@@ -624,8 +624,7 @@ export const en = {
         QR: 'QR Code',
         CODE39: 'Code 39 (Industrial)',
         UPCA: 'UPC-A (North America)'
-      },
-      saving: 'Saving...'
+      }
     },
     add: {
       successTitle: 'Card added',
@@ -678,15 +677,13 @@ export const en = {
       loadFailed: 'Failed to load card details',
       missingDescription: "The card you're trying to edit doesn't exist or has been deleted.",
       title: 'Edit Card',
-      cancel: 'Cancel',
       save: 'Save',
       discardTitle: 'Discard changes?',
       discardBody: 'You have unsaved changes that will be lost.',
       keepEditing: 'Keep Editing',
       discard: 'Discard',
       savedTitle: 'Card saved',
-      failedMessage: 'Failed to update card',
-      errorTitle: 'Error'
+      failedMessage: 'Failed to update card'
     },
     delete: {
       invalidId: 'Invalid card ID',
