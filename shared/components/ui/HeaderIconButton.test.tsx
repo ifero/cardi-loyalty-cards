@@ -1,5 +1,5 @@
 /**
- * HeaderIconButton — the native header's icon button (Stories 22.2, 22.3).
+ * HeaderIconButton — the header's icon button (Stories 22.2, 22.3; moved to `shared/` in 22.6).
  *
  * Rendered through the real `StoryDecorator`, because the default glyph colour is the scheme's
  * `textPrimary` and only the real `ThemeProvider` flips it (ink in light, cream in dark).
@@ -7,7 +7,7 @@
 import { readFileSync } from 'fs';
 import { dirname, relative } from 'path';
 
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, userEvent } from '@testing-library/react-native';
 import ChevronLeft from 'lucide-react-native/icons/chevron-left';
 import Star from 'lucide-react-native/icons/star';
 import React from 'react';
@@ -41,12 +41,14 @@ const renderButton = (props: Partial<ButtonProps> = {}, scheme: Scheme = 'light'
 const icon = () => screen.getByTestId('button-icon', { includeHiddenElements: true });
 
 describe('HeaderIconButton', () => {
-  it('is a button named by its label that calls onPress', () => {
+  // Pressed through the button's own responder: `fireEvent.press` would climb to
+  // `HeaderIconButton`'s `onPress` prop and pass even if the Pressable lost it.
+  it('is a button named by its label that calls onPress', async () => {
     const { onPress } = renderButton();
     const button = screen.getByLabelText('Go back');
     expect(button.props.accessibilityRole).toBe('button');
 
-    fireEvent.press(button);
+    await userEvent.press(button);
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
@@ -121,15 +123,13 @@ describe('HeaderIconButton', () => {
  * Everything drawn inside the NATIVE header must keep React Native's own `Pressable`: the Unistyles
  * Babel plugin's remapped one re-binds the native view on every press, a visible flicker inside
  * the bar. The plugin processes every file whose path contains `<root>/app` and every file that
- * imports `react-native-unistyles` in any form, so each of these must stay outside both. Their own
- * comments may name the package; only an import, a re-export or a require counts.
+ * imports `react-native-unistyles` in any form, so this file must stay outside both. Its own
+ * comments may name the package; only an import, a re-export or a require counts. The native
+ * header's other buttons are guarded the same way beside them (`HomeHeaderButtons.test.tsx`).
  */
-describe.each([
-  ['HeaderIconButton', require.resolve('./HeaderIconButton')],
-  ['HomeHeaderButtons', require.resolve('./HomeHeaderButtons')],
-  ['CardDetailHeader', require.resolve('./CardDetailHeader')]
-])('%s', (_name, subject) => {
+describe('HeaderIconButton', () => {
   it('stays outside what the Unistyles Babel plugin processes', () => {
+    const subject = require.resolve('./HeaderIconButton');
     const repoRoot = dirname(require.resolve('@/package.json'));
 
     // `^app`, not `^app/`: the plugin tests the path with `includes('<root>/app')`, a prefix.

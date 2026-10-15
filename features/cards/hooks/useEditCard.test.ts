@@ -1,4 +1,4 @@
-import { renderHook, act } from '@testing-library/react-native';
+import { renderHook, act, waitFor } from '@testing-library/react-native';
 import * as Burnt from 'burnt';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
@@ -90,9 +90,73 @@ describe('useEditCard', () => {
       });
     });
 
-    expect(result.current.error).toBeDefined();
-    expect(Burnt.toast).toHaveBeenCalled();
-    expect(Haptics.notificationAsync).toHaveBeenCalled();
+    expect(result.current.error).toBe('Failed to update card');
+    expect(Haptics.notificationAsync).toHaveBeenCalledWith(Haptics.NotificationFeedbackType.Error);
+    expect(logger.error).toHaveBeenCalledWith(
+      '[useEditCard] Failed to update card',
+      expect.any(Error)
+    );
+    expect(router.back).not.toHaveBeenCalled();
+  });
+
+  // Story 22.6 — the form's request banner carries the failure, from `error`. A toast as well
+  // would be two error surfaces for one failure.
+  it('shows no toast on failure, leaving the failure to the form’s banner', async () => {
+    (updateCardInDb as jest.Mock).mockRejectedValueOnce(new Error('db error'));
+
+    const { result } = renderHook(() => useEditCard());
+
+    await act(async () => {
+      await result.current.editCard('1', {
+        name: 'X',
+        barcode: '1',
+        barcodeFormat: 'EAN13',
+        color: 'green'
+      });
+    });
+
+    expect(result.current.error).toBe('Failed to update card');
+    expect(Burnt.toast).not.toHaveBeenCalled();
+  });
+
+  // The banner clears when the next press starts a save, because the hook resets `error` then.
+  it('clears the error when the next save starts', async () => {
+    (updateCardInDb as jest.Mock).mockRejectedValueOnce(new Error('db error'));
+
+    const { result } = renderHook(() => useEditCard());
+    const input = {
+      name: 'X',
+      barcode: '1',
+      barcodeFormat: 'EAN13' as const,
+      color: 'green' as const
+    };
+
+    await act(async () => {
+      await result.current.editCard('1', input);
+    });
+    expect(result.current.error).toBe('Failed to update card');
+
+    let resolveUpdate: (value?: unknown) => void;
+    (updateCardInDb as jest.Mock).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveUpdate = resolve;
+        })
+    );
+    let editPromise: Promise<void>;
+    act(() => {
+      editPromise = result.current.editCard('1', input);
+    });
+    expect(result.current.error).toBeNull();
+    expect(result.current.isLoading).toBe(true);
+
+    // The lookup resolves first; resolve the write, held open above, only once it has been made.
+    await waitFor(() => expect(updateCardInDb).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      resolveUpdate!();
+      await editPromise;
+    });
+    expect(result.current.error).toBeNull();
   });
 
   describe('Sync Trigger (Story 7.3)', () => {

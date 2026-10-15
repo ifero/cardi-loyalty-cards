@@ -17,7 +17,7 @@ import Settings from 'lucide-react-native/icons/settings';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-import { HeaderIconButton } from './HeaderIconButton';
+import { HeaderIconButton } from '@/shared/components/ui/HeaderIconButton';
 
 /** `+`, at the left of the Home header: opens Add Card. */
 export const HomeAddButton = () => {

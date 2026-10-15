@@ -222,7 +222,10 @@ const RootLayoutContent = ({ isAuthenticated }: { isAuthenticated: boolean }) =>
         <Stack.Screen
           name="card/[id]/edit"
           options={{
-            title: t('navigation.editCard')
+            title: t('navigation.editCard'),
+            // The form pattern draws its own header (Story 22.6), whose back runs the discard
+            // check. Hidden here rather than by the screen, so no native header flashes in the push.
+            headerShown: false
           }}
         />
         <Stack.Screen

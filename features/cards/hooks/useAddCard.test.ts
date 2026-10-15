@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 import * as cardRepository from '@/core/database';
 import * as syncModule from '@/core/sync';
+import { logger } from '@/core/utils/logger';
 
 import { useAddCard, AddCardInput } from './useAddCard';
 
@@ -220,9 +221,10 @@ describe('useAddCard', () => {
       );
     });
 
-    it('shows error toast on failure', async () => {
-      const errorMessage = 'Database error';
-      (cardRepository.insertCard as jest.Mock).mockRejectedValue(new Error(errorMessage));
+    // Story 22.6 — the form's request banner carries the failure, from `error`. A toast as well
+    // would be two error surfaces for one failure.
+    it('shows no toast on failure, leaving the failure to the form’s banner', async () => {
+      (cardRepository.insertCard as jest.Mock).mockRejectedValue(new Error('Database error'));
 
       const { result } = renderHook(() => useAddCard());
 
@@ -230,10 +232,56 @@ describe('useAddCard', () => {
         await result.current.addCard(mockCardInput);
       });
 
-      expect(Burnt.toast).toHaveBeenCalledWith({
-        title: 'Error',
-        message: 'Failed to add card',
-        preset: 'error'
+      expect(Burnt.toast).not.toHaveBeenCalled();
+      expect(result.current.error).toBe('Failed to add card');
+    });
+
+    it('logs the failure', async () => {
+      const logged = jest.spyOn(logger, 'error').mockImplementation(() => {});
+      try {
+        const failure = new Error('Database error');
+        (cardRepository.insertCard as jest.Mock).mockRejectedValue(failure);
+
+        const { result } = renderHook(() => useAddCard());
+
+        await act(async () => {
+          await result.current.addCard(mockCardInput);
+        });
+
+        expect(logged).toHaveBeenCalledWith('[useAddCard] Failed to add card', failure);
+      } finally {
+        logged.mockRestore();
+      }
+    });
+
+    // The banner clears when the next press starts a save, because the hook resets `error` then.
+    it('clears the error when the next save starts', async () => {
+      (cardRepository.insertCard as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
+
+      const { result } = renderHook(() => useAddCard());
+
+      await act(async () => {
+        await result.current.addCard(mockCardInput);
+      });
+      expect(result.current.error).toBe('Failed to add card');
+
+      let resolveInsert: (value?: unknown) => void;
+      (cardRepository.insertCard as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveInsert = resolve;
+          })
+      );
+      let addPromise: Promise<void>;
+      act(() => {
+        addPromise = result.current.addCard(mockCardInput);
+      });
+      expect(result.current.error).toBeNull();
+      expect(result.current.isLoading).toBe(true);
+
+      await act(async () => {
+        resolveInsert!();
+        await addPromise;
       });
     });
 

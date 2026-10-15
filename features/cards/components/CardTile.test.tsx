@@ -7,7 +7,7 @@
 
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import { useRouter } from 'expo-router';
-import { StyleSheet, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
 import Animated from 'react-native-reanimated';
 
 import { LoyaltyCard } from '@/core/schemas';
@@ -17,6 +17,7 @@ import { CARD_COLORS } from '@/shared/theme/colors';
 
 import {
   CardTile,
+  CardTileMark,
   TILE_WIDTH,
   TILE_HEIGHT,
   TILE_RADIUS,
@@ -92,9 +93,19 @@ jest.mock('../utils/brandLogos', () => {
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const { getBrandLogo } = require('../utils/brandLogos');
 
+// Forwards what the real BrandLogo hands an SVG logo — its size and its glyph colour.
 jest.mock('./BrandLogo', () => ({
-  BrandLogo: ({ source, width, height }: { source: unknown; width: number; height: number }) =>
-    typeof source === 'function' ? source({ width, height }) : null
+  BrandLogo: ({
+    source,
+    width,
+    height,
+    color
+  }: {
+    source: unknown;
+    width: number;
+    height: number;
+    color?: string;
+  }) => (typeof source === 'function' ? source({ width, height, color }) : null)
 }));
 
 describe('CardTile', () => {
@@ -720,6 +731,90 @@ describe('CardTile', () => {
 
       render(<CardTile card={{ ...mockCard, isFavorite: true }} />);
       expect(JSON.stringify(screen.toJSON())).not.toContain('#123456');
+    });
+  });
+
+  /**
+   * Story 22.6 — card setup draws the brand's own wallet tile as the card it is about to add, so the
+   * mark the wallet draws inside the tile is shared rather than copied: one `CardTileMark`, two
+   * callers. The wallet's tile is unchanged; these pin the mark on its own and that the tile uses it.
+   */
+  describe('CardTileMark — the mark, shared with card setup (Story 22.6)', () => {
+    const esselunga = {
+      id: 'esselunga',
+      name: 'Esselunga',
+      color: '#DB1F26',
+      logo: 'esselunga',
+      aliases: []
+    };
+
+    // Earlier tests leave the logo lookup returning nothing; every test here starts with a logo.
+    beforeEach(() => {
+      (getBrandLogo as jest.Mock).mockReturnValue((props: Record<string, unknown>) => (
+        <View {...props} testID="brand-logo-svg" />
+      ));
+    });
+
+    it('draws the brand’s logo at 85 % of the tile, in the glyph colour', () => {
+      render(
+        <CardTileMark
+          brand={esselunga}
+          name="Esselunga"
+          tileWidth={171}
+          tileHeight={140}
+          color="#FFFFFF"
+        />
+      );
+      const logo = screen.getByTestId('brand-logo-svg');
+      expect(logo.props.width).toBe(Math.round(171 * 0.85));
+      expect(logo.props.height).toBe(Math.round(140 * 0.85));
+      expect(logo.props.color).toBe('#FFFFFF');
+    });
+
+    it('draws the two-letter plate for a brand with no logo', () => {
+      (getBrandLogo as jest.Mock).mockReturnValue(undefined);
+      render(
+        <CardTileMark
+          brand={esselunga}
+          name="Esselunga"
+          tileWidth={171}
+          tileHeight={140}
+          color="#181824"
+        />
+      );
+      const plate = screen.getByText('ES');
+      expect(StyleSheet.flatten(plate.props.style)).toMatchObject({
+        color: '#181824',
+        fontSize: 18
+      });
+      expect(screen.queryByTestId('brand-logo-svg')).toBeNull();
+    });
+
+    it('draws a custom card’s initial, with no brand', () => {
+      render(
+        <CardTileMark
+          brand={undefined}
+          name="  gym"
+          tileWidth={171}
+          tileHeight={140}
+          color="#FFFFFF"
+        />
+      );
+      expect(screen.getByText('G')).toBeTruthy();
+    });
+
+    it('is the mark the wallet’s tile draws', () => {
+      (useBrandLogo as jest.Mock).mockReturnValue(esselunga);
+      render(
+        <CardTile card={{ ...mockCard, brandId: 'esselunga' }} tileWidth={156} tileHeight={128} />
+      );
+      expect(screen.UNSAFE_getByType(CardTileMark).props).toMatchObject({
+        brand: esselunga,
+        name: 'Test Store',
+        tileWidth: 156,
+        tileHeight: 128,
+        color: '#181824'
+      });
     });
   });
 

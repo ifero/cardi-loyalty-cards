@@ -1,6 +1,36 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
+import Camera from 'lucide-react-native/icons/camera';
+import { Pressable } from 'react-native';
+
+import { useTheme } from '@/shared/theme';
 
 import { TextField } from './TextField';
+
+/**
+ * A control for the trailing slot, for the story only — the real one is card setup's scan button,
+ * which lives in `features/add-card`, out of this directory's reach.
+ */
+const TrailingStandIn = () => {
+  const { theme } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Scan barcode with camera"
+      style={{
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        borderWidth: 1,
+        borderColor: theme.border,
+        backgroundColor: theme.surface,
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}
+    >
+      <Camera size={24} strokeWidth={1.5} color={theme.textPrimary} />
+    </Pressable>
+  );
+};
 
 const meta = {
   title: 'UI/TextField',
@@ -32,6 +62,21 @@ export const Password: Story = {
 /** Card numbers are set in JetBrains Mono so the digits align (Story 21.6's hand-off). */
 export const CardNumber: Story = {
   args: { label: 'Card number', value: '2000012345678', mono: true, keyboardType: 'number-pad' }
+};
+
+/** An empty card number keeps its placeholder in the body face, as the form frames set it. */
+export const CardNumberEmpty: Story = {
+  args: { label: 'Card number', placeholder: 'Enter or scan card number', mono: true }
+};
+
+/** The trailing slot: a control outside the box, 8pt to its right (card setup's scan button). */
+export const WithTrailingControl: Story = {
+  args: {
+    label: 'Card number',
+    placeholder: 'Enter or scan card number',
+    mono: true,
+    trailing: <TrailingStandIn />
+  }
 };
 
 export const WithCharacterCount: Story = {

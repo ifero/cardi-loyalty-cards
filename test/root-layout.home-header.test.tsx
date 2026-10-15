@@ -24,6 +24,7 @@ const SURFACE = '#FFFFFF';
 
 type HeaderOptions = {
   title?: string;
+  headerShown?: boolean;
   headerStyle?: { backgroundColor?: string };
   headerShadowVisible?: boolean;
   headerTitleAlign?: string;
@@ -170,5 +171,29 @@ describe('RootLayout — Home header (Story 22.2)', () => {
     expect(mockSharedOptions?.headerStyle?.backgroundColor).toBe(SURFACE);
     expect(mockSharedOptions?.headerShadowVisible).toBeUndefined();
     expect(mockScreenOptions.get('settings')?.headerStyle).toBeUndefined();
+  });
+});
+
+/**
+ * Card edit's header — Story 22.6, the form pattern. The form draws its own header, so the route
+ * hides the native one: set on the route rather than by the screen, so none flashes in the push.
+ */
+describe('RootLayout — card edit (Story 22.6)', () => {
+  beforeEach(async () => {
+    mockScreenOptions.clear();
+    await act(async () => {
+      await changeAppLanguage('en');
+    });
+  });
+
+  it('hides the native header on card/[id]/edit', async () => {
+    await renderHome();
+    expect(mockScreenOptions.get('card/[id]/edit')?.headerShown).toBe(false);
+  });
+
+  // Only that route: card detail keeps the shared header the root stack draws.
+  it('leaves the other card routes’ headers as they were', async () => {
+    await renderHome();
+    expect(mockScreenOptions.get('card/[id]')?.headerShown).toBeUndefined();
   });
 });

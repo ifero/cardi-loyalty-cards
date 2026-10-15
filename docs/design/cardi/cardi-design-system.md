@@ -405,6 +405,9 @@ decision, not a constraint. Placeholders, values and error messages stay sentenc
 > against settings and the scanner — both sit at 24 because they follow the token, and the token
 > was right. `CardForm` at 32 and the old document 48 were the only genuine one-offs.
 >
+> **✅ RESOLVED 2026-10-14 (Story 22.6) — `CardForm`'s 32.** Card edit's form now draws
+> `FormScreen` (_Forms_) on the 24px margin, so that one-off is gone.
+>
 > **Touch target is 48, not 44** — and here the token is the one that moves. Two independent
 > grounds. `app.json` declares **both** platforms, and a minimum binding on two platforms is the
 > **max** of their minimums: Apple HIG 44pt, Material 48dp, so 48. And 44 is off the grid, by
@@ -466,9 +469,9 @@ banner's plate, and never on the app's own ground (_Capture_).
 ## Components
 
 **Every component below exists as a primitive in `shared/components/ui/` — BUILT 2026-09-27
-(Story 22.1).** That directory is the only one Storybook and Chromatic see, so a primitive placed
-anywhere else gets no story and no visual coverage. Screens compose these; they do not re-draw
-them.
+(Story 22.1), and joined by the form pattern's three in Story 22.6.** That directory is the only one
+Storybook and Chromatic see, so a primitive placed anywhere else gets no story and no visual
+coverage. Screens compose these; they do not re-draw them.
 
 | component                     | primitive                                  |
 | ----------------------------- | ------------------------------------------ |
@@ -479,6 +482,9 @@ them.
 | Section header                | `SectionHeader`                            |
 | The hairline-outlined surface | `Surface`                                  |
 | Sheets                        | `BottomSheet`                              |
+| Forms                         | `FormScreen` (+ `FormField`)               |
+| A failed request              | `RequestErrorBanner`                       |
+| A header's icon button        | `HeaderIconButton`                         |
 
 ### Card tile (the core component)
 
@@ -625,19 +631,22 @@ hairline is what makes it read that way. Do not close the gap by letting the but
 meet the last field — that trades a predictable commit position for a per-screen one.
 
 **Never `position: absolute`.** Either make the footer a **flex sibling below the scroll
-area** inside the `KeyboardAvoidingView` (the reference implementation — see
-`CardSetupScreen`, where the footer sits outside the `ScrollView` and therefore never
-scrolls away), or, when the button must live inside scrollable content, anchor it with
-`marginTop: 'auto'` in a `flexGrow: 1` container. An absolutely-positioned footer instead
+area** inside the `KeyboardAvoidingView` (the reference implementation — see `FormScreen`
+(_Forms_), where the footer sits outside the `ScrollView` and therefore never scrolls away), or,
+when the button must live inside scrollable content, anchor it with `marginTop: 'auto'` in a
+`flexGrow: 1` container. An absolutely-positioned footer instead
 either hides beneath the keyboard or rides above it, stealing height from the field being
 typed into.
 
 **The primary action is always enabled.** Pressing it on an incomplete form reveals the
 field errors; it never sits inert. A permanently visible disabled button is a permanent
 refusal that never says which field is wrong — and once the action is anchored, that refusal
-is in the eye line for the whole session. `CardSetupScreen` already works this way
-(`disabled={isLoading}` only, with validation raised on press); `CardForm` is the outlier
-and gates on `!isValid`.
+is in the eye line for the whole session. Both form screens work this way, with validation
+raised on press.
+
+> **CORRECTED 2026-10-14 (Story 22.6).** This said `CardForm` was the outlier and gated on
+> `!isValid`. That has been false since Story 22.1 made its Save always enabled, and setup's
+> `disabled={isLoading}` is gone too: both now draw `FormScreen`, whose action is never disabled.
 
 **Busy is not disabled.** While a submit is in flight the button is non-interactive to
 prevent a double submit, but it keeps its **ink fill** and swaps its label for a spinner.
@@ -915,6 +924,134 @@ shares with them, dismissed by its × or after five seconds. The camera never st
   not the empty leading beneath them, so the plate-less rows never draw over it. The camera still
   reads the whole frame.
 
+### Forms
+
+**RULED 2026-10-14 (Story 22.6)**, from `frames/cardi-form-frames.html` and
+`stitch-prompts-form-states.txt` — frames 1 (default), 2 (error), 3 (filled) and 4 (saving). Card
+setup's custom form is the drawn exemplar; catalogue setup and card edit derive from it. Where the
+frames and prompts are silent or conflict, or this document overrules them, the ruling is recorded
+here, so the pattern cannot drift from either without saying so. The auth screens move onto it in
+Story 22.9; until then `AuthScreenLayout` and its `ErrorBanner` stay as they are.
+
+**One shape — `FormScreen`.** A header, a top-aligned body and the anchored footer: never centred,
+never the action inside the scroll, and no trailing padding under the last field.
+
+- **Ground.** `background` under every inset, in a safe-area view on all four edges. That view sits
+  outside the keyboard-avoiding view, so the footer adds no bottom inset of its own.
+- **Header.** Capture frame A's (_Capture_), not the form frame's 56px bar with its 24px display
+  title: on iOS every stack-pushed screen's bar title is 17px, the native ones by default and
+  capture's by token, while Android's native titles keep the toolbar's own size
+  (`NAVIGATION_TITLE_FONT` sets no size). Home's `headline-md` title, 24px, is the one exception, and
+  setup follows capture in one stack. At least 48px tall with no rule; `HeaderIconButton` holding Lucide `chevron-left` in `on-surface`,
+  named "Go back", its drawn stroke on the 24px margin; the title in `body-lg` semibold `on-surface`, centred,
+  announced as the heading, and wrapping rather than clipping under large text; a 48px spacer on
+  the right keeps it centred.
+- **Body.** A scroll view that lets a field keep its taps, its content padded 24px at the top, the
+  sides and the bottom. Fields sit **32px** apart, and each label sits **8px** above its control.
+- **Footer.** _The primary-action footer_, holding one primary `Button` at 52px. It is always
+  enabled. While busy it keeps its fill, shows a spinner, is named "Saving..." and ignores further
+  presses; nothing else on the screen dims.
+- **Keyboard.** The body and the footer share one keyboard-avoiding view below the header, so the
+  footer rests on the keyboard's top edge and the body scrolls above it. The view's frame starts
+  below the header, inside the full-screen ground, so it needs no vertical offset. iOS takes
+  `padding`. Android takes `padding` too — read from the installed sources, not run on a device:
+  SDK 55's mandatory edge-to-edge puts the root view at the top of the screen, as on iOS, and with
+  no behaviour the view does nothing and the keyboard covers the footer. React Native reports the
+  keyboard's top edge when it shows but the visible frame's height when it hides, which would leave
+  the status bar's height of padding under the footer, so on Android the view is on only while the
+  keyboard is up. ⚠️ Unverified on an Android device.
+- **Nothing to submit.** A state with no form — card edit's loading and error — draws the header over
+  the ground, with no footer.
+- **Strings and test IDs.** The back's name and the busy name are shared strings
+  (`sharedUi.formScreen`), as `BottomSheet`'s are, rather than a feature's. The caller names the
+  parts, so setup's back keeps `setup-back-button` and card edit's scrolling body keeps
+  `edit-card-form`.
+- **Errors have a direction** (the design README, 2026-08-21). Validation sits on the field it
+  concerns: its outline and its message in the error colour, no icon, no tint, the label still ink.
+  Pressing the primary action reveals it. A failed request sits in one banner for the submission
+  and never reddens a field.
+
+**Fields (`TextField`)** — the frame's input, closing #251 item 1. These reach every `TextField`,
+the auth screens' included.
+
+- **Fill and outline.** The fill is `surface` — white on cream, ink in dark — not the raised
+  `surface-container-low` it was drawn on. The 1px outline is `outline-variant`; focused it is
+  `primary`, ink in light and beam in dark, since beam would vanish on white; in error it is
+  `error`.
+- **Spacing.** 16px of horizontal padding, or 52px on the side of a control inside the box (the
+  password toggle). 8px from the label to the control.
+- **Placeholder.** `on-surface-variant` `#55555F`, the frame's, not the lighter tertiary.
+- **A card number** sets its value in `mono-code` and its placeholder in the body face, as the frame
+  sets them.
+- **A trailing slot**, outside the box, for the scan button: 8px right of the input and aligned with
+  it, top edge on top edge. The label spans the whole row; the message sits under the input alone.
+- **The announcement.** A new error is announced on iOS as it appears, queued behind whatever
+  VoiceOver is already saying (_Input fields_), matching Android's polite live region, which stays.
+
+**A failed request (`RequestErrorBanner`).** A `surface` card with a 1px `error` outline, radius 12,
+padding 16, full width; its message in `body-md` `error` — the save hooks' "Failed to add card" or
+"Failed to update card". No icon, no tint and no dismiss, so the error colour is drawn twice, by the
+outline and the sentence. It is the first thing in the body, 16px above the first field, and the
+body scrolls to the top to show it. It is an alert: a polite live region on Android, and announced
+on iOS, queued in the same way, when it appears or its message changes. It clears when the next press starts a save, because
+each hook resets its error then, and a second failure shows it again. A failed save shows **no
+toast** — two error surfaces for one failure are noise — and keeps its error haptic and its log.
+
+**The colour picker (`ColorPicker`)** — the app's only one; card edit's copy is gone.
+
+- **Order.** The logo's bars, as the frame and _Card accents_ list them: red, deep blue, azure, green,
+  yellow — the frozen keys `red`, `blue`, `grey`, `green`, `orange`.
+- **Swatch.** A 48px disc in its accent, the five spread across the width, with the 0.98× press.
+- **Selected.** A 2px ring in `primary`, held off the disc by a 2px gap in `background`. It sits
+  outside the disc, so the disc stays 48px. Lucide `check` at 20 with a 3 stroke, in the accent's
+  contrast foreground: ink on yellow, where the frame's white is 1.52:1, and white on the other four.
+- Its accessibility labels and its `selected` state are unchanged (Story 21.2a). Each swatch's
+  test ID is the picker's own plus its key, `<testID>-<key>`, as setup's always were, so card edit's
+  moved from `color-option-<key>` to `color-picker-<key>`.
+
+**The scan button (`InlineScanButton`).** The frame's 48px square: a `surface` fill inside a 1px
+`outline-variant` outline at radius 12, holding Lucide `camera` at 24 / 1.5 in `on-surface`, with
+the 0.98× press in place of the 60 % opacity it had. No hit slop: at 48px it needs none, and a slop
+would take taps from the input beside it. Its accessibility label is unchanged.
+
+**Card setup.**
+
+- **Custom** (frames 1–4). STORE NAME, capped at the card schema's 50 characters, with no counter, as
+  the frame draws none; CARD NUMBER, with the scan button; CARD COLOR, its label over the picker,
+  with deep blue selected. The gap below is left empty: no card preview and no helper text.
+- **Catalogue — DECIDED 2026-10-14 (ifero).** The brand's own wallet tile, then CARD NUMBER 32px
+  below it, pre-filled from the scan and with no scan button. The tile is the wallet's (_Card tile_):
+  the brand's hex, its mark — the logo, or the two-letter plate for a brand without one — the light
+  and near-black outline rules, and the brand's name beneath in `label-bold`, at the wallet grid's
+  size on the device (171 × 140 at 390) and its radius, centred. It is a picture of the card, not a
+  control: no press, no button role and no hint, read once by the brand's name. It shares its mark
+  with the wallet's tile rather than copying it. A brand known only by the scanner's params still
+  draws; with no resolvable brand there is no tile.
+- **Done.** `common.actions.done`, never disabled: its `disabled={isLoading}` is gone (#251 item 11).
+- **Validation.** On Done, an empty store name errs and takes focus; from then on it re-validates as
+  the person types. The card number stays optional (Story 13.4).
+
+**Card edit.**
+
+- **Header.** The route hides the native header and the form draws the pattern's, as setup does.
+  That gives the two form screens one look, and makes the back the screen's own, so it runs the same
+  discard check as Android's back, which the native header's back skipped. iOS's swipe back still
+  skips it.
+- **The form.** CARD NAME with its counter, BARCODE NUMBER on a number pad, the read-only format and
+  CARD COLOR, on the 24px margin — retiring the 32px one-off _Layout & Spacing_ names. Save,
+  `cards.edit.save`, is the footer's.
+- **Validation.** Errors appear at the first Save, then follow the typing (react-hook-form's
+  `onSubmit` mode with `onChange` re-validation), rather than on every keystroke from the start.
+  The first invalid field takes focus.
+- **Not ready.** Loading, an invalid id, a missing card and a failed load keep their copy, under the
+  same header, with no footer.
+
+**Dark** — no frame draws it. Every value is the theme role named above: the ground black `#000000`;
+the fields and the scan button ink `#181824`, outlined `#3A3A48`; the banner ink too, but outlined
+and worded in the error `#FF453A`; cream text, with the placeholder `#B5B5AB`; the error `#FF453A`;
+beam for the focus outline and the selection ring; and the primary in beam, with an ink label and
+spinner.
+
 ### Input fields
 
 1px outline, 12px radius, label **always visible above** the field (never floating), 48px
@@ -928,9 +1065,14 @@ minimum height.
   barcode, so the digits align while someone reads them aloud. Both the add and the edit flow do
   it — ADDED 2026-09-27 (Story 22.1, taking Story 21.6's hand-off).
 - **The error idiom:** `captionMd` (Inter 13) in the error colour, 4px below the field, whose
-  outline turns the same colour. It is a polite live region, which Android announces as it
-  appears; iOS has no equivalent, and reads it with the field. Field validation lives here; a
-  failed request is a different idiom and is not drawn under a field.
+  outline turns the same colour. Android announces it as it appears, through a polite live
+  region. iOS has no live region, so the message is announced there as it appears and whenever
+  it changes, queued behind whatever VoiceOver is already saying, so the errors one press raises are
+  all heard rather than each cutting off the one before — CORRECTED 2026-10-14 (Story 22.6), where this said iOS had no equivalent and read
+  it only with the field. Field validation lives here; a failed request is a different idiom
+  (`RequestErrorBanner`, _Forms_) and is not drawn under a field.
+- **The rest of the field** — its fill, padding, placeholder and trailing slot — is ruled under
+  _Forms_.
 - The height is the touch-target token, never a literal, so it moves with the token.
 
 ### Section header
@@ -1023,8 +1165,10 @@ banners' icons are still `@expo/vector-icons` — MaterialIcons, and MaterialCom
 guest banner's shield. Card detail moved in Story 22.3, all but the shared `ActionRow`'s chevron,
 which it shares with settings — add-card no longer draws `ActionRow` since Story 22.5. The full-screen
 barcode it opens draws no icon at all since Story 22.4, which dropped its close ×. Capture moved in
-Story 22.5 — the brand list, the scanner, its banner and the multi-code picker — except
-`InlineScanButton`, the scan button card setup keeps until Story 22.6 redesigns that screen.
+Story 22.5 — the brand list, the scanner, its banner and the multi-code picker — and card setup and
+card edit in Story 22.6: the form header's `chevron-left`, the colour picker's `check`, and
+`InlineScanButton`'s `camera`, which replaced MaterialCommunityIcons' `barcode-scan`. The screens
+that keep the native header still take the root stack's MaterialIcons back chevron (#258 item 11).
 
 **A glyph is filled only where the fill is its state — RULED 2026-10-09 (Story 22.3).** Two glyphs
 are: the favourited star and the brightness bulb while it is on. Neither fill is decoration — the

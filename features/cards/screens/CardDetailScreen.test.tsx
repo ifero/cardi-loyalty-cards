@@ -22,13 +22,13 @@ import type { SharedValue } from 'react-native-reanimated';
 import { getCardById } from '@/core/database';
 import type { LoyaltyCard } from '@/core/schemas';
 
+import { HeaderIconButton } from '@/shared/components/ui/HeaderIconButton';
 import { showToast } from '@/shared/toast';
 
 import {
   CardDetailHeaderBackground,
   CardDetailHeaderTitle
 } from '@/features/cards/components/CardDetailHeader';
-import { HeaderIconButton } from '@/features/cards/components/HeaderIconButton';
 import { useCardBrightnessBoost } from '@/features/cards/hooks/useCardBrightnessBoost';
 
 import CardDetailScreen from './CardDetailScreen';

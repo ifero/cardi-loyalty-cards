@@ -20,11 +20,11 @@ import { useTranslation } from 'react-i18next';
 import { View, StyleSheet, AccessibilityInfo, Text } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { HeaderIconButton } from '@/shared/components/ui/HeaderIconButton';
 import { useTheme } from '@/shared/theme';
 import { SPACING, LAYOUT, TOUCH_TARGET } from '@/shared/theme/spacing';
 import { TYPOGRAPHY } from '@/shared/theme/typography';
 
-import { HeaderIconButton } from '@/features/cards/components/HeaderIconButton';
 import { SearchBar } from '@/features/cards/components/SearchBar';
 
 import { CatalogueBrand } from '@/catalogue/types';

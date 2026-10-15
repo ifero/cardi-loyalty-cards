@@ -288,6 +288,10 @@ export const it = {
       fallbackLabel: 'Pannello inferiore',
       openedAnnouncement: '{{label}} aperto',
       closedAnnouncement: '{{label}} chiuso'
+    },
+    formScreen: {
+      backAccessibilityLabel: 'Torna indietro',
+      saving: 'Salvataggio...'
     }
   },
   syncUi: {
@@ -615,13 +619,11 @@ export const it = {
         QR: 'Codice QR',
         CODE39: 'Code 39 (industriale)',
         UPCA: 'UPC-A (Nord America)'
-      },
-      saving: 'Salvataggio...'
+      }
     },
     add: {
       successTitle: 'Carta aggiunta',
-      failedMessage: 'Impossibile aggiungere la carta',
-      errorTitle: 'Errore'
+      failedMessage: 'Impossibile aggiungere la carta'
     },
     details: {
       copiedToClipboard: 'Copiato negli appunti ✓',
@@ -672,15 +674,13 @@ export const it = {
       missingDescription:
         'La carta che stai cercando di modificare non esiste o è stata eliminata.',
       title: 'Modifica carta',
-      cancel: 'Annulla',
       save: 'Salva',
       discardTitle: 'Scartare le modifiche?',
       discardBody: 'Hai modifiche non salvate che andranno perse.',
       keepEditing: 'Continua a modificare',
       discard: 'Scarta',
       savedTitle: 'Carta salvata',
-      failedMessage: 'Impossibile aggiornare la carta',
-      errorTitle: 'Errore'
+      failedMessage: 'Impossibile aggiornare la carta'
     },
     delete: {
       invalidId: 'ID carta non valido',

@@ -1,13 +1,14 @@
 /**
- * The native header's icon button
+ * The header's icon button
  * Story 22.2: Wallet — Home's `+` and gear
  * Story 22.3: Card Detail — the back chevron and the favourite star
+ * Story 22.6: The form pattern — moved here from `features/cards`, so `FormScreen`'s back can be one
  *
  * A 48 × 48 target holding a 24pt Lucide icon at a 1.5 stroke (`cardi-design-system.md` § _Icons_),
  * acknowledging a press with the 0.98× scale (§ _Elevation_). Every screen that draws its own header
  * buttons draws them with this one.
  *
- * These render inside the NATIVE header, so this file deliberately imports nothing from
+ * Some render inside the NATIVE header, so this file deliberately imports nothing from
  * `react-native-unistyles` and lives outside `app/`. Either would make the Unistyles Babel plugin
  * swap React Native's `Pressable` for its own, which re-binds the native view on every press — a
  * visible flicker inside the header bar. The platform's own button treatment (on iOS 26, the

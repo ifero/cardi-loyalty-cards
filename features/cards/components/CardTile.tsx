@@ -4,6 +4,7 @@
  * Story 16.22: Fix card-grid tile overlap on narrow screens (AC1, AC5, AC9)
  * Story 21.2: Migrate the colour tokens to Ink & Beam (AC8, AC9)
  * Story 22.1: Composes the shared `Tile` primitive (AC1, AC3)
+ * Story 22.6: Shares the mark it draws (`CardTileMark`), so card setup's preview draws the same one
  *
  * The WALLET's tile: binds a `LoyaltyCard` to the design system's card tile.
  * This file decides WHAT goes on the tile — the brand hex and logo for a
@@ -34,6 +35,8 @@ import { FavouriteBadge, Tile, getTileAppearance } from '@/shared/components/ui/
 import { CARD_COLORS, DEFAULT_CARD_COLOR_HEX } from '@/shared/theme/colors';
 import { MONOGRAM_TEXT_PROPS, monogram } from '@/shared/theme/typography';
 
+import type { CatalogueBrand } from '@/catalogue/types';
+
 import { BrandLogo } from './BrandLogo';
 import { useBrandLogo } from '../hooks/useBrandLogo';
 import { getBrandLogo } from '../utils/brandLogos';
@@ -62,6 +65,66 @@ export {
   SINGLE_TILE_WIDTH,
   SINGLE_TILE_HEIGHT,
   SINGLE_TILE_RADIUS
+};
+
+type CardTileMarkProps = {
+  /** The card's catalogue brand, or none for a custom card. */
+  brand: CatalogueBrand | undefined;
+  /** The card's name: a custom card's initial is its first letter. */
+  name: string;
+  /** The tile the mark is drawn in: the logo takes 85 % of it, and the plates are sized from it. */
+  tileWidth: number;
+  tileHeight: number;
+  /** The glyph colour, from the fill by the tile's own legibility rules (`getTileAppearance`). */
+  color: string;
+};
+
+/**
+ * The mark inside a card's tile: the brand's logo at 85 % of the tile; for a brand with no logo,
+ * its two-letter plate; for a custom card, its first-letter avatar. The wallet's tile and card
+ * setup's preview of the card being added both draw it, so the preview is the card exactly as it
+ * will look in the wallet.
+ *
+ * The two centred fallback plates track the tile and are capped so they cannot reach the
+ * right-pinned favourite badge; the glyph inside holds 18 pt unless the plate becomes too small for
+ * it. Only one branch renders, so only its reference size is needed: a brand means the abbreviation
+ * slot, no brand means the first-letter avatar. See gridLayout.getFallbackChildMetrics.
+ *
+ * That cap does NOT apply to the logo: at 85 % of the tile it has always run under the badge
+ * (145 pt of 171 at the design reference). That overlap is pre-existing and accepted — the badge's
+ * opaque plate reads fine over a largely transparent logo, where two translucent plates would not.
+ */
+export const CardTileMark = ({ brand, name, tileWidth, tileHeight, color }: CardTileMarkProps) => {
+  const logo = brand ? getBrandLogo(brand.logo) : undefined;
+
+  if (logo) {
+    return (
+      <BrandLogo
+        source={logo}
+        width={Math.round(tileWidth * 0.85)}
+        height={Math.round(tileHeight * 0.85)}
+        color={color}
+      />
+    );
+  }
+
+  const fallback = getFallbackChildMetrics(tileWidth, brand ? LOGO_SLOT_SIZE : AVATAR_SIZE);
+
+  return brand ? (
+    /* Catalogue card without SVG: brand name abbreviation fallback */
+    <View style={[styles.logoSlot, { width: fallback.size, height: fallback.size }]}>
+      <Text {...MONOGRAM_TEXT_PROPS} style={{ ...monogram(fallback.fontSize), color }}>
+        {brand.name.substring(0, 2).toUpperCase()}
+      </Text>
+    </View>
+  ) : (
+    /* Custom card: first-letter circular avatar */
+    <View style={[styles.avatarCircle, { width: fallback.size, height: fallback.size }]}>
+      <Text {...MONOGRAM_TEXT_PROPS} style={{ ...monogram(fallback.fontSize), color }}>
+        {name.trim().charAt(0).toUpperCase() || 'C'}
+      </Text>
+    </View>
+  );
 };
 
 interface CardTileProps {
@@ -121,24 +184,6 @@ export const CardTile: React.FC<CardTileProps> = ({
   // The same luminance rules the tile uses for its outline, so the glyph colour
   // and the outline can never disagree about what a brand colour is.
   const { foreground: foregroundColor } = getTileAppearance(backgroundColor);
-  const firstLetter = card.name.trim().charAt(0).toUpperCase() || 'C';
-
-  const logo = brand ? getBrandLogo(brand.logo) : undefined;
-
-  const logoWidth = Math.round(tileWidth * 0.85);
-  const logoHeight = Math.round(tileHeight * 0.85);
-
-  // The two centred fallback plates track the tile and are capped so they cannot
-  // reach the right-pinned favourite badge; the glyph inside holds 18 pt unless the
-  // plate becomes too small for it. Only one branch renders, so only its reference
-  // size is needed: a brand means the abbreviation slot, no brand means the
-  // first-letter avatar. See gridLayout.getFallbackChildMetrics for the arithmetic.
-  //
-  // Note this does NOT apply to the SVG branch above: `logoWidth` is 85 % of the
-  // tile and has always run under the badge (145 pt of 171 at the design reference).
-  // That overlap is pre-existing and accepted — the badge's opaque plate reads fine
-  // over a largely transparent logo, where two translucent plates would not.
-  const fallback = getFallbackChildMetrics(tileWidth, brand ? LOGO_SLOT_SIZE : AVATAR_SIZE);
 
   return (
     <Tile
@@ -167,29 +212,13 @@ export const CardTile: React.FC<CardTileProps> = ({
         ) : undefined
       }
     >
-      {logo ? (
-        <BrandLogo source={logo} width={logoWidth} height={logoHeight} color={foregroundColor} />
-      ) : brand ? (
-        /* Catalogue card without SVG: brand name abbreviation fallback */
-        <View style={[styles.logoSlot, { width: fallback.size, height: fallback.size }]}>
-          <Text
-            {...MONOGRAM_TEXT_PROPS}
-            style={{ ...monogram(fallback.fontSize), color: foregroundColor }}
-          >
-            {brand.name.substring(0, 2).toUpperCase()}
-          </Text>
-        </View>
-      ) : (
-        /* Custom card: first-letter circular avatar */
-        <View style={[styles.avatarCircle, { width: fallback.size, height: fallback.size }]}>
-          <Text
-            {...MONOGRAM_TEXT_PROPS}
-            style={{ ...monogram(fallback.fontSize), color: foregroundColor }}
-          >
-            {firstLetter}
-          </Text>
-        </View>
-      )}
+      <CardTileMark
+        brand={brand}
+        name={card.name}
+        tileWidth={tileWidth}
+        tileHeight={tileHeight}
+        color={foregroundColor}
+      />
     </Tile>
   );
 };
