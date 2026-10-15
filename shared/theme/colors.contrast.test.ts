@@ -64,16 +64,18 @@ describe('Theme contrast compliance', () => {
 
   /**
    * `textTertiary` was never asserted here, and it is not decoration: it is the
-   * `placeholderTextColor` of `TextField` and the OTP field, plus the barcode
-   * hint. (The wallet's search placeholder, empty-state subtitle and single-card
-   * tip moved to `textSecondary` in Story 22.2, and the brand list's search
-   * field became the wallet's in Story 22.5.) None of that qualifies for the
-   * WCAG "large text" 3:1 exemption, so it is held to AA against every ground a
-   * FIELD uses. `backgroundSubtle` is deliberately absent: its two consumers are
-   * genuinely inactive fields — `TextField`'s `disabled` branch
-   * (`editable={!disabled}`) and `VerifyEmailScreen`'s `loading` branch
-   * (`editable={!loading}`) — which 1.4.3 exempts. (A third, the multi-code
-   * picker's pressed row, took the 0.98× press instead in Story 22.5.)
+   * `placeholderTextColor` of the OTP field, and the colour of `TextField`'s
+   * character count and the brand list's note. (`TextField`'s placeholder moved
+   * to `textSecondary` on `surface` in Story 22.6 — asserted below; the wallet's
+   * search placeholder, empty-state subtitle and single-card tip moved to
+   * `textSecondary` in Story 22.2, and the brand list's search field became the
+   * wallet's in Story 22.5.) None of that qualifies for the WCAG "large text"
+   * 3:1 exemption, so it is held to AA against every ground a FIELD uses.
+   * `backgroundSubtle` is deliberately absent: its two consumers are genuinely
+   * inactive fields — `TextField`'s `disabled` branch (`editable={!disabled}`)
+   * and `VerifyEmailScreen`'s `loading` branch (`editable={!loading}`) — which
+   * 1.4.3 exempts. (A third, the multi-code picker's pressed row, took the 0.98×
+   * press instead in Story 22.5.)
    */
   it('meets AA contrast for tertiary text on every active ground (>= 4.5)', () => {
     (['background', 'surface', 'surfaceElevated'] as const).forEach((ground) => {
@@ -84,6 +86,20 @@ describe('Theme contrast compliance', () => {
         4.5
       );
     });
+  });
+
+  /**
+   * Story 22.6 — every `TextField`'s placeholder is `textSecondary` (the form frame's `#55555F`) on
+   * the field's `surface` fill: white in light, ink in dark. A placeholder is text the person reads,
+   * so it is held to AA on the ground it actually sits on.
+   */
+  it('meets AA contrast for a field placeholder — textSecondary on surface — in both schemes', () => {
+    expect(contrastRatio(LIGHT_THEME.textSecondary, LIGHT_THEME.surface)).toBeGreaterThanOrEqual(
+      AA_TEXT
+    );
+    expect(contrastRatio(DARK_THEME.textSecondary, DARK_THEME.surface)).toBeGreaterThanOrEqual(
+      AA_TEXT
+    );
   });
 
   it('keeps the text ramp ordered — primary is stronger than secondary is stronger than tertiary', () => {

@@ -288,6 +288,10 @@ export const it = {
       fallbackLabel: 'Pannello inferiore',
       openedAnnouncement: '{{label}} aperto',
       closedAnnouncement: '{{label}} chiuso'
+    },
+    formScreen: {
+      backAccessibilityLabel: 'Torna indietro',
+      saving: 'Salvataggio...'
     }
   },
   syncUi: {

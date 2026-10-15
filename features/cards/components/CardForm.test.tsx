@@ -277,9 +277,15 @@ describe('CardForm', () => {
       expect(flat(screen.getByTestId('barcode-input')).borderRadius).toBe(12);
     });
 
-    // Story 21.6's hand-off: the card number is set in the mono face, as in the add flow.
+    // Story 21.6's hand-off: the card number's value is set in the mono face, as in the add flow.
     it('sets the barcode number in the mono-code face', () => {
-      render(<CardForm onSubmit={mockOnSubmit} submitLabel="Add Card" />);
+      render(
+        <CardForm
+          onSubmit={mockOnSubmit}
+          submitLabel="Add Card"
+          defaultValues={{ name: 'Gym', barcode: '123456', barcodeFormat: 'EAN13', color: 'blue' }}
+        />
+      );
       expect(flat(screen.getByTestId('barcode-input')).fontFamily).toBe('JetBrains Mono');
     });
 

@@ -252,12 +252,16 @@ describe('CardSetupScreen', () => {
       );
     });
 
-    // Story 21.6's hand-off, taken in 22.1: card numbers are set in the mono face in both flows.
-    it('sets the card number in the mono-code face', () => {
+    // Story 21.6's hand-off: a card number's value is set in the mono face, in both flows. The
+    // placeholder keeps the body face, as the form frames draw it (Story 22.6).
+    it('sets the card number’s value in the mono-code face, and its placeholder in Inter', () => {
       render(<CardSetupScreen />);
-      expect(
-        StyleSheet.flatten(screen.getByTestId('card-number-field').props.style).fontFamily
-      ).toBe('JetBrains Mono');
+      const fontFamily = () =>
+        StyleSheet.flatten(screen.getByTestId('card-number-field').props.style).fontFamily;
+      expect(fontFamily()).toBe('Inter');
+
+      fireEvent.changeText(screen.getByTestId('card-number-field'), '2000012345678');
+      expect(fontFamily()).toBe('JetBrains Mono');
     });
 
     it('renders inline scan button', () => {

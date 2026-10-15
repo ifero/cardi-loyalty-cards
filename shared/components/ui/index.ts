@@ -9,3 +9,6 @@ export { PrimaryActionFooter } from './PrimaryActionFooter';
 export { SectionHeader } from './SectionHeader';
 export { Surface } from './Surface';
 export { FavouriteBadge, Tile, getTileAppearance } from './Tile';
+export { HeaderIconButton } from './HeaderIconButton';
+export { RequestErrorBanner } from './RequestErrorBanner';
+export { FormField, FormScreen } from './FormScreen';

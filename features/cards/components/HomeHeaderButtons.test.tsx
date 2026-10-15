@@ -3,18 +3,22 @@
  *
  * Rendered through the real `StoryDecorator` stack, because the icon colour is the point of two of
  * these tests and only the real `ThemeProvider` flips it (ink in light, cream in dark). The guard
- * that keeps the native header's buttons out of the Unistyles plugin's reach covers this file from
- * `HeaderIconButton.test.tsx`, beside the `Pressable` it protects.
+ * that keeps the native header's buttons out of the Unistyles plugin's reach covers this file and
+ * `CardDetailHeader` at the end; `HeaderIconButton`'s own is beside it in `shared/components/ui/`.
  */
+import { readFileSync } from 'fs';
+import { dirname, relative } from 'path';
+
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { useRouter } from 'expo-router';
 import Plus from 'lucide-react-native/icons/plus';
 import Settings from 'lucide-react-native/icons/settings';
 import { StyleSheet } from 'react-native';
 
+import { HeaderIconButton } from '@/shared/components/ui/HeaderIconButton';
+
 import { StoryDecorator } from '@/.storybook/StoryDecorator';
 
-import { HeaderIconButton } from './HeaderIconButton';
 import { HomeAddButton, HomeSettingsButton } from './HomeHeaderButtons';
 
 type Scheme = 'light' | 'dark';
@@ -102,5 +106,27 @@ describe.each(BUTTONS)('$name', ({ Button, Glyph, testID, label, route }) => {
     expect(scale()).toEqual([{ scale: 0.98 }]);
     fireEvent(button, 'pressOut');
     expect(scale()).toBeUndefined();
+  });
+});
+
+/**
+ * Everything drawn inside the NATIVE header must keep React Native's own `Pressable`: the Unistyles
+ * Babel plugin's remapped one re-binds the native view on every press, a visible flicker inside
+ * the bar. The plugin processes every file whose path contains `<root>/app` and every file that
+ * imports `react-native-unistyles` in any form, so each of these must stay outside both. Their own
+ * comments may name the package; only an import, a re-export or a require counts.
+ */
+describe.each([
+  ['HomeHeaderButtons', require.resolve('./HomeHeaderButtons')],
+  ['CardDetailHeader', require.resolve('./CardDetailHeader')]
+])('%s', (_name, subject) => {
+  it('stays outside what the Unistyles Babel plugin processes', () => {
+    const repoRoot = dirname(require.resolve('@/package.json'));
+
+    // `^app`, not `^app/`: the plugin tests the path with `includes('<root>/app')`, a prefix.
+    expect(relative(repoRoot, subject)).not.toMatch(/^app/);
+    expect(readFileSync(subject, 'utf8')).not.toMatch(
+      /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"]react-native-unistyles/
+    );
   });
 });

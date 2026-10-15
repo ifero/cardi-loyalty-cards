@@ -287,6 +287,10 @@ export const en = {
       fallbackLabel: 'Bottom sheet',
       openedAnnouncement: '{{label}} opened',
       closedAnnouncement: '{{label}} closed'
+    },
+    formScreen: {
+      backAccessibilityLabel: 'Go back',
+      saving: 'Saving...'
     }
   },
   syncUi: {

@@ -27,7 +27,9 @@ const meta = {
     height: 140,
     radius: 16,
     label: 'Conad',
-    children: mark('#DA291C', 'CO')
+    children: mark('#DA291C', 'CO'),
+    // A wallet tile opens its card. Without a press the tile is the static preview (`Static`).
+    onPress: () => {}
   }
 } satisfies Meta<typeof Tile>;
 
@@ -60,4 +62,9 @@ export const CustomCard: Story = {
 /** The single-card wallet: the enlarged 220 × 180 tile at a 20pt radius. */
 export const Enlarged: Story = {
   args: { width: 220, height: 180, radius: 20, badge: favourite }
+};
+
+/** Card setup's preview of the card being added: no press, no button role, read once by its name. */
+export const Static: Story = {
+  args: { fill: '#FFCC00', label: 'Esselunga', children: mark('#FFCC00', 'ES'), onPress: undefined }
 };

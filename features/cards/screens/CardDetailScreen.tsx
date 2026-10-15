@@ -26,6 +26,7 @@ import { getCardById } from '@/core/database';
 import { LoyaltyCard } from '@/core/schemas';
 import { logger } from '@/core/utils/logger';
 
+import { HeaderIconButton } from '@/shared/components/ui/HeaderIconButton';
 import { useTheme } from '@/shared/theme';
 import { CARD_COLORS, DEFAULT_CARD_COLOR_HEX, NEUTRAL_COLORS } from '@/shared/theme/colors';
 import { getContrastForeground, getFavouriteStarColor } from '@/shared/theme/luminance';
@@ -39,7 +40,6 @@ import {
   isPastBlendMidpoint
 } from '@/features/cards/components/CardDetailHeader';
 import { CardDetails } from '@/features/cards/components/CardDetails';
-import { HeaderIconButton } from '@/features/cards/components/HeaderIconButton';
 import { useBrandLogo } from '@/features/cards/hooks/useBrandLogo';
 import { useCardBrightnessBoost } from '@/features/cards/hooks/useCardBrightnessBoost';
 import { useDeleteCard } from '@/features/cards/hooks/useDeleteCard';

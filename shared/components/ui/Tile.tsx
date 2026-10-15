@@ -111,6 +111,10 @@ type TileProps = {
    * exactly once: a remount, a scroll back or a recycled cell finds it cleared.
    */
   onHighlightEnd?: () => void;
+  /**
+   * Makes the tile a button, with the 0.98× press. Without it the tile is a picture of a card, not a
+   * control — card setup's preview (Story 22.6): no button role and no press, read once by its name.
+   */
   onPress?: () => void;
   /** Defaults to `label`. */
   accessibilityLabel?: string;
@@ -188,18 +192,8 @@ export const Tile = ({
     getHighlightBorder(highlightOpacity.value, resting)
   );
 
-  return (
-    <Pressable
-      testID={testID}
-      onPress={onPress}
-      onPressIn={() => setIsPressed(true)}
-      onPressOut={() => setIsPressed(false)}
-      accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityHint={accessibilityHint}
-      // The column is the tile's width, so the name below truncates at the tile it labels.
-      style={{ width }}
-    >
+  const content = (
+    <>
       <Animated.View
         testID={testID ? `${testID}-shell` : undefined}
         style={[
@@ -226,6 +220,39 @@ export const Tile = ({
       >
         {label}
       </Text>
+    </>
+  );
+
+  // The column is the tile's width, so the name below truncates at the tile it labels.
+  const column = { width };
+
+  if (!onPress) {
+    // One element named by the card: the mark and the name below it are not read separately.
+    return (
+      <View
+        testID={testID}
+        accessible
+        accessibilityLabel={accessibilityLabel ?? label}
+        accessibilityHint={accessibilityHint}
+        style={column}
+      >
+        {content}
+      </View>
+    );
+  }
+
+  return (
+    <Pressable
+      testID={testID}
+      onPress={onPress}
+      onPressIn={() => setIsPressed(true)}
+      onPressOut={() => setIsPressed(false)}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityHint={accessibilityHint}
+      style={column}
+    >
+      {content}
     </Pressable>
   );
 };

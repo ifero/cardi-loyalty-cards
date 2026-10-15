@@ -5,7 +5,8 @@
  * Used by:
  * - BrandHero component (card detail hero section)
  * - Card Detail screen (branded navigation header)
- * - BrandPill / CardSetupScreen (brand-coloured chips and previews)
+ * - BrandPill / BrandRow (brand-coloured chips and the brand list's initials)
+ * - ColorPicker (the check on the selected swatch)
  * - CardTile (the favourite badge's field)
  */
 import { IDENTITY_COLORS } from './tokens.generated';

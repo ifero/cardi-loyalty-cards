@@ -4,9 +4,9 @@
  * Rendered through the real `StoryDecorator` stack, because the outline colours are the point of
  * half of these tests and only the real `ThemeProvider` flips them (#D6D6CB light, #3A3A48 dark).
  */
-import { fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen, userEvent } from '@testing-library/react-native';
 import React from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 
 import {
   FavouriteBadge,
@@ -20,12 +20,14 @@ import { StoryDecorator } from '../../../.storybook/StoryDecorator';
 type Scheme = 'light' | 'dark';
 type TileProps = React.ComponentProps<typeof Tile>;
 
+// A wallet tile: it opens its card, so it is a button. The static tile is checked on its own below.
 const BASE: TileProps = {
   fill: '#DB1F26',
   width: 171,
   height: 140,
   radius: 16,
   label: 'Esselunga',
+  onPress: () => {},
   testID: 'tile'
 };
 
@@ -135,10 +137,12 @@ describe('Tile', () => {
     expect(shell().transform).toEqual([{ scale: 1 }]);
   });
 
-  it('calls onPress', () => {
+  // Pressed through the tile's own responder: `fireEvent.press` would climb to `Tile`'s `onPress`
+  // prop and pass even if the Pressable lost it.
+  it('calls onPress', async () => {
     const onPress = jest.fn();
     renderTile({ onPress });
-    fireEvent.press(screen.getByTestId('tile'));
+    await userEvent.press(screen.getByTestId('tile'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
 
@@ -148,6 +152,65 @@ describe('Tile', () => {
     expect(pressable.props.accessibilityRole).toBe('button');
     expect(pressable.props.accessibilityLabel).toBe('Esselunga');
     expect(pressable.props.accessibilityHint).toBe('Opens card details');
+  });
+
+  /**
+   * Story 22.6 — card setup draws the brand's own wallet tile as a picture of the card it is about
+   * to add. It is not a control there: given no `onPress`, the tile is no button and does not press,
+   * and a screen reader reads it once, by its name, rather than its mark and its name in turn.
+   */
+  describe('without onPress', () => {
+    const renderStatic = (props: Partial<TileProps> = {}) =>
+      render(
+        <StoryDecorator theme="light">
+          <Tile {...BASE} {...props} onPress={undefined}>
+            <Text>ES</Text>
+          </Tile>
+        </StoryDecorator>
+      );
+
+    it('is no button', () => {
+      renderStatic();
+      const tile = screen.getByTestId('tile');
+      expect(tile.props.accessibilityRole).toBeUndefined();
+      expect(tile.props.onPress).toBeUndefined();
+      expect(screen.queryByRole('button')).toBeNull();
+    });
+
+    it('does not press', () => {
+      renderStatic();
+      expect(screen.UNSAFE_queryByType(Pressable)).toBeNull();
+
+      const tile = screen.getByTestId('tile');
+      fireEvent(tile, 'pressIn');
+      fireEvent(tile, 'touchStart');
+      expect(shell().transform).toEqual([{ scale: 1 }]);
+    });
+
+    it('is one element, named by its label', () => {
+      renderStatic();
+      const tile = screen.getByTestId('tile');
+      expect(tile.props.accessible).toBe(true);
+      expect(tile.props.accessibilityLabel).toBe('Esselunga');
+      expect(tile.props.accessibilityHint).toBeUndefined();
+    });
+
+    it('draws the same tile: the fill, the geometry, the mark and the name below', () => {
+      renderStatic({ fill: '#FFFFFF' });
+      expect(shell()).toMatchObject({
+        width: 171,
+        height: 140,
+        borderRadius: 16,
+        backgroundColor: '#FFFFFF',
+        borderWidth: 1,
+        borderColor: '#D6D6CB'
+      });
+      expect(StyleSheet.flatten(screen.getByTestId('tile').props.style)).toMatchObject({
+        width: 171
+      });
+      expect(screen.getByText('ES')).toBeTruthy();
+      expect(screen.getByText('Esselunga').props.numberOfLines).toBe(1);
+    });
   });
 
   it('renders the badge slot inside the tile', () => {
