@@ -2,7 +2,7 @@
 title: 'Story 22.6: The Form Pattern — one form screen for card setup and card edit'
 type: 'feature'
 created: '2026-10-14'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: 'c0f47b32c772d97f95a177a66bf9e6e5590a6988'
