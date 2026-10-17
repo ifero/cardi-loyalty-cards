@@ -1,5 +1,5 @@
 # generated: 2026-01-03
-# last_updated: 2026-10-15
+# last_updated: 2026-10-16
 # project: myLoyaltyCards
 # project_key: NOKEY
 # tracking_system: file-system
@@ -47,7 +47,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-01-03
-last_updated: 2026-10-15
+last_updated: 2026-10-16
 project: myLoyaltyCards
 project_key: NOKEY
 tracking_system: file-system
@@ -779,7 +779,7 @@ development_status:
   22-4-barcode-flash: done # READY FOR REVIEW 2026-10-10: built in two derivations (one bad_spec loopback, on Android's Modal onShow timing and back), then review pass 2's patch rows fixed with no loopback; device-checked on the iOS 26.5 simulator in light and dark; the Sonnet code-review and QA loops each approved in round 1; 15 Found, not fixed items, Android unverified. PICKED UP 2026-10-09. REFINED 2026-10-09 through bmad-build, approved by ifero ("approve and continue"). Decided: the QR is as wide as the linear code; one barcode component with two hosts (card detail's Modal and the barcode/[id] route); the spec is kept whole.
   22-5-capture: done # READY FOR REVIEW 2026-10-13: built through bmad-build; the four-layer review raised 36 findings (14 patch groups fixed, 8 deferred, 7 rejected), then the Sonnet code loop (rounds 0, 1, 0, 0 findings) and QA loop (5, 1, 0) converged with zero comments; device-checked on the iOS 26.5 simulator in light and dark (frames A-E, pending, camera error, largest text), Android unverified; ifero decided one bottom region for large text (2026-10-13); not committed, awaiting ifero's review. PICKED UP 2026-10-12 (wave_2). REFINED 2026-10-12 through bmad-build, approved by ifero ("1a, keep ... then implement it"). Decided: "Other card" is the last row of ALL CARDS (frame A); the spec is kept whole; the 9 Found, not fixed items from planning are filed as #266.
   22-6-the-form-pattern: done # PICKED UP 2026-10-14 (wave_2). REFINED 2026-10-14 through bmad-build, approved by ifero ("1a 2a", "keep", "approve and continue"). Decided: setup and edit move onto the shared FormScreen now and the auth screens wait for 22.9; catalogue setup shows the brand's wallet tile; the spec is kept whole; spec at docs/sprint-artifacts/stories/22-6-the-form-pattern.md
-  22-7-settings: backlog
+  22-7-settings: review # READY FOR REVIEW 2026-10-16: built through bmad-build; the four-layer review raised 28 findings (15 rows patched as 12 groups, 7 deferred, 11 rejected), no loopback; device-checked on the iOS 26.5 simulator in light and dark (frames A-F, busy, failed, keyboard, largest text), where three largest-text defects were fixed; the code loop (0, 2, 3, 3, 3) and the QA loop (4, 7, 4, 6) each ended at ifero's call after their last fixes; Android, VoiceOver and TalkBack unverified; not committed, awaiting ifero's review. PICKED UP 2026-10-15 (wave_3). REFINED 2026-10-15 through bmad-build, approved by ifero ("keep, 1a 2a 3b", "approve and continue"). Decided: guests still see no Sync row; every confirmation is the confirm sheet, with card detail's Delete and edit's Discard moving in a follow-up; What We Collect returns to About after Privacy Policy; the spec is kept whole; spec at docs/sprint-artifacts/stories/22-7-settings.md
   22-8-document-screens: backlog
   22-9-authentication: backlog
   22-10-onboarding: backlog # BLOCKED: needs commissioned illustrations
