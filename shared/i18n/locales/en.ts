@@ -289,8 +289,10 @@ export const en = {
       closedAnnouncement: '{{label}} closed'
     },
     formScreen: {
-      backAccessibilityLabel: 'Go back',
       saving: 'Saving...'
+    },
+    screenHeader: {
+      backAccessibilityLabel: 'Go back'
     }
   },
   syncUi: {

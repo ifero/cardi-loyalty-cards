@@ -1,4 +1,3 @@
-import ChevronLeft from 'lucide-react-native/icons/chevron-left';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -7,30 +6,18 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/shared/theme';
-import { LAYOUT, SPACING, TOUCH_TARGET } from '@/shared/theme/spacing';
-import { TYPOGRAPHY } from '@/shared/theme/typography';
+import { LAYOUT, SPACING } from '@/shared/theme/spacing';
 
 import { Button } from './Button';
-import { HeaderIconButton } from './HeaderIconButton';
 import { PrimaryActionFooter } from './PrimaryActionFooter';
 import { RequestErrorBanner } from './RequestErrorBanner';
+import { ScreenHeader } from './ScreenHeader';
 import { FieldLabel } from './TextField';
-
-/**
- * Where the back chevron's ink starts inside its 48pt target: `HeaderIconButton` centres a 24pt
- * glyph (12pt in), and Lucide's chevron-left draws its leftmost point at x = 9 of 24, less half of
- * its 1.5 stroke. The header pads by the rest of the 24pt margin, so the drawn stroke — not the
- * target — lands on the margin, as capture frame A draws it. Both sides pad the same, so the 48pt
- * spacer on the right keeps the title centred.
- */
-const BACK_GLYPH_INK_INSET = (TOUCH_TARGET.min - 24) / 2 + 9 - 1.5 / 2;
-const HEADER_PADDING_X = LAYOUT.screenHorizontalMargin - BACK_GLYPH_INK_INSET;
 
 type FormPrimaryAction = {
   label: string;
@@ -118,9 +105,9 @@ const useIsAndroidKeyboardShown = () => {
  *
  * - **Ground.** `background` under every inset: a `SafeAreaView` on all four edges, outside the
  *   keyboard-avoiding view, so the footer's own bottom inset stays off.
- * - **Header.** Capture frame A's: at least 48 tall with no rule, the back chevron's stroke on the
- *   24pt margin, the title in `body-lg` semibold centred — wrapping rather than clipping under large
- *   text — and a 48pt spacer on the right.
+ * - **Header.** `ScreenHeader` — capture frame A's: at least 48 tall with no rule, the back
+ *   chevron's stroke on the 24pt margin, the title in `body-lg` semibold centred — wrapping rather
+ *   than clipping under large text — and a 48pt spacer on the right.
  * - **Body.** A scroll view padded 24 on every side; fields 32 apart. A failed request is the first
  *   thing in it, 16 above the first field, and the body scrolls to the top to show it.
  * - **Footer.** `PrimaryActionFooter` holding one large primary `Button`, never in the scroll.
@@ -172,22 +159,13 @@ export const FormScreen = ({
       edges={['top', 'right', 'bottom', 'left']}
       style={[styles.root, { backgroundColor: theme.background }]}
     >
-      <View testID={`${testID}-header`} style={styles.header}>
-        <HeaderIconButton
-          icon={ChevronLeft}
-          label={t('sharedUi.formScreen.backAccessibilityLabel')}
-          onPress={onBack}
-          testID={backTestID ?? `${testID}-back`}
-        />
-        <Text
-          testID={`${testID}-title`}
-          accessibilityRole="header"
-          style={[styles.title, { color: theme.textPrimary }]}
-        >
-          {title}
-        </Text>
-        <View style={styles.headerSpacer} />
-      </View>
+      <ScreenHeader
+        title={title}
+        onBack={onBack}
+        testID={`${testID}-header`}
+        titleTestID={`${testID}-title`}
+        backTestID={backTestID ?? `${testID}-back`}
+      />
 
       <KeyboardAvoidingView
         behavior="padding"
@@ -235,21 +213,6 @@ export const FormScreen = ({
 const styles = StyleSheet.create({
   root: {
     flex: 1
-  },
-  // At least 48, with no rule; it grows rather than clipping its title under large text.
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: TOUCH_TARGET.min,
-    paddingHorizontal: HEADER_PADDING_X
-  },
-  title: {
-    ...TYPOGRAPHY.bodyLgStrong,
-    flex: 1,
-    textAlign: 'center'
-  },
-  headerSpacer: {
-    width: TOUCH_TARGET.min
   },
   keyboard: {
     flex: 1

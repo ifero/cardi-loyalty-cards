@@ -290,8 +290,10 @@ export const it = {
       closedAnnouncement: '{{label}} chiuso'
     },
     formScreen: {
-      backAccessibilityLabel: 'Torna indietro',
       saving: 'Salvataggio...'
+    },
+    screenHeader: {
+      backAccessibilityLabel: 'Torna indietro'
     }
   },
   syncUi: {
