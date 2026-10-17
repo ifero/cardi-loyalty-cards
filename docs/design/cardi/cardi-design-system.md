@@ -469,9 +469,9 @@ banner's plate, and never on the app's own ground (_Capture_).
 ## Components
 
 **Every component below exists as a primitive in `shared/components/ui/` — BUILT 2026-09-27
-(Story 22.1), and joined by the form pattern's three in Story 22.6.** That directory is the only one
-Storybook and Chromatic see, so a primitive placed anywhere else gets no story and no visual
-coverage. Screens compose these; they do not re-draw them.
+(Story 22.1), joined by the form pattern's three in Story 22.6 and by settings' two in Story 22.7.**
+That directory is the only one Storybook and Chromatic see, so a primitive placed anywhere else gets
+no story and no visual coverage. Screens compose these; they do not re-draw them.
 
 | component                     | primitive                                  |
 | ----------------------------- | ------------------------------------------ |
@@ -485,6 +485,8 @@ coverage. Screens compose these; they do not re-draw them.
 | Forms                         | `FormScreen` (+ `FormField`)               |
 | A failed request              | `RequestErrorBanner`                       |
 | A header's icon button        | `HeaderIconButton`                         |
+| A screen's own header         | `ScreenHeader`                             |
+| A pick-one list               | `OptionList`                               |
 
 ### Card tile (the core component)
 
@@ -607,8 +609,9 @@ acknowledges a press like every other transparent button, with an 8 % wash of it
 pressed colour equalled its fill.
 
 **Every button is 12px, unconditionally.** The shared button was 14; it is corrected, not
-justified. Heights split by role: the primary action in a footer is **52px**, every other button
-takes the **48px** touch target.
+justified. Heights split by role: the primary action in a footer and a sheet's actions (_Sheets_)
+are **52px**, and every other button takes the **48px** touch target — settings' guest Create
+Account and Sign In among them, over the settings frame's 52 (Story 22.7).
 
 **One control in the whole system is drawn disabled — the type-to-confirm delete gate — RECORDED
 2026-09-27 (Story 22.1, AC11).** `stitch-prompts-settings.txt` specs the delete-account sheet's
@@ -938,7 +941,8 @@ never the action inside the scroll, and no trailing padding under the last field
 
 - **Ground.** `background` under every inset, in a safe-area view on all four edges. That view sits
   outside the keyboard-avoiding view, so the footer adds no bottom inset of its own.
-- **Header.** Capture frame A's (_Capture_), not the form frame's 56px bar with its 24px display
+- **Header.** `ScreenHeader` since Story 22.7, which settings draws too: capture frame A's
+  (_Capture_), not the form frame's 56px bar with its 24px display
   title: on iOS every stack-pushed screen's bar title is 17px, the native ones by default and
   capture's by token, while Android's native titles keep the toolbar's own size
   (`NAVIGATION_TITLE_FONT` sets no size). Home's `headline-md` title, 24px, is the one exception, and
@@ -962,8 +966,9 @@ never the action inside the scroll, and no trailing padding under the last field
   keyboard is up. ⚠️ Unverified on an Android device.
 - **Nothing to submit.** A state with no form — card edit's loading and error — draws the header over
   the ground, with no footer.
-- **Strings and test IDs.** The back's name and the busy name are shared strings
-  (`sharedUi.formScreen`), as `BottomSheet`'s are, rather than a feature's. The caller names the
+- **Strings and test IDs.** The back's name (`sharedUi.screenHeader`, which moved out with the
+  header in Story 22.7) and the busy name (`sharedUi.formScreen`) are shared strings, as
+  `BottomSheet`'s are, rather than a feature's. The caller names the
   parts, so setup's back keeps `setup-back-button` and card edit's scrolling body keeps
   `edit-card-form`.
 - **Errors have a direction** (the design README, 2026-08-21). Validation sits on the field it
@@ -1052,6 +1057,128 @@ and worded in the error `#FF453A`; cream text, with the placeholder `#B5B5AB`; t
 beam for the focus outline and the selection ring; and the primary in beam, with an ink label and
 spinner.
 
+### Settings
+
+**RULED 2026-10-15 (Story 22.7)**, from `frames/cardi-settings-frames.html` and
+`stitch-prompts-settings.txt` — frames A (signed in), B (guest), C (pick one), D (confirm), E
+(acknowledge) and F (type to confirm). Where they are silent, or this document overrules them, the
+ruling is recorded here, so the screen and its sheets cannot drift from either without saying so.
+
+**The screen.**
+
+- **Ground.** `background` in a safe-area view on the top, left and right edges. The list scrolls on
+  under the home indicator, so the bottom inset goes into its padding instead.
+- **Header.** `ScreenHeader`, which is capture frame A's header and the form pattern's (_Forms_):
+  "Settings" in `body-lg` semibold, centred and announced as the heading, its back going back. The
+  frame's 56px bar with a 24px display title is overruled — every stack-pushed screen has a 17px
+  title, and Home is the one exception. The route hides the native header, so none flashes in the
+  push.
+- **Body.** A scroll view, its content padded 16px at the top, 24px at the sides, and 24px plus the
+  bottom inset at the bottom. The groups sit 24px apart, each section header 8px above its group.
+- **Groups.** A section header over a hairline-outlined surface divided by full-width rules (_The
+  hairline-outlined surface_); each row a plain `ActionRow` with no rule of its own.
+- **Order (frame A).** The account group, with no head; PREFERENCES — Theme, Language, then the
+  full-brightness switch; DATA — Export Data, Import Data, then Sync; ABOUT — Help & FAQ, Privacy
+  Policy, What We Collect, App Version, then Catalogue.
+  - **Sync stays hidden from a guest — DECIDED 2026-10-15 (ifero)**, as shipped (Stories 7.7 and
+    13.6). Frame B, which draws it, is overruled.
+  - **What We Collect — DECIDED 2026-10-15 (ifero)** — is restored as an About row after Privacy
+    Policy, opening the data summary: one row more than frame A.
+- **Icons.** Only PREFERENCES' rows lead with one, each Lucide at 24 / 1.5 in `on-surface`: Theme
+  takes `moon`, the frame's crescent; Language takes `globe`; the switch takes `lightbulb`, filled
+  only while it is on — the brightness bulb of _Icons_, and card detail's glyph.
+
+**The account group (frame A).** One hairline-outlined surface with no head above it: identity, not
+a category.
+
+- **Its head**, padded 12/16: "Signed in" in `overline` muted, then the email 2px below in `body-lg`
+  `on-surface`, wrapping rather than clipping. A screen reader reads it as one element, "Signed in,
+  <email>".
+- **Its rows:** Change Password, with its chevron; then Sign Out and Delete Account, destructive
+  text with no chevron.
+- **Gone:** the avatar, the green "Synced" mark — hard-coded whatever the sync state — and the row
+  icons.
+
+**The guest group (frame B).** A surface padded 24, centred: "Not signed in yet" in `sheetTitle`,
+announced as a heading; its body 8px below in `body-md` muted; then, 24px below, Create Account
+(primary) above Sign In (secondary), full width and 8px apart. They take the default 48px, not the
+frame's 52: _Buttons_ gives 52 only to a footer's primary and to a sheet's actions. The shield is
+gone.
+
+**Rows (`ActionRow`)** — settings', and card detail's MANAGE block, its other caller.
+
+- **Shape.** A plain row is padded 12/16 with 12px between its parts, so a one-line row is 48px.
+- **Chevron.** Lucide `chevron-right` at 24 / 1.5 in muted: the chevron of every row (_Capture_).
+- **Text.** The label wraps rather than clipping, and the row grows. The value stays one line,
+  ellipsised, and never takes more than 46 % of the row, as frame A sets it. On a crowded line the
+  value gives way before the label, which breaks a word only when that word alone is wider than its
+  room. At the accessibility text sizes the value moves under the label and wraps, and the chevron
+  stays at the row's end.
+- **Name.** Each row is named by its label, then its value.
+- **Information.** A row with no action — App Version, Catalogue — is not a control: no button role,
+  no press and no chevron, at full strength, read as its label and its value. A row that shows a
+  value but does nothing must not look tappable.
+- **Busy.** The spinner takes the chevron's place; the row keeps its look, ignores presses and is
+  announced busy — Change Password while its code is sent, Import Data while the document picker
+  prepares, Sync while it syncs. `disabled` stays as it was, for card detail's Edit during a delete.
+- **DATA.** Export Data keeps "JSON"; Import Data has no value, as the frame draws it. Sync keeps
+  its shipped label and the time it last ran: the frame's "Sync Now" is not a string, and its
+  "Synced" is not real data.
+- **The switch row.** The bulb, then `ToggleSwitch` with its label, padded 12/16. The label shrinks
+  and wraps beside the track rather than pushing the track off the row.
+
+**Sheets.** Every settings sheet is one of four shapes on the shared `BottomSheet` (_Sheets_). Each
+passes its own title, so it is announced by its title and the title is a heading, and its own
+description where it has one — the pickers and the import preview have none. A sheet draws no chip,
+no tint, and no icon but the selected option's check.
+
+- **Pick one (frame C), `OptionList`.** Each option is at least 48px, padded 12/24 and edge to edge:
+  its rule spans the sheet, its label sits on the 24px margin, and a rule sits above every option,
+  none after the last. The label is `body-lg` `on-surface` and wraps. The selected option takes
+  Lucide `check` at 20 / 2 in `primary` — ink in light, beam in dark — and reports `selected`. An
+  option takes `surface-container-low` while held, as a row does, and the options scroll when they
+  do not fit. Theme lists Light, Dark, then System, its helper 20px below the last option in Inter
+  13 muted, scrolling with the options so they take the room first; the preview chips, which
+  overflowed a 320pt screen, are gone. Language lists the
+  languages its preference supplies, with no helper. Choosing applies, saves, announces and closes,
+  as it did.
+- **Confirm (frame D).** Sign Out; delete's first step, with Continue; Export; and the import
+  preview, whose file name and counts are plain text on the margin — the counts in `body-md` muted,
+  the invalid line only when there are invalid entries. Import is never disabled: with no new card
+  it imports nothing, and its toast says so.
+- **Acknowledge (frame E).** One primary OK: nothing to export, and the import error in the hook's
+  own title and message. The import error's icons, its variant and its tinted banner are gone.
+- **Type to confirm (frame F)**, delete's second step: a `TextField` whose form label sits 8px above
+  the input — this document's spacing over the frame's 16 — with no placeholder, with the hint and
+  capitals, and editable while the delete runs. Delete Account is disabled until the field holds
+  exactly the keyword, case included; busy wins over it. The sheet changes in place, so Continue
+  announces this step's title, and Delete Account is a control of its own, not Continue's
+  relabelled, so a screen reader's focus does not stay on a button that has changed under it.
+- **Actions.** The sheet's action — destructive for Sign Out and both delete steps, primary for
+  Export, Import and OK — at 52px. A confirm sheet puts an outlined secondary Cancel beneath it,
+  also 52px and 8px apart; an acknowledge sheet holds its OK alone.
+- **Busy.** The pressed button keeps its look, shows a spinner and ignores presses; nothing else in
+  the sheet dims or locks.
+- **A failed request** — sign out, delete, export — is one `RequestErrorBanner` (_Forms_), the first
+  thing in the content, 16px below the text, and announced. The sheet stays open and no toast
+  repeats it: the export hook's failure toast is gone, as Story 22.6 dropped the save hooks'. Each
+  error clears when its sheet opens, and when the next press starts.
+- **Closing.** A sheet keeps its content while it slides out. Delete resets its step and its text
+  when it opens, never when it closes, and the screen keeps the last preview and the last import
+  error until their sheets have gone.
+
+**The confirmation rule — DECIDED 2026-10-15 (ifero).** Every confirmation is the confirm sheet.
+Settings moves now; card detail's Delete and card edit's Discard keep the platform alert until their
+follow-up.
+
+**Dark** — no frame draws it. Every value is the theme role named above: the ground black `#000000`;
+the groups and the sheets ink `#181824`, outlined `#3A3A48`; cream text, muted `#B5B5AB`; the error
+`#FF453A`; the icons cream, the check beam, and the primary in beam with an ink label; the scrim
+stays ink at 40 %.
+
+**Unverified.** Android, for which this host has no phone emulator, and with it a sheet's keyboard
+on Android (_Sheets_); VoiceOver and TalkBack.
+
 ### Input fields
 
 1px outline, 12px radius, label **always visible above** the field (never floating), 48px
@@ -1129,17 +1256,36 @@ frames, which carried the whole spec while this document gave a sheet only a rad
 - **24px margins.** The title is **`sheetTitle` — Space Grotesk 20 / 28, bold** — the eighth token
   Story 21.6 (AC5b) derived for sheet, dialog and panel titles; `headline-sm` stays Inter, because
   the same 20px sets the barcode store name, which does not wear the display face. A description
-  follows **8px** below in Inter 15, muted; content **16px** below that — **24px** when the
-  content is a stack of actions, as the confirm, acknowledge and type-to-confirm frames draw it.
+  follows **8px** below in Inter 15, muted; content **16px** below that. The actions are a slot
+  of their own, **24px** below what precedes them — the description, or the content — as the
+  confirm, acknowledge and type-to-confirm frames draw them (Story 22.7).
 - **Rows are 48px minimum**, divided by hairline rules. An option list runs **edge to edge**, its
   rules spanning the sheet and its content on the 24px margin, in line with the title.
 - **Actions are full-width 52px buttons, 8px apart.** A destructive action is the borderless text
   button (_Buttons_) and sits **above** Cancel, which carries the visible outline — the bordered
-  control is the safe one. ⚠️ The two confirm sheets that ship today, sign-out and delete-account,
-  are **not** the reference: they stack Cancel above the destructive action — Story 13.6's
-  deliberate "inverted CTA order", which these frames reverse — at the default 48px, 10px apart.
-  Story 22.7 rebuilds them.
+  control is the safe one. **The shipped sign-out and delete-account sheets are the reference —
+  REBUILT 2026-10-15 (Story 22.7).** Until then they stacked Cancel above the destructive action —
+  Story 13.6's deliberate "inverted CTA order", which these frames reverse — at the default 48px,
+  10px apart. Every confirmation is this sheet (_Settings_).
 - **It never grows past 80 % of the window**; a long list inside it scrolls.
+- **With actions, the text scrolls and the actions stay — ADDED 2026-10-15 (Story 22.7).** The
+  title, the description and the content scroll within the 80 % cap, and the actions stay pinned
+  beneath them, so at the largest text sizes no button leaves the sheet. The scrolling body never
+  grows: React Native lays out with Yoga's legacy stretch, which hands a height-capped container's
+  spare height to a growing child, and a scroll view grows by default, so a short sheet would stand
+  80 % tall. A sheet without actions draws as before — the multi-code picker, the sort sheet and the
+  pickers hold their own lists, which scroll inside its shrinking body.
+- **The keyboard — ADDED 2026-10-15 (Story 22.7).** While it is up, the sheet rests on the
+  keyboard's top edge and may take all the space above it, below the top safe-area inset, so a
+  field shows whole above its actions at the largest text sizes. Its bottom padding drops to
+  **20px**, since the keyboard covers the home indicator. The keyboard-avoiding view is the modal's
+  full-screen root: it measures its overlap from its own frame, relative to its parent, against the
+  keyboard's top edge in screen coordinates, and only a view whose frame is the modal's whole screen
+  gets the two to agree — one inside the sheet pads about nothing. iOS takes `padding`; its keyboard
+  events reach JavaScript while a modal is up. Android takes `padding` too, on only while the
+  keyboard is up, as _Forms_ rules for `FormScreen`. ⚠️ Unverified on an Android device, and not
+  settled by the sources alone: the modal's dialog window is edge-to-edge, so the system does not
+  resize it, and its keyboard events reach JavaScript only through the activity's root view.
 - **Motion: the scrim fades and only the sheet slides**, 220 ms, ease-out, on the UI thread, and
   under Reduce Motion it simply appears — SETTLED 2026-09-27 (Story 22.1, AC8). **The sheet stays
   opaque and travels exactly its own height**, in and out. Neither earlier motion did: the shared
@@ -1162,13 +1308,17 @@ package root, which Metro cannot tree-shake; `eslint.config.mjs` refuses a root 
 off MaterialIcons as their Epic 22 story redesigns them, and the wallet has not moved entirely: the
 favourite badge's filled star (`FavouriteBadge` in `Tile`) and the guest, migration and sync
 banners' icons are still `@expo/vector-icons` — MaterialIcons, and MaterialCommunityIcons for the
-guest banner's shield. Card detail moved in Story 22.3, all but the shared `ActionRow`'s chevron,
-which it shares with settings — add-card no longer draws `ActionRow` since Story 22.5. The full-screen
-barcode it opens draws no icon at all since Story 22.4, which dropped its close ×. Capture moved in
+guest banner's shield. Card detail moved in Story 22.3, all but the `ActionRow` chevron it shares
+with settings (add-card no longer draws `ActionRow` since Story 22.5); that chevron moved with
+settings in Story 22.7, to Lucide `chevron-right` at 24 / 1.5. The full-screen barcode card detail
+opens draws no icon at all since Story 22.4, which dropped its close ×. Capture moved in
 Story 22.5 — the brand list, the scanner, its banner and the multi-code picker — and card setup and
 card edit in Story 22.6: the form header's `chevron-left`, the colour picker's `check`, and
-`InlineScanButton`'s `camera`, which replaced MaterialCommunityIcons' `barcode-scan`. The screens
-that keep the native header still take the root stack's MaterialIcons back chevron (#258 item 11).
+`InlineScanButton`'s `camera`, which replaced MaterialCommunityIcons' `barcode-scan`. Settings
+moved in Story 22.7 — its rows' `moon`, `globe` and `lightbulb`, the row chevron, the pick-one
+list's `check` and its own header's `chevron-left` — and draws no other icon: its sheets' 40px
+icons, its account avatar and its guest shield are gone. The screens that keep the native header
+still take the root stack's MaterialIcons back chevron (#258 item 11).
 
 **A glyph is filled only where the fill is its state — RULED 2026-10-09 (Story 22.3).** Two glyphs
 are: the favourited star and the brightness bulb while it is on. Neither fill is decoration — the
@@ -1180,7 +1330,8 @@ is not an icon taking a card accent.
 **A glyph inside a control is smaller — RULED 2026-10-05 (Story 22.2, from the wallet frame).** The
 24 / 1.5 rule is for an icon that owns its 48px target. A glyph inside a field or beside a label
 takes the frame's size and stroke, the stroke in the icon's 24-unit grid: the search field's
-magnifier **20** and clear × **18** at **1.8** (1.5px rendered at 20), and the sort row's chevron
+magnifier **20** and clear × **18** at **1.8** (1.5px rendered at 20), the pick-one list's check
+**20** at **2** (_Settings_), and the sort row's chevron
 **14** at **2**. The × still sits on a 48px target of its own; the chevron is part of its text
 button's.
 
