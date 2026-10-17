@@ -1,9 +1,7 @@
-import { MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ActionRow } from '@/shared/components/ui';
-import { useTheme } from '@/shared/theme';
 
 import { SettingsSection } from './SettingsSection';
 
@@ -11,20 +9,27 @@ type DataManagementSectionProps = {
   isAuthenticated: boolean;
   syncLabel: string;
   isSyncing: boolean;
+  /** The document picker is preparing: the Import row shows the spinner. */
+  isPreparingImport: boolean;
   onExportPress: () => void;
   onImportPress: () => void;
   onSyncPress: () => void;
 };
 
+/**
+ * DATA (frame A): Export Data, Import Data, then Sync — which a guest does not see (Stories 7.7 and
+ * 13.6; frame B is overruled). Sync shows when it last ran, not the frame's "Synced", which is not
+ * real data.
+ */
 export const DataManagementSection = ({
   isAuthenticated,
   syncLabel,
   isSyncing,
+  isPreparingImport,
   onExportPress,
   onImportPress,
   onSyncPress
 }: DataManagementSectionProps) => {
-  const { theme } = useTheme();
   const { t } = useTranslation();
 
   return (
@@ -32,7 +37,7 @@ export const DataManagementSection = ({
       <ActionRow
         testID="settings-export-row"
         variant="plain"
-        prefix={<MaterialIcons name="file-download" size={24} color={theme.primary} />}
+        showBottomBorder={false}
         label={t('settings.data.exportData')}
         value={t('settings.data.format')}
         onPress={onExportPress}
@@ -40,21 +45,18 @@ export const DataManagementSection = ({
       <ActionRow
         testID="settings-import-row"
         variant="plain"
-        prefix={<MaterialIcons name="file-upload" size={24} color={theme.primary} />}
+        showBottomBorder={false}
         label={t('settings.data.importData')}
-        value={t('settings.data.format')}
+        isLoading={isPreparingImport}
         onPress={onImportPress}
       />
       {isAuthenticated ? (
         <ActionRow
           testID="settings-sync-row"
           variant="plain"
-          prefix={
-            <MaterialCommunityIcons name="cloud-sync-outline" size={24} color={theme.primary} />
-          }
+          showBottomBorder={false}
           label={t('common.actions.sync')}
           value={syncLabel}
-          showChevron={false}
           isLoading={isSyncing}
           onPress={onSyncPress}
         />

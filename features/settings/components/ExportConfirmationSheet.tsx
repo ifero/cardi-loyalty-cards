@@ -1,21 +1,19 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
 
-import { BottomSheet, Button } from '@/shared/components/ui';
-import { useTheme } from '@/shared/theme';
-import { TYPOGRAPHY } from '@/shared/theme/typography';
+import { BottomSheet, Button, RequestErrorBanner } from '@/shared/components/ui';
 
 type ExportConfirmationSheetProps = {
   visible: boolean;
   cardCount: number;
   isExporting: boolean;
+  /** A failed export: one banner, the first thing in the sheet — and no toast besides. */
   exportError: string | null;
   onExport: () => void;
   onClose: () => void;
 };
 
+/** Confirm (frame D): Export, the primary action, above an outlined Cancel. */
 export const ExportConfirmationSheet = ({
   visible,
   cardCount,
@@ -24,48 +22,35 @@ export const ExportConfirmationSheet = ({
   onExport,
   onClose
 }: ExportConfirmationSheetProps) => {
-  const { theme } = useTheme();
   const { t } = useTranslation();
+  const exportLabel = t('common.actions.export');
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} testID="export-confirmation-sheet">
-      <View style={{ alignItems: 'center' }}>
-        <MaterialIcons name="file-download" size={40} color={theme.primary} />
-        <Text style={{ ...TYPOGRAPHY.sheetTitle, marginTop: 12, color: theme.textPrimary }}>
-          {t('settings.export.confirmTitle')}
-        </Text>
-        <Text
-          style={{
-            ...TYPOGRAPHY.bodyMd,
-            marginTop: 8,
-            color: theme.textSecondary,
-            textAlign: 'center'
-          }}
-        >
-          {t('settings.export.confirmBody', { count: cardCount })}
-        </Text>
-      </View>
-      <View style={{ marginTop: 16, gap: 10 }}>
-        <Button
-          testID="export-confirm-button"
-          variant="primary"
-          onPress={onExport}
-          loading={isExporting}
-        >
-          {t('common.actions.export')}
-        </Button>
-        <Button testID="export-cancel-button" variant="tertiary" onPress={onClose}>
-          {t('common.actions.cancel')}
-        </Button>
-        {exportError ? (
-          <Text
-            testID="export-error-text"
-            style={{ ...TYPOGRAPHY.captionMd, color: theme.error, textAlign: 'center' }}
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title={t('settings.export.confirmTitle')}
+      description={t('settings.export.confirmBody', { count: cardCount })}
+      testID="export-confirmation-sheet"
+      actions={
+        <>
+          <Button
+            testID="export-confirm-button"
+            variant="primary"
+            size="large"
+            onPress={onExport}
+            loading={isExporting}
+            accessibilityLabel={exportLabel}
           >
-            {exportError}
-          </Text>
-        ) : null}
-      </View>
+            {exportLabel}
+          </Button>
+          <Button testID="export-cancel-button" variant="secondary" size="large" onPress={onClose}>
+            {t('common.actions.cancel')}
+          </Button>
+        </>
+      }
+    >
+      {exportError ? <RequestErrorBanner testID="export-error-text" message={exportError} /> : null}
     </BottomSheet>
   );
 };

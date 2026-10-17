@@ -197,3 +197,34 @@ describe('RootLayout — card edit (Story 22.6)', () => {
     expect(mockScreenOptions.get('card/[id]')?.headerShown).toBeUndefined();
   });
 });
+
+/**
+ * Settings' header — Story 22.7. The screen draws `ScreenHeader`, so the route hides the native one,
+ * set on the route for the same reason as card edit's: no native header flashes in the push.
+ */
+describe('RootLayout — settings (Story 22.7)', () => {
+  beforeEach(async () => {
+    mockScreenOptions.clear();
+    mockSharedOptions = undefined;
+    await act(async () => {
+      await changeAppLanguage('en');
+    });
+  });
+
+  it('hides the native header on settings, keeping its title', async () => {
+    await renderHome();
+    expect(mockScreenOptions.get('settings')).toEqual({
+      title: 'Settings',
+      headerShown: false
+    });
+  });
+
+  // The route's options only: the root stack's shared header, and its back, stay as they were.
+  it('leaves the shared screen options and the other routes alone', async () => {
+    await renderHome();
+    expect(mockSharedOptions?.headerShown).toBeUndefined();
+    expect(mockSharedOptions?.headerLeft).toEqual(expect.any(Function));
+    // What We Collect, which settings now opens, keeps the native header and its back.
+    expect(mockScreenOptions.get('data-summary')).toEqual({ title: 'What We Collect' });
+  });
+});

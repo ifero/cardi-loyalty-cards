@@ -91,6 +91,79 @@ describe('useImportData', () => {
     });
   });
 
+  // An empty backup is not an invalid one: its own title and message, and the `empty` variant.
+  it('surfaces an empty file as No Card Data', async () => {
+    mockGetDocumentAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///empty.json', name: 'empty.json' }]
+    });
+    mockFileText.mockResolvedValue('{"cards":[]}');
+    mockAnalyzeImportPayload.mockResolvedValue({
+      status: 'empty',
+      title: 'No Card Data',
+      message: 'This file contains no card data.'
+    });
+
+    const { result } = renderHook(() => useImportData({ isAuthenticated: false }));
+
+    await act(async () => {
+      await result.current.pickImportFile();
+    });
+
+    expect(result.current.errorState).toEqual({
+      title: 'No Card Data',
+      message: 'This file contains no card data.',
+      variant: 'empty'
+    });
+  });
+
+  it('forgets the preview when it is closed', async () => {
+    mockGetDocumentAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: 'file:///backup.json', name: 'backup.json' }]
+    });
+    mockFileText.mockResolvedValue('{"ok":true}');
+    mockAnalyzeImportPayload.mockResolvedValue({
+      status: 'preview',
+      preview: {
+        fileName: 'backup.json',
+        totalCards: 1,
+        newCardsCount: 1,
+        duplicateCount: 0,
+        invalidCount: 0,
+        importableCards: []
+      }
+    });
+
+    const { result } = renderHook(() => useImportData({ isAuthenticated: false }));
+
+    await act(async () => {
+      await result.current.pickImportFile();
+    });
+    expect(result.current.preview).not.toBeNull();
+
+    act(() => {
+      result.current.closePreview();
+    });
+    expect(result.current.preview).toBeNull();
+  });
+
+  it('forgets the error when it is closed', async () => {
+    mockGetDocumentAsync.mockResolvedValue({ canceled: false, assets: [] });
+
+    const { result } = renderHook(() => useImportData({ isAuthenticated: false }));
+
+    await act(async () => {
+      await result.current.pickImportFile();
+    });
+    expect(result.current.errorState).not.toBeNull();
+
+    act(() => {
+      result.current.closeError();
+    });
+    expect(result.current.errorState).toBeNull();
+  });
+
   it('triggers sync only for authenticated successful imports', async () => {
     const onImportSuccess = jest.fn().mockResolvedValue(undefined);
     const onSyncRequested = jest.fn().mockResolvedValue(undefined);

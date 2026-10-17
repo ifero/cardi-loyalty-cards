@@ -64,24 +64,24 @@ export const useExportData = () => {
       return true;
     } catch (error) {
       logger.error('[useExportData] Export failed', error);
-      const message = t('settings.export.failedMessage');
-      setExportError(message);
-      await showToast({
-        title: t('settings.export.failedTitle'),
-        message,
-        preset: 'error'
-      });
+      // The export sheet shows it as its banner, and that is the one surface a failure gets — no
+      // toast besides it (Story 22.7, as Story 22.6 ruled for the save hooks).
+      setExportError(t('settings.export.failedMessage'));
       return false;
     } finally {
       setIsExporting(false);
     }
   };
 
+  /** Forgets the last failure, so the export sheet opens without it. */
+  const clearExportError = () => setExportError(null);
+
   return {
     cardCount,
     hasCards: cardCount > 0,
     isExporting,
     exportError,
+    clearExportError,
     refreshCardCount,
     exportCards
   };

@@ -1,10 +1,10 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { BottomSheet, Button } from '@/shared/components/ui';
 import { useTheme } from '@/shared/theme';
+import { SPACING } from '@/shared/theme/spacing';
 import { TYPOGRAPHY } from '@/shared/theme/typography';
 
 type ImportPreviewSheetProps = {
@@ -19,6 +19,11 @@ type ImportPreviewSheetProps = {
   onClose: () => void;
 };
 
+/**
+ * Confirm (frame D): the file and what importing it will do, as plain text on the margin, then
+ * Import above an outlined Cancel. Import is never disabled — with no new card it imports nothing,
+ * and its toast says so.
+ */
 export const ImportPreviewSheet = ({
   visible,
   fileName,
@@ -32,72 +37,62 @@ export const ImportPreviewSheet = ({
 }: ImportPreviewSheetProps) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const importLabel = t('common.actions.import');
+  const countStyle = [styles.count, { color: theme.textSecondary }];
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} testID="import-preview-sheet">
-      <View style={{ alignItems: 'center' }}>
-        <MaterialIcons name="file-upload" size={40} color={theme.primary} />
-        <Text
-          style={{
-            ...TYPOGRAPHY.sheetTitle,
-            marginTop: 12,
-            color: theme.textPrimary,
-            textAlign: 'center'
-          }}
-        >
-          {t('settings.import.previewTitle')}
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title={t('settings.import.previewTitle')}
+      testID="import-preview-sheet"
+      actions={
+        <>
+          <Button
+            testID="import-preview-confirm"
+            variant="primary"
+            size="large"
+            onPress={onImport}
+            loading={isImporting}
+            accessibilityLabel={importLabel}
+          >
+            {importLabel}
+          </Button>
+          <Button testID="import-preview-cancel" variant="secondary" size="large" onPress={onClose}>
+            {t('common.actions.cancel')}
+          </Button>
+        </>
+      }
+    >
+      <View testID="import-preview-summary" style={styles.summary}>
+        <Text style={[styles.fileName, { color: theme.textPrimary }]}>{fileName}</Text>
+        <Text style={countStyle}>
+          {t('settings.import.totalCardsFound', { count: totalCards })}
         </Text>
-      </View>
-
-      <View
-        style={{
-          marginTop: 14,
-          borderRadius: 10,
-          backgroundColor: theme.surfaceElevated,
-          paddingHorizontal: 12,
-          paddingVertical: 12,
-          flexDirection: 'row',
-          alignItems: 'center'
-        }}
-      >
-        <MaterialIcons name="description" size={24} color={theme.textSecondary} />
-        <View style={{ marginLeft: 12, flex: 1 }}>
-          <Text style={{ ...TYPOGRAPHY.bodyMdStrong, color: theme.textPrimary }}>{fileName}</Text>
-          <Text style={{ ...TYPOGRAPHY.captionMd, color: theme.textSecondary, marginTop: 2 }}>
-            {t('settings.import.totalCardsFound', { count: totalCards })}
-          </Text>
-        </View>
-      </View>
-
-      <View style={{ marginTop: 16, gap: 2 }}>
-        <Text style={{ ...TYPOGRAPHY.bodyMd, color: theme.textSecondary, textAlign: 'center' }}>
+        <Text style={countStyle}>
           {t('settings.import.newCardsAdded', { count: newCardsCount })}
         </Text>
-        <Text style={{ ...TYPOGRAPHY.bodyMd, color: theme.textSecondary, textAlign: 'center' }}>
+        <Text style={countStyle}>
           {t('settings.import.duplicatesSkipped', { count: duplicateCount })}
         </Text>
         {invalidCount > 0 ? (
-          <Text style={{ ...TYPOGRAPHY.bodyMd, color: theme.textSecondary, textAlign: 'center' }}>
+          <Text style={countStyle}>
             {t('settings.import.invalidEntriesSkipped', { count: invalidCount })}
           </Text>
         ) : null}
       </View>
-
-      <View style={{ marginTop: 18, gap: 10 }}>
-        <Button
-          testID="import-preview-confirm"
-          variant="primary"
-          onPress={onImport}
-          loading={isImporting}
-          disabled={newCardsCount === 0}
-          size="large"
-        >
-          {t('common.actions.import')}
-        </Button>
-        <Button testID="import-preview-cancel" variant="tertiary" onPress={onClose}>
-          {t('common.actions.cancel')}
-        </Button>
-      </View>
     </BottomSheet>
   );
 };
+
+const styles = StyleSheet.create({
+  summary: {
+    gap: SPACING.xs
+  },
+  fileName: {
+    ...TYPOGRAPHY.bodyMdStrong
+  },
+  count: {
+    ...TYPOGRAPHY.bodyMd
+  }
+});

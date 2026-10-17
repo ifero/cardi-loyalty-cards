@@ -120,7 +120,6 @@ export const en = {
     account: {
       fallbackEmail: 'Signed in user',
       signedIn: 'Signed in',
-      synced: 'Synced',
       signOutA11y: 'Sign Out',
       deleteAccount: 'Delete Account',
       deleteAccountA11y: 'Delete Account, destructive action',
@@ -152,7 +151,6 @@ export const en = {
     },
     theme: {
       pickerTitle: 'Theme',
-      pickerAccessibilityLabel: 'Theme picker',
       optionAccessibilityLabel: '{{name}} theme',
       systemDescription: "System uses your device's appearance setting",
       selectedAnnouncement: '{{theme}} theme selected'
@@ -163,7 +161,6 @@ export const en = {
       movedToSheet: 'Language selection moved to a bottom sheet.',
       picker: {
         title: 'Language',
-        accessibilityLabel: 'Language picker',
         optionAccessibilityLabel: '{{name}} language'
       }
     },
@@ -179,7 +176,6 @@ export const en = {
       successTitle: 'Export complete',
       localBackupMessage:
         'Backup saved locally in Files. Sharing is unavailable in this environment.',
-      failedTitle: 'Export failed',
       failedMessage: 'Export failed'
     },
     import: {

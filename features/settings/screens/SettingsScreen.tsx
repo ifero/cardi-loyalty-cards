@@ -2,16 +2,18 @@ import Constants from 'expo-constants';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ScrollView, StyleSheet } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { catalogueRepository } from '@/core/catalogue/catalogue-repository';
 import { clearLastSyncAt } from '@/core/sync/sync-timestamp';
 import { logger } from '@/core/utils/logger';
 
+import { ScreenHeader } from '@/shared/components/ui';
 import { deleteAccount, getSession, sendPasswordResetOtp, signOut } from '@/shared/supabase/auth';
 import { useAuthState } from '@/shared/supabase/useAuthState';
 import { useTheme } from '@/shared/theme';
+import { LAYOUT, SPACING } from '@/shared/theme/spacing';
 import { showToast } from '@/shared/toast';
 
 import { AboutSection } from '../components/AboutSection';
@@ -78,8 +80,15 @@ const SettingsScreen = () => {
   // boost. Off by default; the card screen also has an in-the-moment button.
   const { isAutoBrightnessEnabled, setAutoBrightness } = useAutoBrightnessPreference();
 
-  const { cardCount, hasCards, isExporting, exportError, exportCards, refreshCardCount } =
-    useExportData();
+  const {
+    cardCount,
+    hasCards,
+    isExporting,
+    exportError,
+    clearExportError,
+    exportCards,
+    refreshCardCount
+  } = useExportData();
   const { isSyncing, syncLabel, triggerSync } = useSyncTrigger();
 
   const refreshAfterImport = async () => {
@@ -101,6 +110,18 @@ const SettingsScreen = () => {
     onSyncRequested: triggerSync
   });
 
+  // A sheet keeps its content while it slides out: the hook empties `preview` and `errorState` in
+  // the render that closes their sheets, so each sheet draws the last one it was given until the
+  // next replaces it, rather than falling back to zeros and an empty message on the way out.
+  const [shownPreview, setShownPreview] = useState(preview);
+  if (preview !== null && preview !== shownPreview) {
+    setShownPreview(preview);
+  }
+  const [shownImportError, setShownImportError] = useState(errorState);
+  if (errorState !== null && errorState !== shownImportError) {
+    setShownImportError(errorState);
+  }
+
   useEffect(() => {
     const loadEmail = async () => {
       if (!isAuthenticated) {
@@ -120,13 +141,26 @@ const SettingsScreen = () => {
   const appVersion = useMemo(() => Constants.expoConfig?.version ?? '1.0.0', []);
   const catalogueVersion = useMemo(() => catalogueRepository.getVersion(), []);
 
+  // Each sheet that can show a failed request opens without the last one: the error clears when
+  // its sheet opens, and again when the next press starts the request.
   const openExport = () => {
     if (hasCards) {
+      clearExportError();
       setIsExportConfirmOpen(true);
       return;
     }
 
     setIsExportEmptyOpen(true);
+  };
+
+  const openSignOut = () => {
+    setSignOutError(null);
+    setIsSignOutSheetOpen(true);
+  };
+
+  const openDeleteAccount = () => {
+    setDeleteError(null);
+    setIsDeleteSheetOpen(true);
   };
 
   const confirmExport = async () => {
@@ -197,11 +231,12 @@ const SettingsScreen = () => {
   // account email before allowing a change, then reuse the 6.19 recovery flow:
   // send the code here, hand off to the shared OTP screen tagged with
   // `origin: 'change-password'` so it routes back to /settings (not /) and the
-  // back stack is preserved for a clean return. `isChangingPassword` disables
-  // the row while the send is in flight, so a double tap can't send twice (same
-  // pattern as confirmSignOut/confirmDeleteAccount above — the trigger's own
-  // disabled state guards re-entry). A not-yet-loaded session email surfaces a
-  // toast rather than a dead tap (retrying once it resolves succeeds).
+  // back stack is preserved for a clean return. `isChangingPassword` makes the
+  // row busy while the send is in flight — it shows the spinner and ignores
+  // presses — so a double tap can't send twice (the same guard the sheets'
+  // busy buttons give confirmSignOut/confirmDeleteAccount above). A
+  // not-yet-loaded session email surfaces a toast rather than a dead tap
+  // (retrying once it resolves succeeds).
   const startChangePassword = async () => {
     if (!email) {
       await showToast({ title: t('settings.account.changePasswordError'), preset: 'error' });
@@ -232,58 +267,66 @@ const SettingsScreen = () => {
 
   return (
     <>
-      <ScrollView
-        testID="settings-screen-scroll"
-        style={{ backgroundColor: theme.background }}
-        contentContainerStyle={{
-          paddingHorizontal: 24,
-          paddingTop: 16,
-          paddingBottom: Math.max(insets.bottom + 16, 32),
-          gap: 24
-        }}
+      {/* The ground under the top inset and the sides. The list runs on under the home
+          indicator, so the bottom inset is in its padding instead. */}
+      <SafeAreaView
+        testID="settings-screen"
+        edges={['top', 'left', 'right']}
+        style={[styles.root, { backgroundColor: theme.background }]}
       >
-        {isAuthenticated ? (
-          <AccountSection
-            email={email || t('settings.account.fallbackEmail')}
-            onSignOut={() => setIsSignOutSheetOpen(true)}
-            onChangePassword={startChangePassword}
-            onDeleteAccount={() => setIsDeleteSheetOpen(true)}
-            isChangingPassword={isChangingPassword}
+        <ScreenHeader
+          title={t('navigation.settings')}
+          onBack={() => router.back()}
+          testID="settings-header"
+          backTestID="settings-back-button"
+        />
+        <ScrollView
+          testID="settings-screen-scroll"
+          contentContainerStyle={[styles.content, { paddingBottom: SPACING.lg + insets.bottom }]}
+        >
+          {isAuthenticated ? (
+            <AccountSection
+              email={email || t('settings.account.fallbackEmail')}
+              onSignOut={openSignOut}
+              onChangePassword={startChangePassword}
+              onDeleteAccount={openDeleteAccount}
+              isChangingPassword={isChangingPassword}
+            />
+          ) : (
+            <AccountSectionGuest
+              onCreateAccount={() => router.push('/create-account')}
+              onSignIn={() => router.push('/sign-in')}
+            />
+          )}
+
+          <PreferencesSection
+            themeLabel={themePreferenceLabel}
+            languageName={languageName}
+            onThemePress={openThemePicker}
+            onLanguagePress={openLanguagePicker}
+            isAutoBrightnessEnabled={isAutoBrightnessEnabled}
+            onAutoBrightnessChange={setAutoBrightness}
           />
-        ) : (
-          <AccountSectionGuest
-            onCreateAccount={() => router.push('/create-account')}
-            onSignIn={() => router.push('/sign-in')}
+
+          <DataManagementSection
+            isAuthenticated={isAuthenticated}
+            syncLabel={syncLabel}
+            isSyncing={isSyncing}
+            isPreparingImport={isPreparing}
+            onExportPress={openExport}
+            onImportPress={pickImportFile}
+            onSyncPress={triggerSync}
           />
-        )}
 
-        <PreferencesSection
-          themeLabel={themePreferenceLabel}
-          languageName={languageName}
-          onThemePress={openThemePicker}
-          onLanguagePress={openLanguagePicker}
-          isAutoBrightnessEnabled={isAutoBrightnessEnabled}
-          onAutoBrightnessChange={setAutoBrightness}
-        />
-
-        <DataManagementSection
-          isAuthenticated={isAuthenticated}
-          syncLabel={syncLabel}
-          isSyncing={isSyncing || isPreparing}
-          onExportPress={openExport}
-          onImportPress={pickImportFile}
-          onSyncPress={triggerSync}
-        />
-
-        <AboutSection
-          appVersion={appVersion}
-          catalogueVersion={catalogueVersion}
-          onHelpPress={() => router.push('/help')}
-          onPrivacyPress={() => router.push('/privacy-policy')}
-        />
-
-        <View style={{ height: 8 }} />
-      </ScrollView>
+          <AboutSection
+            appVersion={appVersion}
+            catalogueVersion={catalogueVersion}
+            onHelpPress={() => router.push('/help')}
+            onPrivacyPress={() => router.push('/privacy-policy')}
+            onWhatWeCollectPress={() => router.push('/data-summary')}
+          />
+        </ScrollView>
+      </SafeAreaView>
 
       <ThemePickerSheet
         visible={isThemePickerOpen}
@@ -316,11 +359,11 @@ const SettingsScreen = () => {
 
       <ImportPreviewSheet
         visible={preview !== null}
-        fileName={preview?.fileName ?? ''}
-        totalCards={preview?.totalCards ?? 0}
-        newCardsCount={preview?.newCardsCount ?? 0}
-        duplicateCount={preview?.duplicateCount ?? 0}
-        invalidCount={preview?.invalidCount ?? 0}
+        fileName={shownPreview?.fileName ?? ''}
+        totalCards={shownPreview?.totalCards ?? 0}
+        newCardsCount={shownPreview?.newCardsCount ?? 0}
+        duplicateCount={shownPreview?.duplicateCount ?? 0}
+        invalidCount={shownPreview?.invalidCount ?? 0}
         isImporting={isImporting}
         onImport={confirmImport}
         onClose={closePreview}
@@ -328,9 +371,8 @@ const SettingsScreen = () => {
 
       <ImportErrorSheet
         visible={errorState !== null}
-        title={errorState?.title ?? t('settings.import.invalidFileTitle')}
-        message={errorState?.message ?? ''}
-        variant={errorState?.variant ?? 'invalid'}
+        title={shownImportError?.title ?? ''}
+        message={shownImportError?.message ?? ''}
         onClose={closeError}
       />
 
@@ -352,5 +394,17 @@ const SettingsScreen = () => {
     </>
   );
 };
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1
+  },
+  // 16 below the header, 24 at the sides, the groups 24 apart.
+  content: {
+    paddingTop: SPACING.md,
+    paddingHorizontal: LAYOUT.screenHorizontalMargin,
+    gap: SPACING.lg
+  }
+});
 
 export default SettingsScreen;

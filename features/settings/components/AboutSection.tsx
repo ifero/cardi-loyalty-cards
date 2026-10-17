@@ -1,9 +1,7 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { ActionRow } from '@/shared/components/ui';
-import { useTheme } from '@/shared/theme';
 
 import { SettingsSection } from './SettingsSection';
 
@@ -12,52 +10,59 @@ type AboutSectionProps = {
   catalogueVersion: string;
   onHelpPress: () => void;
   onPrivacyPress: () => void;
+  onWhatWeCollectPress: () => void;
 };
 
+/**
+ * ABOUT (frame A, plus What We Collect after Privacy Policy — ifero, 2026-10-15). App Version and
+ * Catalogue are information, not controls: no press, no chevron, at full strength, each read as
+ * its label and its value.
+ */
 export const AboutSection = ({
   appVersion,
   catalogueVersion,
   onHelpPress,
-  onPrivacyPress
+  onPrivacyPress,
+  onWhatWeCollectPress
 }: AboutSectionProps) => {
-  const { theme } = useTheme();
   const { t } = useTranslation();
 
   return (
     <SettingsSection title={t('settings.sections.about')}>
       <ActionRow
-        testID="settings-app-version-row"
-        variant="plain"
-        prefix={<MaterialIcons name="info-outline" size={24} color={theme.primary} />}
-        label={t('settings.about.appVersion')}
-        value={appVersion}
-        disabled
-        showChevron={false}
-        onPress={() => undefined}
-      />
-      <ActionRow
-        testID="settings-catalogue-row"
-        variant="plain"
-        prefix={<MaterialIcons name="menu-book" size={24} color={theme.primary} />}
-        label={t('settings.about.catalogue')}
-        value={catalogueVersion}
-        disabled
-        showChevron={false}
-        onPress={() => undefined}
-      />
-      <ActionRow
         testID="settings-help-row"
         variant="plain"
-        prefix={<MaterialIcons name="help-outline" size={24} color={theme.primary} />}
+        showBottomBorder={false}
         label={t('settings.about.helpFaq')}
         onPress={onHelpPress}
       />
       <ActionRow
         testID="settings-privacy-row"
         variant="plain"
-        prefix={<MaterialIcons name="policy" size={24} color={theme.primary} />}
+        showBottomBorder={false}
         label={t('settings.about.privacyPolicy')}
         onPress={onPrivacyPress}
+      />
+      <ActionRow
+        testID="settings-what-we-collect-row"
+        variant="plain"
+        showBottomBorder={false}
+        label={t('navigation.whatWeCollect')}
+        onPress={onWhatWeCollectPress}
+      />
+      <ActionRow
+        testID="settings-app-version-row"
+        variant="plain"
+        showBottomBorder={false}
+        label={t('settings.about.appVersion')}
+        value={appVersion}
+      />
+      <ActionRow
+        testID="settings-catalogue-row"
+        variant="plain"
+        showBottomBorder={false}
+        label={t('settings.about.catalogue')}
+        value={catalogueVersion}
       />
     </SettingsSection>
   );

@@ -1,12 +1,19 @@
-import { MaterialIcons } from '@expo/vector-icons';
+import Globe from 'lucide-react-native/icons/globe';
+import Lightbulb from 'lucide-react-native/icons/lightbulb';
+import Moon from 'lucide-react-native/icons/moon';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ActionRow, ToggleSwitch } from '@/shared/components/ui';
 import { useTheme } from '@/shared/theme';
+import { SPACING } from '@/shared/theme/spacing';
 
 import { SettingsSection } from './SettingsSection';
+
+/** The design system's icon: 24pt at a 1.5 stroke (§ _Icons_). */
+const ICON_SIZE = 24;
+const ICON_STROKE_WIDTH = 1.5;
 
 type PreferencesSectionProps = {
   themeLabel: string;
@@ -18,6 +25,10 @@ type PreferencesSectionProps = {
   onAutoBrightnessChange: (value: boolean) => void;
 };
 
+/**
+ * PREFERENCES (frame A): Theme, Language, then the full-brightness switch. These are the only
+ * settings rows that lead with an icon, each in `textPrimary` — ink in light, cream in dark.
+ */
 export const PreferencesSection = ({
   themeLabel,
   languageName,
@@ -34,7 +45,15 @@ export const PreferencesSection = ({
       <ActionRow
         testID="settings-theme-row"
         variant="plain"
-        prefix={<MaterialIcons name="brightness-6" size={24} color={theme.primary} />}
+        showBottomBorder={false}
+        prefix={
+          <Moon
+            testID="settings-theme-icon"
+            size={ICON_SIZE}
+            strokeWidth={ICON_STROKE_WIDTH}
+            color={theme.textPrimary}
+          />
+        }
         label={t('settings.preferences.themeLabel')}
         value={themeLabel}
         onPress={onThemePress}
@@ -42,7 +61,15 @@ export const PreferencesSection = ({
       <ActionRow
         testID="settings-language-row"
         variant="plain"
-        prefix={<MaterialIcons name="language" size={24} color={theme.primary} />}
+        showBottomBorder={false}
+        prefix={
+          <Globe
+            testID="settings-language-icon"
+            size={ICON_SIZE}
+            strokeWidth={ICON_STROKE_WIDTH}
+            color={theme.textPrimary}
+          />
+        }
         label={t('settings.preferences.languageLabel')}
         value={languageName}
         onPress={onLanguagePress}
@@ -51,30 +78,28 @@ export const PreferencesSection = ({
           a boolean the user sets in place, not a row that opens a picker, and the
           switch carries `accessibilityRole="switch"` so the platform announces on/off
           without any copy of ours. `ActionRow` has no trailing slot to host it. */}
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+      <View testID="settings-auto-brightness-row" style={styles.switchRow}>
         {/* Hidden from assistive technology, so this row is ONE stop like the two
             above it. `ActionRow` gets that for free by wrapping its icon inside the
             Pressable that carries the label; here the icon is a SIBLING of the switch,
-            and `MaterialIcons` renders a Text node with real glyph content — left
-            exposed it would read as an extra, unlabelled swipe-stop before
+            and left exposed it would read as an extra, unlabelled swipe-stop before
             "Full brightness, switch". Both props are needed: one for iOS, one for
             Android. */}
-        <View
-          style={{ marginRight: 12 }}
-          accessibilityElementsHidden
-          importantForAccessibility="no-hide-descendants"
-        >
-          {/* A BULB, matching the card screen's control (Story 16.39). It was a sun
-              (`light-mode`) until QA pointed out the app was then using two different
-              glyphs for one feature, one screen apart: a user sets this row and then
-              finds a bulb on the card with no visual line back to it. Worse, the Theme
-              row directly above already uses `brightness-6`, so a sun here collided
-              with that too. The card button is where the meaning is learned, so this
-              row follows it rather than the reverse. Filled rather than outline: this
-              is a category glyph, and the switch beside it is what carries state. */}
-          <MaterialIcons name="lightbulb" size={24} color={theme.primary} />
+        <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+          {/* A BULB, matching the card screen's control (Story 16.39): a user sets this row
+              and then finds the same glyph on the card. It is filled only while the switch
+              is on — the design system's brightness-bulb ruling (Story 22.3), where the fill
+              is the state. The fill is always handed over: Lucide spreads an explicit
+              `undefined` over its own `none`, and the glyph then fills black. */}
+          <Lightbulb
+            testID="settings-auto-brightness-icon"
+            size={ICON_SIZE}
+            strokeWidth={ICON_STROKE_WIDTH}
+            color={theme.textPrimary}
+            fill={isAutoBrightnessEnabled ? theme.textPrimary : 'none'}
+          />
         </View>
-        <View style={{ flex: 1 }}>
+        <View testID="settings-auto-brightness-switch" style={styles.switch}>
           <ToggleSwitch
             testID="settings-auto-brightness-toggle"
             label={t('settings.preferences.autoBrightnessLabel')}
@@ -86,3 +111,17 @@ export const PreferencesSection = ({
     </SettingsSection>
   );
 };
+
+const styles = StyleSheet.create({
+  // Padded as the rows above it are, the bulb 12 from the switch.
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.smMd,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.smMd
+  },
+  switch: {
+    flex: 1
+  }
+});

@@ -1,20 +1,18 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
 
-import { BottomSheet, Button } from '@/shared/components/ui';
-import { useTheme } from '@/shared/theme';
-import { TYPOGRAPHY } from '@/shared/theme/typography';
+import { BottomSheet, Button, RequestErrorBanner } from '@/shared/components/ui';
 
 type SignOutSheetProps = {
   visible: boolean;
   isLoading: boolean;
+  /** A failed sign-out: one banner, the first thing in the sheet. */
   error: string | null;
   onConfirm: () => void;
   onClose: () => void;
 };
 
+/** Confirm (frame D): Sign Out, the destructive text action, above an outlined Cancel. */
 export const SignOutSheet = ({
   visible,
   isLoading,
@@ -22,48 +20,35 @@ export const SignOutSheet = ({
   onConfirm,
   onClose
 }: SignOutSheetProps) => {
-  const { theme } = useTheme();
   const { t } = useTranslation();
+  const signOut = t('common.actions.signOut');
 
   return (
-    <BottomSheet visible={visible} onClose={onClose} testID="signout-sheet">
-      <View style={{ alignItems: 'center' }}>
-        <MaterialIcons name="logout" size={40} color={theme.primary} />
-        <Text style={{ ...TYPOGRAPHY.sheetTitle, marginTop: 12, color: theme.textPrimary }}>
-          {t('settings.signOutSheet.title')}
-        </Text>
-        <Text
-          style={{
-            ...TYPOGRAPHY.bodyMd,
-            marginTop: 8,
-            color: theme.textSecondary,
-            textAlign: 'center'
-          }}
-        >
-          {t('settings.signOutSheet.body')}
-        </Text>
-      </View>
-      <View style={{ marginTop: 16, gap: 10 }}>
-        <Button testID="signout-cancel" variant="secondary" onPress={onClose}>
-          {t('common.actions.cancel')}
-        </Button>
-        <Button
-          testID="signout-confirm"
-          variant="destructive"
-          onPress={onConfirm}
-          loading={isLoading}
-        >
-          {t('common.actions.signOut')}
-        </Button>
-        {error ? (
-          <Text
-            testID="signout-error"
-            style={{ ...TYPOGRAPHY.captionMd, color: theme.error, textAlign: 'center' }}
+    <BottomSheet
+      visible={visible}
+      onClose={onClose}
+      title={t('settings.signOutSheet.title')}
+      description={t('settings.signOutSheet.body')}
+      testID="signout-sheet"
+      actions={
+        <>
+          <Button
+            testID="signout-confirm"
+            variant="destructive"
+            size="large"
+            onPress={onConfirm}
+            loading={isLoading}
+            accessibilityLabel={signOut}
           >
-            {error}
-          </Text>
-        ) : null}
-      </View>
+            {signOut}
+          </Button>
+          <Button testID="signout-cancel" variant="secondary" size="large" onPress={onClose}>
+            {t('common.actions.cancel')}
+          </Button>
+        </>
+      }
+    >
+      {error ? <RequestErrorBanner testID="signout-error" message={error} /> : null}
     </BottomSheet>
   );
 };

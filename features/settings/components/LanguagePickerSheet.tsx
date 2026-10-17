@@ -1,11 +1,7 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text, View } from 'react-native';
 
-import { BottomSheet } from '@/shared/components/ui';
-import { useTheme } from '@/shared/theme';
-import { TYPOGRAPHY } from '@/shared/theme/typography';
+import { BottomSheet, OptionList, type OptionListOption } from '@/shared/components/ui';
 
 import type { LanguageOption } from '../types';
 
@@ -17,6 +13,7 @@ type LanguagePickerSheetProps = {
   onClose: () => void;
 };
 
+/** Pick one (frame C): the languages `useLanguagePreference` supplies, with no helper. */
 export const LanguagePickerSheet = ({
   visible,
   currentCode,
@@ -24,8 +21,17 @@ export const LanguagePickerSheet = ({
   onSelect,
   onClose
 }: LanguagePickerSheetProps) => {
-  const { theme } = useTheme();
   const { t } = useTranslation();
+  const listOptions: OptionListOption<LanguageOption['code']>[] = options.map((option) => ({
+    value: option.code,
+    label: option.name,
+    accessibilityLabel: t('settings.language.picker.optionAccessibilityLabel', {
+      name: option.name
+    }),
+    testID: `language-option-${option.code}`
+  }));
+  // A code the list does not hold selects nothing, rather than the first option.
+  const selected = options.find((option) => option.code === currentCode)?.code;
 
   return (
     <BottomSheet
@@ -33,44 +39,13 @@ export const LanguagePickerSheet = ({
       onClose={onClose}
       title={t('settings.language.picker.title')}
       testID="language-picker-sheet"
-      accessibilityLabel={t('settings.language.picker.accessibilityLabel')}
     >
-      <View>
-        {options.map((option, index) => {
-          const isSelected = option.code === currentCode;
-
-          return (
-            <Pressable
-              key={option.code}
-              testID={`language-option-${option.code}`}
-              onPress={() => onSelect(option.code)}
-              accessibilityRole="button"
-              accessibilityLabel={t('settings.language.picker.optionAccessibilityLabel', {
-                name: option.name
-              })}
-              style={{
-                minHeight: 48,
-                borderBottomWidth: index === options.length - 1 ? 0 : 1,
-                borderBottomColor: theme.border,
-                justifyContent: 'center'
-              }}
-            >
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}
-              >
-                <Text style={{ ...TYPOGRAPHY.bodyLg, color: theme.textPrimary }}>
-                  {option.name}
-                </Text>
-                {isSelected ? <MaterialIcons name="check" size={24} color={theme.primary} /> : null}
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
+      <OptionList
+        testID="language-picker-options"
+        options={listOptions}
+        selectedValue={selected}
+        onSelect={onSelect}
+      />
     </BottomSheet>
   );
 };
