@@ -1,8 +1,35 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
-import { View } from 'react-native';
+import { Text } from 'react-native';
+
+import { useTheme } from '@/shared/theme';
+import { TYPOGRAPHY } from '@/shared/theme/typography';
 
 import { BottomSheet } from './BottomSheet';
 import { Button } from './Button';
+import { OptionList } from './OptionList';
+import { RequestErrorBanner } from './RequestErrorBanner';
+import { TextField } from './TextField';
+
+/** The theme picker's helper, 20 below the last option, as frame C sets it. */
+const Helper = () => {
+  const { theme } = useTheme();
+  return (
+    <Text style={{ ...TYPOGRAPHY.captionMd, color: theme.textSecondary, marginTop: 20 }}>
+      System uses your device&apos;s appearance setting
+    </Text>
+  );
+};
+
+const confirmActions = (busy = false) => (
+  <>
+    <Button variant="destructive" size="large" onPress={() => {}} loading={busy}>
+      Sign Out
+    </Button>
+    <Button variant="secondary" size="large" onPress={() => {}}>
+      Cancel
+    </Button>
+  </>
+);
 
 const meta = {
   title: 'UI/BottomSheet',
@@ -32,24 +59,95 @@ export const Open: Story = {};
 export const TitleOnly: Story = { args: { description: undefined } };
 
 /**
- * The confirm shape as the design system draws it (`cardi-design-system.md` _Sheets_): the
- * destructive action is the borderless label, ABOVE the bordered Cancel. This is the TARGET, not a
- * picture of the app today: the shipped sign-out and delete-account sheets still put Cancel first
- * (Story 13.6's inverted order) until Story 22.7 rebuilds them.
+ * Pick one (frame C): the options edge to edge, the current one checked, and no buttons — choosing
+ * is the action. The theme and language pickers. Theme's helper is the list's footer, so it scrolls
+ * with the options, as `ThemePickerSheet` passes it.
  */
-export const ConfirmDestructive: Story = {
+export const PickOne: Story = {
+  args: {
+    title: 'Theme',
+    description: undefined,
+    children: (
+      <OptionList
+        options={[
+          { value: 'light', label: 'Light' },
+          { value: 'dark', label: 'Dark' },
+          { value: 'system', label: 'System' }
+        ]}
+        selectedValue="system"
+        onSelect={() => {}}
+        footer={<Helper />}
+      />
+    )
+  }
+};
+
+/**
+ * Confirm (frame D): the destructive action is the borderless label, ABOVE the outlined Cancel —
+ * the bordered control is the safe one. Sign out, delete's first step, export and the import
+ * preview.
+ */
+export const Confirm: Story = {
   args: {
     title: 'Sign Out?',
     description: 'You will return to guest mode. Your cards will remain on this device.',
-    children: (
-      <View style={{ gap: 8 }}>
-        <Button variant="destructive" size="large" onPress={() => {}}>
-          Sign Out
+    children: undefined,
+    actions: confirmActions()
+  }
+};
+
+/** The request failed: one banner, the first thing in the content, and the sheet stays open. */
+export const ConfirmFailed: Story = {
+  name: 'Confirm, failed',
+  args: {
+    ...Confirm.args,
+    children: <RequestErrorBanner message="Unable to sign out" />,
+    actions: confirmActions()
+  }
+};
+
+/** Busy: the pressed button keeps its look and shows a spinner; nothing else dims. */
+export const ConfirmBusy: Story = {
+  name: 'Confirm, busy',
+  args: {
+    ...Confirm.args,
+    actions: confirmActions(true)
+  }
+};
+
+/** Acknowledge (frame E): one primary OK. Nothing to export, and the import error. */
+export const Acknowledge: Story = {
+  args: {
+    title: 'Nothing to Export',
+    description: "You don't have any cards yet. Add your first card to export your data.",
+    children: undefined,
+    actions: (
+      <Button variant="primary" size="large" onPress={() => {}}>
+        OK
+      </Button>
+    )
+  }
+};
+
+/**
+ * Type to confirm (frame F), delete's second step: the labelled field, then Delete Account — the
+ * one control the system draws disabled, live only once the keyword is typed.
+ */
+export const TypeToConfirm: Story = {
+  name: 'Type to confirm',
+  args: {
+    title: 'Confirm Account Deletion',
+    description: 'Type DELETE to confirm permanent account deletion.',
+    children: <TextField label="Type DELETE to confirm" value="" onChangeText={() => {}} />,
+    actions: (
+      <>
+        <Button variant="destructive" size="large" disabled onPress={() => {}}>
+          Delete Account
         </Button>
         <Button variant="secondary" size="large" onPress={() => {}}>
           Cancel
         </Button>
-      </View>
+      </>
     )
   }
 };

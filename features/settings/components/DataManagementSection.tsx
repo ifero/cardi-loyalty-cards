@@ -32,7 +32,6 @@ export const DataManagementSection = ({
       <ActionRow
         testID="settings-export-row"
         variant="plain"
-        noPaddingHorizontal
         prefix={<MaterialIcons name="file-download" size={24} color={theme.primary} />}
         label={t('settings.data.exportData')}
         value={t('settings.data.format')}
@@ -41,7 +40,6 @@ export const DataManagementSection = ({
       <ActionRow
         testID="settings-import-row"
         variant="plain"
-        noPaddingHorizontal
         prefix={<MaterialIcons name="file-upload" size={24} color={theme.primary} />}
         label={t('settings.data.importData')}
         value={t('settings.data.format')}
@@ -51,7 +49,6 @@ export const DataManagementSection = ({
         <ActionRow
           testID="settings-sync-row"
           variant="plain"
-          noPaddingHorizontal
           prefix={
             <MaterialCommunityIcons name="cloud-sync-outline" size={24} color={theme.primary} />
           }

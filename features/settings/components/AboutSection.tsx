@@ -28,7 +28,6 @@ export const AboutSection = ({
       <ActionRow
         testID="settings-app-version-row"
         variant="plain"
-        noPaddingHorizontal
         prefix={<MaterialIcons name="info-outline" size={24} color={theme.primary} />}
         label={t('settings.about.appVersion')}
         value={appVersion}
@@ -39,7 +38,6 @@ export const AboutSection = ({
       <ActionRow
         testID="settings-catalogue-row"
         variant="plain"
-        noPaddingHorizontal
         prefix={<MaterialIcons name="menu-book" size={24} color={theme.primary} />}
         label={t('settings.about.catalogue')}
         value={catalogueVersion}
@@ -50,7 +48,6 @@ export const AboutSection = ({
       <ActionRow
         testID="settings-help-row"
         variant="plain"
-        noPaddingHorizontal
         prefix={<MaterialIcons name="help-outline" size={24} color={theme.primary} />}
         label={t('settings.about.helpFaq')}
         onPress={onHelpPress}
@@ -58,7 +55,6 @@ export const AboutSection = ({
       <ActionRow
         testID="settings-privacy-row"
         variant="plain"
-        noPaddingHorizontal
         prefix={<MaterialIcons name="policy" size={24} color={theme.primary} />}
         label={t('settings.about.privacyPolicy')}
         onPress={onPrivacyPress}

@@ -2,7 +2,7 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { useTheme } from '@/shared/theme';
-import { TOUCH_TARGET } from '@/shared/theme/spacing';
+import { SPACING, TOUCH_TARGET } from '@/shared/theme/spacing';
 import { TYPOGRAPHY } from '@/shared/theme/typography';
 
 type ToggleSwitchProps = {
@@ -34,17 +34,26 @@ export const ToggleSwitch = ({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
+        gap: SPACING.smMd,
         opacity: disabled ? 0.6 : 1
       }}
     >
+      {/* Shrinks, and wraps, beside the track: under large text a long label would otherwise push
+          the track off the row (Story 22.7). */}
       {label ? (
-        <Text style={{ ...TYPOGRAPHY.bodyLg, color: theme.textPrimary }}>{label}</Text>
+        <Text
+          testID={testID ? `${testID}-label` : undefined}
+          style={{ ...TYPOGRAPHY.bodyLg, color: theme.textPrimary, flexShrink: 1 }}
+        >
+          {label}
+        </Text>
       ) : null}
       <View
         testID={`${testID}-track`}
         style={{
           width: 52,
           height: 32,
+          flexShrink: 0,
           borderRadius: 999,
           borderWidth: 2,
           borderColor: value ? theme.primary : theme.borderStrong,

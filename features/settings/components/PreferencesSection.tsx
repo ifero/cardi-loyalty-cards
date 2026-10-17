@@ -34,7 +34,6 @@ export const PreferencesSection = ({
       <ActionRow
         testID="settings-theme-row"
         variant="plain"
-        noPaddingHorizontal
         prefix={<MaterialIcons name="brightness-6" size={24} color={theme.primary} />}
         label={t('settings.preferences.themeLabel')}
         value={themeLabel}
@@ -43,7 +42,6 @@ export const PreferencesSection = ({
       <ActionRow
         testID="settings-language-row"
         variant="plain"
-        noPaddingHorizontal
         prefix={<MaterialIcons name="language" size={24} color={theme.primary} />}
         label={t('settings.preferences.languageLabel')}
         value={languageName}
