@@ -2,7 +2,7 @@
 title: 'Story 22.7: Settings — the list and its sheets on the Cardì system'
 type: 'feature'
 created: '2026-10-15'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 baseline_commit: '380507e13dadb6f3b65640b6cb91ed6b06e6c530'
