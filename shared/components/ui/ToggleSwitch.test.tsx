@@ -58,6 +58,37 @@ describe('ToggleSwitch', () => {
     expect(screen.getByText('Dark Mode')).toBeTruthy();
   });
 
+  /**
+   * Story 22.7. Under large text a long label pushed the track off the row: the label did not
+   * shrink. It now shrinks and wraps beside the track, 12 from it, and the track keeps its size.
+   */
+  it('wraps its label beside the track rather than pushing the track off the row', () => {
+    render(
+      <ToggleSwitch
+        value={false}
+        onValueChange={jest.fn()}
+        label="Full brightness on card details"
+        testID="toggle"
+      />
+    );
+
+    const label = screen.getByTestId('toggle-label');
+    expect(label.props.numberOfLines).toBeUndefined();
+    expect(label.props.style).toMatchObject({ flexShrink: 1 });
+    // The whole row is the switch's target, at least 48 tall.
+    expect(screen.getByTestId('toggle').props.style).toMatchObject({
+      minHeight: 48,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 12
+    });
+    expect(screen.getByTestId('toggle-track').props.style).toMatchObject({
+      width: 52,
+      height: 32,
+      flexShrink: 0
+    });
+  });
+
   it('triggers value change on press', () => {
     const onValueChange = jest.fn();
     render(<ToggleSwitch value={false} onValueChange={onValueChange} testID="toggle" />);

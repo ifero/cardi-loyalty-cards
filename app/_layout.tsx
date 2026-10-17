@@ -193,7 +193,10 @@ const RootLayoutContent = ({ isAuthenticated }: { isAuthenticated: boolean }) =>
         <Stack.Screen
           name="settings"
           options={{
-            title: t('navigation.settings')
+            title: t('navigation.settings'),
+            // Settings draws its own header, `ScreenHeader` (Story 22.7). Hidden here rather than
+            // by the screen, so no native header flashes in the push.
+            headerShown: false
           }}
         />
         <Stack.Screen

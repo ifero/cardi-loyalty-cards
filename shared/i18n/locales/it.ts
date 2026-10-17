@@ -121,7 +121,6 @@ export const it = {
     account: {
       fallbackEmail: 'Utente connesso',
       signedIn: 'Accesso effettuato',
-      synced: 'Sincronizzato',
       signOutA11y: 'Esci',
       deleteAccount: 'Elimina account',
       deleteAccountA11y: 'Elimina account, azione distruttiva',
@@ -154,7 +153,6 @@ export const it = {
     },
     theme: {
       pickerTitle: 'Tema',
-      pickerAccessibilityLabel: 'Selettore tema',
       optionAccessibilityLabel: 'Tema {{name}}',
       systemDescription: "Sistema usa l'impostazione di aspetto del dispositivo",
       selectedAnnouncement: 'Tema {{theme}} selezionato'
@@ -165,7 +163,6 @@ export const it = {
       movedToSheet: 'La selezione della lingua e stata spostata in un pannello dal basso.',
       picker: {
         title: 'Lingua',
-        accessibilityLabel: 'Selettore lingua',
         optionAccessibilityLabel: 'Lingua {{name}}'
       }
     },
@@ -181,7 +178,6 @@ export const it = {
       successTitle: 'Esportazione completata',
       localBackupMessage:
         'Backup salvato localmente in File. La condivisione non è disponibile in questo ambiente.',
-      failedTitle: 'Esportazione non riuscita',
       failedMessage: 'Esportazione non riuscita'
     },
     import: {
@@ -290,8 +286,10 @@ export const it = {
       closedAnnouncement: '{{label}} chiuso'
     },
     formScreen: {
-      backAccessibilityLabel: 'Torna indietro',
       saving: 'Salvataggio...'
+    },
+    screenHeader: {
+      backAccessibilityLabel: 'Torna indietro'
     }
   },
   syncUi: {

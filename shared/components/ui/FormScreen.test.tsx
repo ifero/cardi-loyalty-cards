@@ -5,6 +5,8 @@
  * hairline are theme roles and only the real `ThemeProvider` flips them. The decorator also supplies
  * a deterministic 34pt bottom inset, which the footer must NOT add a second time.
  */
+import { readFileSync } from 'fs';
+
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import ChevronLeft from 'lucide-react-native/icons/chevron-left';
 import React from 'react';
@@ -24,6 +26,7 @@ import { StoryDecorator } from '@/.storybook/StoryDecorator';
 import { FormField, FormScreen } from './FormScreen';
 import { HeaderIconButton } from './HeaderIconButton';
 import { PrimaryActionFooter } from './PrimaryActionFooter';
+import { ScreenHeader } from './ScreenHeader';
 import { TextField } from './TextField';
 
 type Scheme = 'light' | 'dark';
@@ -155,6 +158,19 @@ describe('FormScreen', () => {
       expect(screen.getByTestId('form-screen-back')).toBeTruthy();
     });
 
+    // Story 22.7: the header is the shared one settings draws too, under the form's own testIDs.
+    it('draws the shared ScreenHeader, keeping the form’s testIDs', () => {
+      renderForm({ backTestID: 'setup-back-button' });
+      expect(screen.UNSAFE_getByType(ScreenHeader).props).toMatchObject({
+        title: 'New Card',
+        onBack,
+        testID: 'form-screen-header',
+        titleTestID: 'form-screen-title',
+        backTestID: 'setup-back-button'
+      });
+      expect(screen.getByTestId('form-screen-title')).toBe(screen.getByText('New Card'));
+    });
+
     // Capture frame A's header: at least 48, no rule, the chevron's stroke on the 24pt margin
     // (12pt to the glyph inside its 48pt target, then 9 − 0.75 to its ink), a 48pt spacer opposite.
     it('is at least 48 tall with no rule, its chevron’s stroke on the 24pt margin', () => {
@@ -175,6 +191,18 @@ describe('FormScreen', () => {
         width: 48
       });
     });
+  });
+
+  /**
+   * FormScreen imports nothing from `react-native-unistyles`, as this directory's pattern has it:
+   * its geometry in React Native's `StyleSheet` and its colours from `useTheme()`. Story 22.7 moved
+   * the header out without changing that.
+   */
+  it('stays outside what the Unistyles Babel plugin processes', () => {
+    const subject = require.resolve('./FormScreen');
+    expect(readFileSync(subject, 'utf8')).not.toMatch(
+      /(?:\bfrom|\bimport|\brequire)\s*\(?\s*['"]react-native-unistyles/
+    );
   });
 
   describe('the body', () => {

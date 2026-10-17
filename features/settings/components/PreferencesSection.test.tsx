@@ -1,161 +1,186 @@
-import { fireEvent, render } from '@testing-library/react-native';
+/**
+ * PreferencesSection — settings frame A's PREFERENCES (Story 22.7), and the full-brightness switch
+ * (Story 16.39).
+ *
+ * Rendered through the real `StoryDecorator` and the real primitives: the row icons are theme
+ * roles, and the switch's role and state live in the real `ToggleSwitch` — a stub would let these
+ * pass while the shipped switch announced nothing.
+ */
+import { render, screen, userEvent } from '@testing-library/react-native';
+import Globe from 'lucide-react-native/icons/globe';
+import Lightbulb from 'lucide-react-native/icons/lightbulb';
+import Moon from 'lucide-react-native/icons/moon';
+import React from 'react';
+import { StyleSheet } from 'react-native';
+
+import { DARK_THEME, LIGHT_THEME } from '@/shared/theme/colors';
+
+import { StoryDecorator } from '@/.storybook/StoryDecorator';
 
 import { PreferencesSection } from './PreferencesSection';
 
-jest.mock('@/shared/theme', () => ({
-  useTheme: () => ({
-    // Extended for Story 16.39: the real `ToggleSwitch` is rendered below rather than
-    // stubbed, and it reads these.
-    theme: {
-      textTertiary: '#999',
-      textPrimary: '#111',
-      primary: '#1A73E8',
-      borderStrong: '#888',
-      surfaceElevated: '#EEE'
-    }
-  })
-}));
+type Scheme = 'light' | 'dark';
+type PreferencesProps = React.ComponentProps<typeof PreferencesSection>;
 
-jest.mock('@/shared/components/ui', () => {
-  const { Pressable, Text } = jest.requireActual('react-native');
-
-  return {
-    ActionRow: ({
-      testID,
-      label,
-      onPress,
-      value
-    }: {
-      testID?: string;
-      label: string;
-      onPress: () => void;
-      value?: string;
-    }) => (
-      <Pressable testID={testID} onPress={onPress}>
-        <Text>{label}</Text>
-        <Text>{value}</Text>
-      </Pressable>
-    ),
-    // NOT stubbed, deliberately. The assertions below are about `accessibilityRole`
-    // and `accessibilityState`, which live in the real component — a stub would let
-    // them pass while the shipped switch announced nothing.
-    ToggleSwitch: jest.requireActual('@/shared/components/ui/ToggleSwitch').ToggleSwitch
+const renderPreferences = (props: Partial<PreferencesProps> = {}, scheme: Scheme = 'light') => {
+  const handlers = {
+    onThemePress: jest.fn(),
+    onLanguagePress: jest.fn(),
+    onAutoBrightnessChange: jest.fn()
   };
-});
-
-describe('PreferencesSection', () => {
-  it('renders the auto-brightness toggle and reports changes (Story 16.39)', () => {
-    const onAutoBrightnessChange = jest.fn();
-
-    const { getByTestId } = render(
+  render(
+    <StoryDecorator theme={scheme}>
       <PreferencesSection
         themeLabel="System"
-        languageName="English"
-        onThemePress={jest.fn()}
-        onLanguagePress={jest.fn()}
+        languageName="System (English)"
         isAutoBrightnessEnabled={false}
-        onAutoBrightnessChange={onAutoBrightnessChange}
+        {...handlers}
+        {...props}
       />
-    );
+    </StoryDecorator>
+  );
+  return handlers;
+};
 
-    fireEvent.press(getByTestId('settings-auto-brightness-toggle'));
+const flat = (testID: string) =>
+  StyleSheet.flatten(screen.getByTestId(testID).props.style) as Record<string, unknown>;
 
-    // Reports the NEXT value, not the current one — the row is a switch, so pressing
-    // it means "make it the other thing".
-    expect(onAutoBrightnessChange).toHaveBeenCalledWith(true);
+/** Lucide hides its icons from assistive technology, so a query has to look past that. */
+const icon = (testID: string) => screen.getByTestId(testID, { includeHiddenElements: true });
+
+describe('PreferencesSection (frame A)', () => {
+  it('heads the group PREFERENCES, uppercase by style', () => {
+    renderPreferences();
+    const head = screen.getByRole('header', { name: 'Preferences' });
+    expect(StyleSheet.flatten(head.props.style).textTransform).toBe('uppercase');
   });
 
-  it('uses the same bulb glyph as the card screen control (Story 16.39)', () => {
-    // These two surfaces are the same feature — a standing preference and its
-    // per-visit override — so they must not use different metaphors. This row used a
-    // sun (`light-mode`) until QA caught the mismatch; a sun also collided with the
-    // Theme row above, which already uses `brightness-6`.
-    const { getByTestId } = render(
-      <PreferencesSection
-        themeLabel="System"
-        languageName="English"
-        onThemePress={jest.fn()}
-        onLanguagePress={jest.fn()}
-        isAutoBrightnessEnabled={false}
-        onAutoBrightnessChange={jest.fn()}
-      />
-    );
-
-    // `includeHiddenElements` is required, and its necessity is itself the proof that
-    // the accessibility fix below works: the icon is hidden from the a11y tree, and
-    // RNTL excludes a11y-hidden elements from queries by default.
-    expect(getByTestId('icon-lightbulb', { includeHiddenElements: true })).toBeTruthy();
+  it('orders Theme, Language, then the full-brightness switch', () => {
+    renderPreferences();
+    const tree = JSON.stringify(screen.toJSON());
+    const order = [
+      'settings-theme-row',
+      'settings-language-row',
+      'settings-auto-brightness-toggle'
+    ].map((testID) => tree.indexOf(`"${testID}"`));
+    expect(order.every((index) => index > -1)).toBe(true);
+    expect([...order].sort((a, b) => a - b)).toEqual(order);
   });
 
-  it('exposes the auto-brightness row as ONE screen-reader stop (Story 16.39)', () => {
-    // The Theme and Language rows above get this for free: `ActionRow` wraps its icon
-    // inside the Pressable that carries the label. This row's icon is a SIBLING of the
-    // switch, and `MaterialIcons` renders a Text node with real glyph content — left
-    // exposed it would read as an extra, unlabelled swipe-stop before "Full brightness,
-    // switch", making this row behave differently from its neighbours.
-    const { UNSAFE_getByType } = render(
-      <PreferencesSection
-        themeLabel="System"
-        languageName="English"
-        onThemePress={jest.fn()}
-        onLanguagePress={jest.fn()}
-        isAutoBrightnessEnabled={false}
-        onAutoBrightnessChange={jest.fn()}
-      />
+  it('shows the current theme and language, each row named by its label and its value', () => {
+    renderPreferences();
+    expect(screen.getByText('System')).toBeTruthy();
+    expect(screen.getByText('System (English)')).toBeTruthy();
+    expect(screen.getByTestId('settings-theme-row').props.accessibilityLabel).toBe('Theme, System');
+    expect(screen.getByTestId('settings-language-row').props.accessibilityLabel).toBe(
+      'Language, System (English)'
     );
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { View } = require('react-native');
-    const hidden = UNSAFE_getByType(View).findAll(
-      (node: { props?: Record<string, unknown> }) =>
-        node.props?.accessibilityElementsHidden === true &&
-        node.props?.importantForAccessibility === 'no-hide-descendants'
-    );
-
-    // Both props, because they are platform-specific: `accessibilityElementsHidden` is
-    // iOS, `importantForAccessibility` is Android. One alone leaves the other platform
-    // with the stray stop.
-    expect(hidden.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('reflects the enabled state to assistive technology (Story 16.39)', () => {
-    const { getByTestId } = render(
-      <PreferencesSection
-        themeLabel="System"
-        languageName="English"
-        onThemePress={jest.fn()}
-        onLanguagePress={jest.fn()}
-        isAutoBrightnessEnabled
-        onAutoBrightnessChange={jest.fn()}
-      />
-    );
-    const toggle = getByTestId('settings-auto-brightness-toggle');
-
-    expect(toggle.props.accessibilityRole).toBe('switch');
-    expect(toggle.props.accessibilityState).toEqual(expect.objectContaining({ checked: true }));
+  // Theme takes the frame's crescent, Language a globe, the switch the card screen's bulb.
+  it('leads Theme with a moon, Language with a globe and the switch with a bulb', () => {
+    renderPreferences();
+    expect(screen.UNSAFE_getAllByType(Moon)).toHaveLength(1);
+    expect(screen.UNSAFE_getAllByType(Globe)).toHaveLength(1);
+    expect(screen.UNSAFE_getAllByType(Lightbulb)).toHaveLength(1);
+    expect(icon('settings-theme-icon')).toBeTruthy();
+    expect(icon('settings-language-icon')).toBeTruthy();
   });
 
-  it('shows values and fires handlers', () => {
-    const onThemePress = jest.fn();
-    const onLanguagePress = jest.fn();
-
-    const { getByText, getByTestId } = render(
-      <PreferencesSection
-        themeLabel="System"
-        languageName="English"
-        onThemePress={onThemePress}
-        onLanguagePress={onLanguagePress}
-        isAutoBrightnessEnabled={false}
-        onAutoBrightnessChange={jest.fn()}
-      />
+  it.each<[Scheme, string]>([
+    ['light', LIGHT_THEME.textPrimary],
+    ['dark', DARK_THEME.textPrimary]
+  ])('draws each icon at 24 / 1.5 in %s textPrimary', (scheme, hex) => {
+    renderPreferences({}, scheme);
+    ['settings-theme-icon', 'settings-language-icon', 'settings-auto-brightness-icon'].forEach(
+      (testID) =>
+        expect(icon(testID).props).toMatchObject({
+          width: 24,
+          height: 24,
+          stroke: hex,
+          strokeWidth: 1.5
+        })
     );
+  });
 
-    expect(getByText('System')).toBeTruthy();
-    expect(getByText('English')).toBeTruthy();
+  it('opens each picker from its own row', async () => {
+    const { onThemePress, onLanguagePress } = renderPreferences();
 
-    fireEvent.press(getByTestId('settings-theme-row'));
-    fireEvent.press(getByTestId('settings-language-row'));
-
+    await userEvent.press(screen.getByTestId('settings-theme-row'));
     expect(onThemePress).toHaveBeenCalledTimes(1);
+    await userEvent.press(screen.getByTestId('settings-language-row'));
     expect(onLanguagePress).toHaveBeenCalledTimes(1);
+  });
+
+  describe('the full-brightness switch (Story 16.39)', () => {
+    it('is padded 12/16 as the rows are, the bulb 12 from the switch', () => {
+      renderPreferences();
+      expect(flat('settings-auto-brightness-row')).toMatchObject({
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 16
+      });
+      // The switch's wrapper takes the room the bulb leaves, and no more, so the switch's label
+      // wraps beside the track rather than pushing it off the row.
+      expect(flat('settings-auto-brightness-switch')).toMatchObject({ flex: 1 });
+    });
+
+    it('puts the bulb before the switch', () => {
+      renderPreferences();
+      const tree = JSON.stringify(screen.toJSON());
+      const bulb = tree.indexOf('"settings-auto-brightness-icon"');
+      expect(bulb).toBeGreaterThan(-1);
+      expect(bulb).toBeLessThan(tree.indexOf('"settings-auto-brightness-toggle"'));
+    });
+
+    // The bulb's fill is its state, as on the card screen (Story 22.3): an outline while off,
+    // filled while on — never left to Lucide's default, which fills black.
+    it.each<[Scheme, string]>([
+      ['light', LIGHT_THEME.textPrimary],
+      ['dark', DARK_THEME.textPrimary]
+    ])('fills the bulb only while the switch is on, in %s', (scheme, hex) => {
+      renderPreferences({ isAutoBrightnessEnabled: false }, scheme);
+      expect(icon('settings-auto-brightness-icon').props.fill).toBe('none');
+      screen.unmount();
+
+      renderPreferences({ isAutoBrightnessEnabled: true }, scheme);
+      expect(icon('settings-auto-brightness-icon').props.fill).toBe(hex);
+    });
+
+    // The rows above get one stop for free — their icon sits inside the Pressable that carries the
+    // label. This one is a sibling of the switch, so it is hidden from assistive technology on both
+    // platforms, or it would read as an extra, unlabelled stop.
+    it('keeps the row ONE screen-reader stop, hiding the bulb on iOS and Android', () => {
+      renderPreferences();
+      expect(screen.queryByTestId('settings-auto-brightness-icon')).toBeNull();
+      let node = icon('settings-auto-brightness-icon').parent;
+      while (node && node.props.accessibilityElementsHidden !== true) {
+        node = node.parent;
+      }
+      expect(node?.props.importantForAccessibility).toBe('no-hide-descendants');
+    });
+
+    it.each([true, false])('reports on or off to assistive technology: checked %s', (enabled) => {
+      renderPreferences({ isAutoBrightnessEnabled: enabled });
+      const toggle = screen.getByTestId('settings-auto-brightness-toggle');
+      expect(toggle.props.accessibilityRole).toBe('switch');
+      expect(toggle.props.accessibilityState).toEqual(
+        expect.objectContaining({ checked: enabled })
+      );
+    });
+
+    // Reports the NEXT value: pressing a switch means "make it the other thing".
+    it('reports the change it is pressed for', async () => {
+      const { onAutoBrightnessChange } = renderPreferences({ isAutoBrightnessEnabled: false });
+      await userEvent.press(screen.getByTestId('settings-auto-brightness-toggle'));
+      expect(onAutoBrightnessChange).toHaveBeenCalledWith(true);
+    });
+
+    it('labels the switch "Full brightness on card details"', () => {
+      renderPreferences();
+      expect(screen.getByText('Full brightness on card details')).toBeTruthy();
+    });
   });
 });

@@ -8,8 +8,10 @@ import * as CardShellStories from './CardShell.stories';
 import * as ColorPickerStories from './ColorPicker.stories';
 import * as FormScreenStories from './FormScreen.stories';
 import * as HeaderIconButtonStories from './HeaderIconButton.stories';
+import * as OptionListStories from './OptionList.stories';
 import * as PrimaryActionFooterStories from './PrimaryActionFooter.stories';
 import * as RequestErrorBannerStories from './RequestErrorBanner.stories';
+import * as ScreenHeaderStories from './ScreenHeader.stories';
 import * as SectionHeaderStories from './SectionHeader.stories';
 import * as SurfaceStories from './Surface.stories';
 import * as TextFieldStories from './TextField.stories';
@@ -27,7 +29,8 @@ import { StoryDecorator } from '../../../.storybook/StoryDecorator';
  * light and dark. This validates AC1 (light/dark via ThemeProvider decorator)
  * and AC2 (a story module exists for each primitive — 7 at Story 16.5, 11 since Story 22.1
  * added the footer, section header, surface and tile, 14 since Story 22.6 added the form screen,
- * the request banner and the header icon button it moved here) inside the
+ * the request banner and the header icon button it moved here, 16 since Story 22.7 added the screen
+ * header and the pick-one list) inside the
  * existing test:coverage merge gate. The web-visual pipeline (build-storybook +
  * Chromatic) validates pixel-level rendering.
  */
@@ -61,7 +64,11 @@ const modules: Record<string, CsfModule> = {
   // button, which moved here from `features/cards` to be the pattern's back.
   FormScreen: FormScreenStories as unknown as CsfModule,
   RequestErrorBanner: RequestErrorBannerStories as unknown as CsfModule,
-  HeaderIconButton: HeaderIconButtonStories as unknown as CsfModule
+  HeaderIconButton: HeaderIconButtonStories as unknown as CsfModule,
+  // Story 22.7 — settings: the screen header, moved out of the form pattern so both draw it, and
+  // the pick-one list its theme and language sheets hold.
+  ScreenHeader: ScreenHeaderStories as unknown as CsfModule,
+  OptionList: OptionListStories as unknown as CsfModule
 };
 
 const getStories = (mod: CsfModule): [string, StoryObject][] =>
@@ -91,10 +98,11 @@ const canvasBackground = (theme: 'light' | 'dark'): unknown => {
 };
 
 describe('shared/components/ui stories', () => {
-  // Deliberate, not incidental: Story 22.1 took this from 7 to 11, and Story 22.6 to 14. Adding a
-  // primitive means adding its story module here AND raising this count in the same change.
-  it('defines a story module for each of the 14 primitives (AC2)', () => {
-    expect(Object.keys(modules)).toHaveLength(14);
+  // Deliberate, not incidental: Story 22.1 took this from 7 to 11, Story 22.6 to 14 and Story 22.7
+  // to 16. Adding a primitive means adding its story module here AND raising this count in the same
+  // change.
+  it('defines a story module for each of the 16 primitives (AC2)', () => {
+    expect(Object.keys(modules)).toHaveLength(16);
   });
 
   Object.entries(modules).forEach(([name, mod]) => {

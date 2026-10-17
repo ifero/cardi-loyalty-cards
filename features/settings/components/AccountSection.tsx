@@ -1,20 +1,27 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { ActionRow } from '@/shared/components/ui';
+import { Surface } from '@/shared/components/ui/Surface';
 import { useTheme } from '@/shared/theme';
-import { MONOGRAM_TEXT_PROPS, TYPOGRAPHY, monogram } from '@/shared/theme/typography';
+import { SPACING } from '@/shared/theme/spacing';
+import { TYPOGRAPHY } from '@/shared/theme/typography';
 
 type AccountSectionProps = {
   email: string;
   onSignOut: () => void;
   onChangePassword: () => void;
   onDeleteAccount: () => void;
+  /** The verification code is being sent: the row shows the spinner and ignores presses. */
   isChangingPassword?: boolean;
 };
 
+/**
+ * The account group, signed in (frame A): one hairline-outlined surface with no head above it —
+ * identity, not a category. "Signed in" over the email, then Change Password, Sign Out and Delete
+ * Account, the last two destructive text with no chevron.
+ */
 export const AccountSection = ({
   email,
   onSignOut,
@@ -24,79 +31,68 @@ export const AccountSection = ({
 }: AccountSectionProps) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
+  const signedIn = t('settings.account.signedIn');
+  // One stop for a screen reader: the caption is the email's label, not a heading of its own.
+  const headName = `${signedIn}, ${email}`;
 
   return (
-    <View style={{ gap: 16 }}>
+    <Surface divided testID="settings-account-card">
       <View
-        testID="settings-account-card"
-        style={{
-          borderRadius: 12,
-          backgroundColor: theme.surfaceElevated,
-          paddingHorizontal: 16,
-          paddingVertical: 20,
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 14
-        }}
+        testID="settings-account-head"
+        accessible
+        accessibilityLabel={headName}
+        style={styles.head}
       >
-        <View
-          style={{
-            width: 48,
-            height: 48,
-            borderRadius: 999,
-            backgroundColor: theme.primary,
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <Text {...MONOGRAM_TEXT_PROPS} style={{ ...monogram(24), color: theme.onPrimary }}>
-            {email.trim().charAt(0).toUpperCase() || 'U'}
-          </Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text numberOfLines={1} style={{ ...TYPOGRAPHY.bodyLg, color: theme.textPrimary }}>
-            {email}
-          </Text>
-          <View style={{ marginTop: 2, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-            <Text style={{ ...TYPOGRAPHY.captionMd, color: theme.textSecondary }}>
-              {t('settings.account.signedIn')}
-            </Text>
-            <MaterialIcons name="circle" size={8} color={theme.success} />
-            <Text style={{ ...TYPOGRAPHY.captionMd, color: theme.success }}>
-              {t('settings.account.synced')}
-            </Text>
-          </View>
-        </View>
+        <Text style={[styles.caption, { color: theme.textSecondary }]}>{signedIn}</Text>
+        <Text style={[styles.email, { color: theme.textPrimary }]}>{email}</Text>
       </View>
-
+      <ActionRow
+        testID="settings-change-password-row"
+        variant="plain"
+        showBottomBorder={false}
+        label={t('settings.account.changePassword')}
+        accessibilityLabel={t('settings.account.changePasswordA11y')}
+        onPress={onChangePassword}
+        isLoading={isChangingPassword}
+      />
       <ActionRow
         testID="settings-signout-row"
         variant="plain"
-        prefix={<MaterialIcons name="logout" size={24} color={theme.primary} />}
+        showBottomBorder={false}
+        destructive
+        showChevron={false}
         label={t('common.actions.signOut')}
         accessibilityLabel={t('settings.account.signOutA11y')}
         onPress={onSignOut}
       />
       <ActionRow
-        testID="settings-change-password-row"
-        variant="plain"
-        prefix={<MaterialIcons name="lock-outline" size={24} color={theme.primary} />}
-        label={t('settings.account.changePassword')}
-        accessibilityLabel={t('settings.account.changePasswordA11y')}
-        onPress={onChangePassword}
-        isLoading={isChangingPassword}
-        disabled={isChangingPassword}
-        showChevron={!isChangingPassword}
-      />
-      <ActionRow
         testID="settings-delete-row"
         variant="plain"
-        prefix={<MaterialIcons name="delete-outline" size={24} color={theme.error} />}
-        label={t('settings.account.deleteAccount')}
-        onPress={onDeleteAccount}
+        showBottomBorder={false}
         destructive
+        showChevron={false}
+        label={t('settings.account.deleteAccount')}
         accessibilityLabel={t('settings.account.deleteAccountA11y')}
+        onPress={onDeleteAccount}
       />
-    </View>
+    </Surface>
   );
 };
+
+const styles = StyleSheet.create({
+  // Padded as the rows are, the email 2 below its caption.
+  head: {
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.smMd,
+    gap: 2
+  },
+  // `overline`: the label for a group (`cardi-design-system.md` § _Section header_).
+  caption: {
+    ...TYPOGRAPHY.overline,
+    textTransform: 'uppercase'
+  },
+  // No line limit: a long address wraps rather than clipping.
+  email: {
+    ...TYPOGRAPHY.bodyLg
+  }
+});

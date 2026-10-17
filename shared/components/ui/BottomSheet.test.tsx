@@ -5,14 +5,26 @@
  * scrim, a white-or-ink sheet and a #D6D6CB-or-#3A3A48 grabber, flipping with the theme. The
  * decorator also supplies a deterministic 34pt bottom inset.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, within } from '@testing-library/react-native';
 import React from 'react';
-import { AccessibilityInfo, Modal, StyleSheet, Text } from 'react-native';
+import {
+  AccessibilityInfo,
+  DeviceEventEmitter,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text
+} from 'react-native';
+
+import { DARK_THEME, LIGHT_THEME } from '@/shared/theme/colors';
 
 import {
   BottomSheet,
   SHEET_SLIDE_MS,
   getScrimOpacity,
+  getSheetBottomPadding,
   getSheetOffset,
   getSlideStyle
 } from './BottomSheet';
@@ -53,11 +65,12 @@ const holdAnimations = () => {
 
 const presentedModal = () => screen.UNSAFE_getByType(Modal).props.visible;
 
+/** A body unless the test names its own children — `null` and `undefined` included. */
 const renderSheet = (props: SheetProps = {}, scheme: Scheme = 'light') =>
   render(
     <StoryDecorator theme={scheme}>
       <BottomSheet visible onClose={jest.fn()} title="Theme" testID="sheet" {...props}>
-        {props.children ?? <Text>Body</Text>}
+        {'children' in props ? props.children : <Text>Body</Text>}
       </BottomSheet>
     </StoryDecorator>
   );
@@ -280,18 +293,50 @@ describe('BottomSheet', () => {
     expect(StyleSheet.flatten(scrim().props.style).backgroundColor).toBe('rgba(24, 24, 36, 0.4)');
   });
 
-  it('sets the title in the sheet-title token as a heading, and the description 8pt under it', () => {
-    renderSheet({ description: 'Choose how your cards look.' });
-    const title = screen.getByText('Theme');
-    expect(title.props.accessibilityRole).toBe('header');
-    expect(StyleSheet.flatten(title.props.style)).toMatchObject({
-      fontFamily: 'Space Grotesk',
-      fontSize: 20,
-      fontWeight: '700'
+  it.each<[Scheme, string]>([
+    ['light', LIGHT_THEME.textPrimary],
+    ['dark', DARK_THEME.textPrimary]
+  ])(
+    'sets the title in the sheet-title token as a %s textPrimary heading, the description 8pt under it',
+    (scheme, textPrimary) => {
+      renderSheet({ description: 'Choose how your cards look.' }, scheme);
+      const title = screen.getByText('Theme');
+      expect(title.props.accessibilityRole).toBe('header');
+      expect(StyleSheet.flatten(title.props.style)).toMatchObject({
+        fontFamily: 'Space Grotesk',
+        fontSize: 20,
+        fontWeight: '700',
+        color: textPrimary
+      });
+      expect(
+        StyleSheet.flatten(screen.getByText('Choose how your cards look.').props.style)
+      ).toMatchObject({ marginTop: 8 });
+    }
+  );
+
+  // Top to bottom: the title, the description, the content, then the actions.
+  describe('order', () => {
+    const expectInOrder = (needles: string[]) => {
+      const tree = JSON.stringify(screen.toJSON());
+      const order = needles.map((needle) => tree.indexOf(`["${needle}"]`));
+      expect(order.every((index) => index > -1)).toBe(true);
+      expect([...order].sort((a, b) => a - b)).toEqual(order);
+    };
+    const parts = {
+      title: 'Order title',
+      description: 'Order description',
+      children: <Text>Order content</Text>
+    };
+
+    it('draws the title, the description, the content, then the actions', () => {
+      renderSheet({ ...parts, actions: <Text>Order action</Text> });
+      expectInOrder(['Order title', 'Order description', 'Order content', 'Order action']);
     });
-    expect(
-      StyleSheet.flatten(screen.getByText('Choose how your cards look.').props.style)
-    ).toMatchObject({ marginTop: 8 });
+
+    it('draws the title, the description, then the content, without actions', () => {
+      renderSheet(parts);
+      expectInOrder(['Order title', 'Order description', 'Order content']);
+    });
   });
 
   describe('assistive technology', () => {
@@ -326,6 +371,283 @@ describe('BottomSheet', () => {
       renderSheet({ onClose });
       screen.getByTestId('sheet-content').props.onAccessibilityEscape();
       expect(onClose).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  /**
+   * Story 22.7 — the actions slot: the sheet's action, then Cancel, 24 below what precedes them and
+   * 8 apart, pinned under text that scrolls within the 80 % cap.
+   */
+  describe('actions', () => {
+    const actions = (
+      <>
+        <Button variant="destructive" size="large" onPress={jest.fn()} testID="confirm">
+          Sign Out
+        </Button>
+        <Button variant="secondary" size="large" onPress={jest.fn()} testID="cancel">
+          Cancel
+        </Button>
+      </>
+    );
+
+    /** The nearest composite ancestor of a node rendered by the component `type`. */
+    const ancestorOfType = (testID: string, type: unknown) => {
+      let node = screen.getByTestId(testID).parent;
+      while (node && node.type !== type) {
+        node = node.parent;
+      }
+      return node;
+    };
+
+    const renderWithActions = (props: SheetProps = {}) =>
+      renderSheet({
+        title: 'Sign Out?',
+        description: 'You will return to guest mode.',
+        actions,
+        ...props
+      });
+
+    it('sets them 24 below what precedes them and 8 apart, in the order given', () => {
+      renderWithActions();
+      expect(flat('sheet-actions')).toMatchObject({ marginTop: 24, gap: 8 });
+      const tree = JSON.stringify(screen.toJSON());
+      expect(tree.indexOf('"confirm"')).toBeGreaterThan(-1);
+      expect(tree.indexOf('"confirm"')).toBeLessThan(tree.indexOf('"cancel"'));
+    });
+
+    // The text above scrolls; the actions are the sheet's own, so they never scroll away.
+    it('scrolls the title, the description and the content, and pins the actions beneath', () => {
+      renderWithActions({ children: <Text testID="body-text">Body</Text> });
+      const body = screen.getByTestId('sheet-body');
+      expect(body.type).toBe('RCTScrollView');
+      expect(ancestorOfType('body-text', ScrollView)).toBeTruthy();
+      expect(within(body).getByText('Sign Out?')).toBeTruthy();
+      expect(within(body).getByText('You will return to guest mode.')).toBeTruthy();
+      expect(within(body).queryByTestId('confirm')).toBeNull();
+      expect(ancestorOfType('confirm', ScrollView)).toBeNull();
+      expect(ancestorOfType('cancel', ScrollView)).toBeNull();
+    });
+
+    // A scroll view grows by default, and React Native's layout (Yoga's legacy stretch) hands a
+    // height-capped container's spare height to a growing child: a short sheet would stand 80 %
+    // tall. It shrinks, and so scrolls, only once the sheet reaches its cap.
+    it('never grows the text past its content, and shrinks it at the cap', () => {
+      renderWithActions();
+      expect(flat('sheet-body')).toMatchObject({ flexGrow: 0, flexShrink: 1 });
+      expect(flat('sheet-content').maxHeight).toBe('80%');
+    });
+
+    it('starts the text 16 below the grabber, does not bounce at rest, and keeps handled taps', () => {
+      renderWithActions();
+      const body = screen.getByTestId('sheet-body');
+      expect(StyleSheet.flatten(body.props.contentContainerStyle)).toMatchObject({
+        paddingTop: 16
+      });
+      expect(body.props.alwaysBounceVertical).toBe(false);
+      expect(body.props.keyboardShouldPersistTaps).toBe('handled');
+    });
+
+    it('sets the content 16 below the text', () => {
+      renderWithActions({ children: <Text>Body</Text> });
+      expect(flat('sheet-children').marginTop).toBe(16);
+    });
+
+    // An acknowledge sheet, or a confirm whose request has not failed: the description, then the
+    // actions 24 below it, with no content and no gap for one.
+    it.each([
+      ['nothing', undefined],
+      ['an error that is not there', null],
+      ['a false condition', false]
+    ])('draws no content, and no gap for it, when it is given %s', (_case, children) => {
+      renderWithActions({ children });
+      expect(screen.queryByTestId('sheet-children')).toBeNull();
+      expect(screen.getByTestId('sheet-actions')).toBeTruthy();
+    });
+
+    it('keeps the title a heading, announced by name when the sheet opens', () => {
+      const announce = jest
+        .spyOn(AccessibilityInfo, 'announceForAccessibility')
+        .mockImplementation(() => undefined);
+      renderWithActions();
+      expect(screen.getByRole('header', { name: 'Sign Out?' })).toBeTruthy();
+      expect(announce).toHaveBeenCalledWith('Sign Out? opened');
+      announce.mockRestore();
+    });
+  });
+
+  // A sheet without actions draws exactly as it did: the multi-code picker, the sort sheet and the
+  // pickers hold their own lists, which scroll inside the sheet's shrinking body.
+  describe('without actions', () => {
+    it('keeps its body a plain shrinking view, adding no scroll view and no actions', () => {
+      renderSheet();
+      expect(screen.queryByTestId('sheet-body')).toBeNull();
+      expect(screen.queryByTestId('sheet-actions')).toBeNull();
+      expect(screen.UNSAFE_queryAllByType(ScrollView)).toHaveLength(0);
+      expect(flat('sheet-children')).toMatchObject({ flexShrink: 1, marginTop: 16 });
+    });
+
+    // The body has no testID: it is the nearest view above the title. It shrinks, so a list inside
+    // it scrolls within the cap, and it starts 16 below the grabber.
+    it('pads its body 16 at the top, and lets it shrink', () => {
+      renderSheet();
+      let body = screen.getByText('Theme').parent;
+      while (body && body.type !== 'View') {
+        body = body.parent;
+      }
+      expect(StyleSheet.flatten(body?.props.style)).toMatchObject({
+        flexShrink: 1,
+        paddingTop: 16
+      });
+    });
+  });
+
+  /**
+   * Story 22.7 — the keyboard. The keyboard-avoiding view is the modal's full-screen root: it
+   * measures its overlap from its own frame, relative to its parent, against the keyboard's top in
+   * screen coordinates, and only the modal's root makes the two agree.
+   */
+  describe('the keyboard', () => {
+    const keyboardView = () => screen.UNSAFE_getByType(KeyboardAvoidingView);
+
+    const keyboardEvent = (screenY: number, height: number) => ({
+      endCoordinates: { screenX: 0, screenY, width: 393, height },
+      duration: 0,
+      easing: 'keyboard'
+    });
+
+    it('is the root, holding the scrim and the sheet, padding with no offset', () => {
+      renderSheet();
+      const avoiding = keyboardView();
+      expect(avoiding.props.testID).toBe('sheet-root');
+      expect(avoiding.props.behavior).toBe('padding');
+      expect(avoiding.props.keyboardVerticalOffset).toBeUndefined();
+      expect(flat('sheet-root')).toMatchObject({ flex: 1, justifyContent: 'flex-end' });
+      expect(
+        avoiding.findAll(
+          (node: { props: { testID?: string } }) => node.props.testID === 'sheet-content'
+        )
+      ).not.toHaveLength(0);
+      expect(
+        avoiding.findAll(
+          (node: { props: { testID?: string } }) => node.props.testID === 'sheet-scrim'
+        )
+      ).not.toHaveLength(0);
+    });
+
+    // The root's frame is the whole screen, so the padding it takes is exactly the keyboard's
+    // height and the sheet rests on the keyboard's top edge.
+    it('lifts the sheet by the keyboard’s height, on iOS', async () => {
+      renderSheet();
+      await act(async () => {
+        fireEvent(screen.getByTestId('sheet-root'), 'layout', {
+          persist: () => undefined,
+          nativeEvent: { layout: { x: 0, y: 0, width: 393, height: 852 } }
+        });
+      });
+      expect(flat('sheet-root').paddingBottom).toBe(0);
+
+      await act(async () => {
+        DeviceEventEmitter.emit('keyboardWillShow', keyboardEvent(852 - 336, 336));
+      });
+      expect(flat('sheet-root').paddingBottom).toBe(336);
+
+      await act(async () => {
+        DeviceEventEmitter.emit('keyboardWillHide', keyboardEvent(852, 0));
+      });
+      expect(flat('sheet-root').paddingBottom).toBe(0);
+    });
+
+    // The keyboard covers the home indicator, so the sheet on it keeps only its 20.
+    it('drops its bottom padding to 20 while the keyboard is up, on iOS', () => {
+      renderSheet();
+      expect(flat('sheet-content').paddingBottom).toBe(34 + 8);
+
+      act(() => {
+        DeviceEventEmitter.emit('keyboardWillShow', keyboardEvent(852 - 336, 336));
+      });
+      expect(flat('sheet-content').paddingBottom).toBe(20);
+
+      act(() => {
+        DeviceEventEmitter.emit('keyboardWillHide', keyboardEvent(852, 0));
+      });
+      expect(flat('sheet-content').paddingBottom).toBe(34 + 8);
+    });
+
+    // Held to 80 % of the space above the keyboard, delete's field was clipped by about 6pt above
+    // its actions at the largest text size. A percentage resolves inside the root's padding — the
+    // keyboard's height below, the top inset above — so 100 % is the whole space between them.
+    it('may take all the space above the keyboard, below the top inset, while it is up', () => {
+      renderSheet({ actions: <Text>Delete Account</Text> });
+      expect(flat('sheet-content').maxHeight).toBe('80%');
+      expect(flat('sheet-root').paddingTop).toBeUndefined();
+
+      act(() => {
+        DeviceEventEmitter.emit('keyboardWillShow', keyboardEvent(852 - 336, 336));
+      });
+      expect(flat('sheet-content').maxHeight).toBe('100%');
+      expect(flat('sheet-root').paddingTop).toBe(47);
+
+      act(() => {
+        DeviceEventEmitter.emit('keyboardWillHide', keyboardEvent(852, 0));
+      });
+      expect(flat('sheet-content').maxHeight).toBe('80%');
+      expect(flat('sheet-root').paddingTop).toBeUndefined();
+    });
+
+    it('is always on, on iOS', () => {
+      const platform = jest.replaceProperty(Platform, 'OS', 'ios');
+      try {
+        renderSheet();
+        expect(keyboardView().props.enabled).toBe(true);
+      } finally {
+        platform.restore();
+      }
+    });
+
+    // Android's `keyboardDidHide` reports the visible frame's height, not its bottom, so a view left
+    // on after the keyboard had gone would keep the status bar's height of padding under the sheet.
+    it('is on only while the keyboard is up, and pads 20 meanwhile, on Android', () => {
+      const platform = jest.replaceProperty(Platform, 'OS', 'android');
+      try {
+        renderSheet();
+        expect(keyboardView().props.behavior).toBe('padding');
+        expect(keyboardView().props.enabled).toBe(false);
+        expect(flat('sheet-content').paddingBottom).toBe(34 + 8);
+
+        act(() => {
+          DeviceEventEmitter.emit('keyboardDidShow', keyboardEvent(500, 300));
+        });
+        expect(keyboardView().props.enabled).toBe(true);
+        expect(flat('sheet-content').paddingBottom).toBe(20);
+
+        act(() => {
+          DeviceEventEmitter.emit('keyboardDidHide', keyboardEvent(800, 0));
+        });
+        expect(keyboardView().props.enabled).toBe(false);
+        expect(flat('sheet-content').paddingBottom).toBe(34 + 8);
+      } finally {
+        platform.restore();
+      }
+    });
+
+    it('stops listening to the keyboard once it unmounts', () => {
+      const listeners = () =>
+        ['keyboardWillShow', 'keyboardWillHide'].map((event) =>
+          DeviceEventEmitter.listenerCount(event)
+        );
+      const before = listeners();
+      const { unmount } = renderSheet();
+      expect(listeners()).not.toEqual(before);
+
+      unmount();
+      expect(listeners()).toEqual(before);
+    });
+
+    it('pads 8 above the home indicator, never under 20, and 20 on the keyboard', () => {
+      expect(getSheetBottomPadding(34, false)).toBe(42);
+      expect(getSheetBottomPadding(0, false)).toBe(20);
+      expect(getSheetBottomPadding(34, true)).toBe(20);
+      expect(getSheetBottomPadding(0, true)).toBe(20);
     });
   });
 });

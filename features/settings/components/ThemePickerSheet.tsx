@@ -1,11 +1,10 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
-import { BottomSheet } from '@/shared/components/ui';
+import { BottomSheet, OptionList, type OptionListOption } from '@/shared/components/ui';
 import { useTheme } from '@/shared/theme';
-import { DARK_THEME, LIGHT_THEME } from '@/shared/theme/colors';
+import { SPACING } from '@/shared/theme/spacing';
 import { TYPOGRAPHY } from '@/shared/theme/typography';
 
 import type { ThemePreference } from '../types';
@@ -17,6 +16,12 @@ type ThemePickerSheetProps = {
   onClose: () => void;
 };
 
+const THEME_OPTIONS: readonly ThemePreference[] = ['light', 'dark', 'system'];
+
+/**
+ * Pick one (frame C): Light, Dark, then System, with the system helper beneath. The helper is the
+ * list's footer, so it scrolls with the options and never takes their room at the largest sizes.
+ */
 export const ThemePickerSheet = ({
   visible,
   selectedTheme,
@@ -25,11 +30,20 @@ export const ThemePickerSheet = ({
 }: ThemePickerSheetProps) => {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const options: Array<{ key: ThemePreference; label: string }> = [
-    { key: 'light', label: t('common.theme.light') },
-    { key: 'dark', label: t('common.theme.dark') },
-    { key: 'system', label: t('common.theme.system') }
-  ];
+  const labels: Record<ThemePreference, string> = {
+    light: t('common.theme.light'),
+    dark: t('common.theme.dark'),
+    system: t('common.theme.system')
+  };
+  const options: OptionListOption<ThemePreference>[] = THEME_OPTIONS.map((key) => {
+    const label = labels[key];
+    return {
+      value: key,
+      label,
+      accessibilityLabel: t('settings.theme.optionAccessibilityLabel', { name: label }),
+      testID: `theme-option-${key}`
+    };
+  });
 
   return (
     <BottomSheet
@@ -37,78 +51,29 @@ export const ThemePickerSheet = ({
       onClose={onClose}
       title={t('settings.theme.pickerTitle')}
       testID="theme-picker-sheet"
-      accessibilityLabel={t('settings.theme.pickerAccessibilityLabel')}
     >
-      <View style={{ flexDirection: 'row', gap: 12 }}>
-        {options.map((option) => {
-          const isSelected = option.key === selectedTheme;
-
-          return (
-            <Pressable
-              key={option.key}
-              testID={`theme-option-${option.key}`}
-              onPress={() => onSelect(option.key)}
-              accessibilityRole="button"
-              accessibilityLabel={t('settings.theme.optionAccessibilityLabel', {
-                name: option.label
-              })}
-              style={{ width: 101 }}
-            >
-              <View
-                style={{
-                  height: 120,
-                  borderRadius: 12,
-                  borderWidth: isSelected ? 2 : 1,
-                  borderColor: isSelected ? theme.primary : theme.border,
-                  overflow: 'hidden'
-                }}
-              >
-                <View
-                  style={{
-                    height: 60,
-                    backgroundColor:
-                      option.key === 'dark' ? DARK_THEME.surface : LIGHT_THEME.surface
-                  }}
-                />
-                {/* The lower band is the GROUND, so it previews what the scheme
-                    actually looks like. It read `surfaceElevated` until Story
-                    21.2, which was a near-white against the white band above it —
-                    tolerable while the light ground WAS white, and actively
-                    misleading now that it is cream #F0F0E8, since this chip is
-                    where someone goes to see the difference. */}
-                <View
-                  style={{
-                    height: 60,
-                    backgroundColor:
-                      option.key === 'light' ? LIGHT_THEME.background : DARK_THEME.background
-                  }}
-                />
-                {isSelected ? (
-                  <MaterialIcons
-                    name="check-circle"
-                    size={20}
-                    color={theme.primary}
-                    style={{ position: 'absolute', right: 4, top: 4 }}
-                  />
-                ) : null}
-              </View>
-              <Text
-                style={{
-                  ...(isSelected ? TYPOGRAPHY.labelBold : TYPOGRAPHY.captionMd),
-                  marginTop: 8,
-                  textAlign: 'center',
-                  color: isSelected ? theme.primary : theme.textPrimary
-                }}
-              >
-                {option.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-      <Text style={{ ...TYPOGRAPHY.captionMd, marginTop: 10, color: theme.textSecondary }}>
-        {t('settings.theme.systemDescription')}
-      </Text>
+      <OptionList
+        testID="theme-picker-options"
+        options={options}
+        selectedValue={selectedTheme}
+        onSelect={onSelect}
+        footer={
+          <Text
+            testID="theme-picker-helper"
+            style={[styles.helper, { color: theme.textSecondary }]}
+          >
+            {t('settings.theme.systemDescription')}
+          </Text>
+        }
+      />
     </BottomSheet>
   );
 };
+
+const styles = StyleSheet.create({
+  // 20 below the last option, as frame C sets it.
+  helper: {
+    ...TYPOGRAPHY.captionMd,
+    marginTop: SPACING.smMd + SPACING.sm
+  }
+});
