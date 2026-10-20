@@ -15,4 +15,6 @@ export { FormField, FormScreen } from './FormScreen';
 export { OptionList } from './OptionList';
 export type { OptionListOption } from './OptionList';
 export { ScreenHeader } from './ScreenHeader';
+export { DocumentScreen } from './DocumentScreen';
+export { BulletList } from './BulletList';
 export { SearchBar } from './SearchBar';

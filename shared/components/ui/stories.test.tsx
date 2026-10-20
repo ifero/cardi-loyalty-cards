@@ -3,9 +3,11 @@ import type { ComponentType } from 'react';
 
 import * as ActionRowStories from './ActionRow.stories';
 import * as BottomSheetStories from './BottomSheet.stories';
+import * as BulletListStories from './BulletList.stories';
 import * as ButtonStories from './Button.stories';
 import * as CardShellStories from './CardShell.stories';
 import * as ColorPickerStories from './ColorPicker.stories';
+import * as DocumentScreenStories from './DocumentScreen.stories';
 import * as FormScreenStories from './FormScreen.stories';
 import * as HeaderIconButtonStories from './HeaderIconButton.stories';
 import * as OptionListStories from './OptionList.stories';
@@ -31,7 +33,8 @@ import { StoryDecorator } from '../../../.storybook/StoryDecorator';
  * and AC2 (a story module exists for each primitive — 7 at Story 16.5, 11 since Story 22.1
  * added the footer, section header, surface and tile, 14 since Story 22.6 added the form screen,
  * the request banner and the header icon button it moved here, 16 since Story 22.7 added the screen
- * header and the pick-one list, 17 since Story 22.8 moved the search field here) inside the
+ * header and the pick-one list, 19 since Story 22.8 added the document ground, the bulleted list and
+ * the search field it moved here) inside the
  * existing test:coverage merge gate. The web-visual pipeline (build-storybook +
  * Chromatic) validates pixel-level rendering.
  */
@@ -70,7 +73,11 @@ const modules: Record<string, CsfModule> = {
   // the pick-one list its theme and language sheets hold.
   ScreenHeader: ScreenHeaderStories as unknown as CsfModule,
   OptionList: OptionListStories as unknown as CsfModule,
-  // Story 22.8 — the search field, moved here from `features/cards` so help can draw it.
+  // Story 22.8 — the document screens: the ground help, the privacy policy and What We Collect
+  // share, the bulleted list their prose and answers set, and the search field, moved here from
+  // `features/cards` so help can draw it.
+  DocumentScreen: DocumentScreenStories as unknown as CsfModule,
+  BulletList: BulletListStories as unknown as CsfModule,
   SearchBar: SearchBarStories as unknown as CsfModule
 };
 
@@ -102,10 +109,10 @@ const canvasBackground = (theme: 'light' | 'dark'): unknown => {
 
 describe('shared/components/ui stories', () => {
   // Deliberate, not incidental: Story 22.1 took this from 7 to 11, Story 22.6 to 14, Story 22.7 to
-  // 16 and Story 22.8 to 17. Adding a primitive means adding its story module here AND raising this
+  // 16 and Story 22.8 to 19. Adding a primitive means adding its story module here AND raising this
   // count in the same change.
-  it('defines a story module for each of the 17 primitives (AC2)', () => {
-    expect(Object.keys(modules)).toHaveLength(17);
+  it('defines a story module for each of the 19 primitives (AC2)', () => {
+    expect(Object.keys(modules)).toHaveLength(19);
   });
 
   Object.entries(modules).forEach(([name, mod]) => {
