@@ -259,17 +259,17 @@ export const en = {
           category: 'Device ID',
           detail: 'Not collected'
         }
-      },
-      downloadButtonA11yLabel: 'Download My Data',
-      downloadButtonA11yHint: 'This feature is not yet available',
-      downloadButton: 'Download My Data (coming soon)',
-      downloadFooter: 'Data export will be available in a future update.'
+      }
     }
   },
   help: {
     title: 'Help & FAQ',
     subtitle: 'Find quick answers and troubleshooting steps.',
     searchPlaceholder: 'Search help',
+    clearSearchAccessibilityLabel: 'Clear search',
+    noResults: 'No answers matching “{{query}}”',
+    expandedAccessibilityValue: 'expanded',
+    collapsedAccessibilityValue: 'collapsed',
     contactSupport: 'Contact Support',
     submitFeedback: 'Submit Feedback',
     contactSupportA11y: 'Contact support',

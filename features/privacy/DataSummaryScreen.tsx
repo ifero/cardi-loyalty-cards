@@ -1,22 +1,21 @@
 /**
  * DataSummaryScreen
  * Story 6-11: Privacy & Consent
+ * Story 22.8: Document frame C, the two-column table
  *
- * Read-only informational screen showing what data the app collects.
- * Only accessible to authenticated users from Settings → Data & Privacy.
- * Redirects unauthenticated visitors to /sign-in.
- *
- * ⚠️ "Download My Data" is a placeholder — actual export lives in Epic 8.
+ * A read-only summary of the data the app collects, open to everyone, signed in or a guest: it
+ * reads no session, so it draws at once, with nothing to wait for and nowhere to redirect. It draws
+ * `DocumentScreen`, whose header carries "What We Collect", then the description and a ruled table,
+ * which ends the screen.
  */
 
 import { useRouter } from 'expo-router';
-import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 
-import { useAuthState } from '@/shared/supabase/useAuthState';
+import { DocumentScreen } from '@/shared/components/ui';
 import { useTheme } from '@/shared/theme';
+import { SPACING, TOUCH_TARGET } from '@/shared/theme/spacing';
 import { TYPOGRAPHY } from '@/shared/theme/typography';
 
 // ---------------------------------------------------------------------------
@@ -27,47 +26,50 @@ type DataRow = {
   id: string;
   categoryKey: string;
   detailKey: string;
-  collected: boolean;
 };
 
 const DATA_ROWS: DataRow[] = [
   {
     id: 'account',
     categoryKey: 'privacy.dataSummary.rows.account.category',
-    detailKey: 'privacy.dataSummary.rows.account.detail',
-    collected: true
+    detailKey: 'privacy.dataSummary.rows.account.detail'
   },
   {
     id: 'cards',
     categoryKey: 'privacy.dataSummary.rows.cards.category',
-    detailKey: 'privacy.dataSummary.rows.cards.detail',
-    collected: true
+    detailKey: 'privacy.dataSummary.rows.cards.detail'
   },
   {
     id: 'app',
     categoryKey: 'privacy.dataSummary.rows.app.category',
-    detailKey: 'privacy.dataSummary.rows.app.detail',
-    collected: true
+    detailKey: 'privacy.dataSummary.rows.app.detail'
   },
   {
     id: 'location',
     categoryKey: 'privacy.dataSummary.rows.location.category',
-    detailKey: 'privacy.dataSummary.rows.location.detail',
-    collected: false
+    detailKey: 'privacy.dataSummary.rows.location.detail'
   },
   {
     id: 'contacts',
     categoryKey: 'privacy.dataSummary.rows.contacts.category',
-    detailKey: 'privacy.dataSummary.rows.contacts.detail',
-    collected: false
+    detailKey: 'privacy.dataSummary.rows.contacts.detail'
   },
   {
     id: 'deviceId',
     categoryKey: 'privacy.dataSummary.rows.deviceId.category',
-    detailKey: 'privacy.dataSummary.rows.deviceId.detail',
-    collected: false
+    detailKey: 'privacy.dataSummary.rows.deviceId.detail'
   }
 ];
+
+/**
+ * From this font scale up, each row sets its data under its category, as `ActionRow` sets its value
+ * under its label. 1.5 is a cut-off between iOS's xxxLarge (1.353) and its first accessibility size
+ * (1.786), the one `ActionRow` uses. Android's 150% setting sits on it, so there the rows stack.
+ */
+const STACKED_ROW_MIN_FONT_SCALE = 1.5;
+
+/** The category column's share of the row, as frame C draws it; the data takes the rest. */
+const CATEGORY_COLUMN_WIDTH = '40%';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -76,180 +78,120 @@ const DATA_ROWS: DataRow[] = [
 const DataSummaryScreen = () => {
   const { theme } = useTheme();
   const { t } = useTranslation();
-  const { authState } = useAuthState();
   const router = useRouter();
+  const { fontScale } = useWindowDimensions();
+  const isStacked = fontScale >= STACKED_ROW_MIN_FONT_SCALE;
 
-  useEffect(() => {
-    if (authState === 'guest') {
-      router.replace('/sign-in');
-    }
-  }, [authState, router]);
+  const headRowStyle = [
+    styles.row,
+    isStacked ? styles.stackedRow : null,
+    { borderBottomColor: theme.border }
+  ];
+  const dataRowStyle = [...headRowStyle, styles.dataRow];
+  const categoryColumn = isStacked ? null : styles.categoryColumn;
+  const dataColumn = isStacked ? null : styles.dataColumn;
 
-  if (authState === 'loading' || authState === 'guest') {
-    return (
-      <View
-        testID="data-summary-loading"
-        style={{
-          flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: theme.background
-        }}
-      >
-        <ActivityIndicator size="large" color={theme.primary} />
-      </View>
-    );
-  }
+  const categoryHeader = t('privacy.dataSummary.table.categoryHeader');
+  const dataCollectedHeader = t('privacy.dataSummary.table.dataCollectedHeader');
 
   return (
-    <ScrollView
-      testID="data-summary-screen"
-      style={[styles.scroll, { backgroundColor: theme.background }]}
-      contentContainerStyle={{ paddingBottom: 40 }}
-      accessibilityLabel={t('privacy.dataSummary.title')}
+    <DocumentScreen
+      title={t('privacy.dataSummary.title')}
+      onBack={() => router.back()}
+      testID="data-summary-document"
+      titleTestID="data-summary-title"
+      backTestID="data-summary-back-button"
+      bodyTestID="data-summary-screen"
     >
-      {/* Title */}
-      <Text
-        testID="data-summary-title"
-        accessibilityRole="header"
-        style={[styles.title, { color: theme.textPrimary }]}
-      >
-        {t('privacy.dataSummary.title')}
-      </Text>
       <Text style={[styles.description, { color: theme.textSecondary }]}>
         {t('privacy.dataSummary.description')}
       </Text>
 
-      {/* Data table */}
-      <View testID="data-summary-table" style={[styles.table, { backgroundColor: theme.surface }]}>
-        {/* Header row */}
-        <View style={[styles.headerRow, styles.borderBottom, { borderColor: theme.border }]}>
-          <Text style={[styles.headerCategory, { color: theme.textPrimary }]}>
-            {t('privacy.dataSummary.table.categoryHeader')}
+      {/* Ruled, not boxed: a rule under the head and under every row, the last included. */}
+      <View testID="data-summary-table" style={styles.table}>
+        <View
+          testID="data-summary-table-head"
+          accessible
+          accessibilityLabel={`${categoryHeader}, ${dataCollectedHeader}`}
+          style={headRowStyle}
+        >
+          <Text style={[styles.head, categoryColumn, { color: theme.textSecondary }]}>
+            {categoryHeader}
           </Text>
-          <Text style={[styles.headerData, { color: theme.textPrimary }]}>
-            {t('privacy.dataSummary.table.dataCollectedHeader')}
+          <Text style={[styles.head, dataColumn, { color: theme.textSecondary }]}>
+            {dataCollectedHeader}
           </Text>
         </View>
 
-        {/* Data rows */}
-        {DATA_ROWS.map((row, idx) => (
-          <View
-            key={row.id}
-            testID={`data-row-${row.id.toLowerCase().replace(/\s/g, '-')}`}
-            style={[
-              styles.dataRow,
-              idx < DATA_ROWS.length - 1 && styles.borderBottom,
-              { borderColor: theme.border }
-            ]}
-          >
-            <Text
-              style={[
-                styles.cellCategory,
-                { color: row.collected ? theme.textPrimary : theme.textSecondary }
-              ]}
+        {DATA_ROWS.map((row) => {
+          const category = t(row.categoryKey);
+          const detail = t(row.detailKey);
+
+          return (
+            <View
+              key={row.id}
+              testID={`data-row-${row.id.toLowerCase().replace(/\s/g, '-')}`}
+              accessible
+              accessibilityLabel={`${category}, ${detail}`}
+              style={dataRowStyle}
             >
-              {t(row.categoryKey)}
-            </Text>
-            <Text
-              style={[
-                styles.cellData,
-                { color: row.collected ? theme.textPrimary : theme.textSecondary }
-              ]}
-            >
-              {t(row.detailKey)}
-            </Text>
-          </View>
-        ))}
+              <Text style={[styles.category, categoryColumn, { color: theme.textPrimary }]}>
+                {category}
+              </Text>
+              <Text style={[styles.data, dataColumn, { color: theme.textSecondary }]}>
+                {detail}
+              </Text>
+            </View>
+          );
+        })}
       </View>
-
-      {/* Download My Data placeholder */}
-      <Pressable
-        testID="download-data-placeholder"
-        accessibilityRole="button"
-        accessibilityLabel={t('privacy.dataSummary.downloadButtonA11yLabel')}
-        accessibilityHint={t('privacy.dataSummary.downloadButtonA11yHint')}
-        disabled
-        style={[styles.downloadButton, { backgroundColor: theme.border }]}
-      >
-        <Text style={[styles.downloadLabel, { color: theme.textSecondary }]}>
-          {t('privacy.dataSummary.downloadButton')}
-        </Text>
-      </Pressable>
-
-      <Text style={[styles.footer, { color: theme.textSecondary }]}>
-        {t('privacy.dataSummary.downloadFooter')}
-      </Text>
-    </ScrollView>
+    </DocumentScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-    paddingHorizontal: 48,
-    paddingBottom: 64,
-    paddingTop: 48
-  },
-  title: {
-    ...TYPOGRAPHY.headlineMd,
-    marginBottom: 16
-  },
   description: {
-    ...TYPOGRAPHY.bodyMd,
-    marginBottom: 48
+    ...TYPOGRAPHY.bodyMd
   },
   table: {
-    marginBottom: 48,
-    overflow: 'hidden',
-    borderRadius: 12
+    marginTop: SPACING.xl
   },
-  headerRow: {
+  // Every row, the head's included: 16 between the columns, padded 12 above and below and nothing
+  // at the sides, with a 1pt rule beneath. The columns are top-aligned. The head takes no minimum
+  // height, so it stands 40, its 16pt line between 12 and 12, as frame C draws it.
+  row: {
     flexDirection: 'row',
-    paddingHorizontal: 32,
-    paddingVertical: 24
-  },
-  borderBottom: {
+    alignItems: 'flex-start',
+    columnGap: SPACING.md,
+    paddingVertical: SPACING.smMd,
     borderBottomWidth: 1
   },
-  // Table heads are an overline: uppercase, which its positive tracking is the idiom for.
-  headerCategory: {
-    ...TYPOGRAPHY.overline,
-    flex: 1,
-    textTransform: 'uppercase'
-  },
-  headerData: {
-    ...TYPOGRAPHY.overline,
-    flex: 2,
-    textTransform: 'uppercase'
-  },
+  // A data row stands at least 48 tall.
   dataRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 32,
-    paddingVertical: 24
+    minHeight: TOUCH_TARGET.min
   },
-  cellCategory: {
-    ...TYPOGRAPHY.bodyMdStrong,
+  // At the accessibility sizes: the data under its category, both full width, so no word breaks
+  // in a 40 % column.
+  stackedRow: {
+    flexDirection: 'column',
+    alignItems: 'stretch'
+  },
+  categoryColumn: {
+    width: CATEGORY_COLUMN_WIDTH
+  },
+  dataColumn: {
     flex: 1
   },
-  cellData: {
-    ...TYPOGRAPHY.bodyMd,
-    flex: 2
+  // A label for the rows beneath it: uppercase by style, so assistive technology reads the words.
+  head: {
+    ...TYPOGRAPHY.overline,
+    textTransform: 'uppercase'
   },
-  downloadButton: {
-    marginBottom: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    height: 48,
-    opacity: 0.5
+  category: {
+    ...TYPOGRAPHY.bodyMdStrong
   },
-  downloadLabel: {
-    ...TYPOGRAPHY.bodyLgStrong
-  },
-  footer: {
-    ...TYPOGRAPHY.captionSm,
-    textAlign: 'center'
+  data: {
+    ...TYPOGRAPHY.bodyMd
   }
 });
 

@@ -224,7 +224,50 @@ describe('RootLayout — settings (Story 22.7)', () => {
     await renderHome();
     expect(mockSharedOptions?.headerShown).toBeUndefined();
     expect(mockSharedOptions?.headerLeft).toEqual(expect.any(Function));
-    // What We Collect, which settings now opens, keeps the native header and its back.
-    expect(mockScreenOptions.get('data-summary')).toEqual({ title: 'What We Collect' });
+    // Card detail keeps the native header and its back.
+    expect(mockScreenOptions.get('card/[id]')).toEqual({ title: 'Card Details' });
+  });
+});
+
+/**
+ * The document screens — Story 22.8. Help, the privacy policy and What We Collect draw
+ * `DocumentScreen`'s header, so each route hides the native one, set on the route for the same
+ * reason as settings': no native header flashes in the push. Before this story `help` and
+ * `privacy-policy` had no options at all, so the native header read their raw route names.
+ */
+describe('RootLayout — the document screens (Story 22.8)', () => {
+  beforeEach(async () => {
+    mockScreenOptions.clear();
+    mockSharedOptions = undefined;
+    await act(async () => {
+      await changeAppLanguage('en');
+    });
+  });
+
+  it.each([
+    ['help', 'Help & FAQ'],
+    ['privacy-policy', 'Privacy Policy'],
+    ['data-summary', 'What We Collect']
+  ])('hides the native header on %s, titled "%s"', async (route, title) => {
+    await renderHome();
+    expect(mockScreenOptions.get(route)).toEqual({ title, headerShown: false });
+  });
+
+  it('titles them in the language the app speaks', async () => {
+    await act(async () => {
+      await changeAppLanguage('it');
+    });
+    await renderHome();
+    expect(mockScreenOptions.get('help')?.title).toBe('Aiuto e FAQ');
+    expect(mockScreenOptions.get('privacy-policy')?.title).toBe('Informativa sulla privacy');
+    expect(mockScreenOptions.get('data-summary')?.title).toBe('Cosa raccogliamo');
+  });
+
+  // The routes' options only: the root stack's shared header, and its MaterialIcons back, stay.
+  it('leaves the shared screen options alone', async () => {
+    await renderHome();
+    expect(mockSharedOptions?.headerShown).toBeUndefined();
+    expect(mockSharedOptions?.headerLeft).toEqual(expect.any(Function));
+    expect(mockSharedOptions?.headerStyle?.backgroundColor).toBe(SURFACE);
   });
 });

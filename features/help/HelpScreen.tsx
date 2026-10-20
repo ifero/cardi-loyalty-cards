@@ -1,14 +1,34 @@
+/**
+ * HelpScreen
+ * Story 4.3: Help & FAQ Access
+ * Story 22.8: Document frame B, the searchable FAQ
+ *
+ * Draws `DocumentScreen`, whose header carries "Help & FAQ", so the body opens with the subtitle.
+ * Then the system's search field, the questions on one outlined surface, any number of them open at
+ * once, and Contact Support above Submit Feedback. A search that matches nothing says so in one line
+ * in the list's place, and the actions stay.
+ */
+
+import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import { Alert, Linking, StyleSheet, Text, View } from 'react-native';
 
+import { Button, DocumentScreen, SearchBar, Surface } from '@/shared/components/ui';
 import { useTheme } from '@/shared/theme';
-import { TYPOGRAPHY, inputFont } from '@/shared/theme/typography';
+import { SPACING } from '@/shared/theme/spacing';
+import { TYPOGRAPHY } from '@/shared/theme/typography';
 
+import { FaqItem } from './FaqItem';
 import docHelpItemsIt from './help-data.it.json';
 import docHelpItemsEn from './help-data.json';
 import { fallbackHelpItemsEn, fallbackHelpItemsIt, type HelpItem } from './help-fallback';
+
+const SUPPORT_MAIL_URL = 'mailto:support@myloyaltycards.app';
+const FEEDBACK_URL = 'https://myloyaltycards.app/feedback';
+
+/** How far below the field the no-results line sits: the wallet's frame D. */
+const NO_RESULTS_OFFSET = 80;
 
 type HelpLanguageCode = 'en' | 'it';
 
@@ -38,13 +58,16 @@ type HelpScreenProps = {
 const HelpScreen = ({ itemsOverride }: HelpScreenProps) => {
   const { t, i18n } = useTranslation();
   const { theme } = useTheme();
+  const router = useRouter();
   const language = resolveHelpLanguage(i18n.language);
   const sourceHelpItems = sourceHelpItemsByLanguage[language];
   const fallbackHelpItems = fallbackHelpItemsByLanguage[language];
   const resolvedItems = itemsOverride ?? sourceHelpItems;
   const displayItems = resolvedItems.length > 0 ? resolvedItems : fallbackHelpItems;
   const [query, setQuery] = useState('');
-  const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({});
+  // The open questions: none at rest, and opening one closes no other (decision, 2026-10-19), so no
+  // answer closing above a tapped question moves it. An open question stays open through a search.
+  const [openIds, setOpenIds] = useState<readonly string[]>([]);
 
   const filteredItems = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -56,11 +79,10 @@ const HelpScreen = ({ itemsOverride }: HelpScreenProps) => {
     });
   }, [displayItems, query]);
 
-  const toggleExpanded = (id: string) => {
-    setExpandedIds((prev) => ({
-      ...prev,
-      [id]: !prev[id]
-    }));
+  const toggleOpen = (id: string) => {
+    setOpenIds((current) =>
+      current.includes(id) ? current.filter((openId) => openId !== id) : [...current, id]
+    );
   };
 
   const openExternal = async (url: string, fallbackMessage: string) => {
@@ -77,163 +99,90 @@ const HelpScreen = ({ itemsOverride }: HelpScreenProps) => {
   };
 
   return (
-    <ScrollView
-      testID="help-screen"
-      style={[styles.scroll, { backgroundColor: theme.background }]}
-      contentContainerStyle={{ paddingBottom: 24 }}
+    <DocumentScreen
+      title={t('help.title')}
+      onBack={() => router.back()}
+      testID="help-document"
+      titleTestID="help-title"
+      backTestID="help-back-button"
+      bodyTestID="help-screen"
     >
-      <Text
-        testID="help-title"
-        style={[styles.title, { color: theme.textPrimary }]}
-        accessibilityRole="header"
-      >
-        {t('help.title')}
-      </Text>
-
       <Text style={[styles.subtitle, { color: theme.textSecondary }]}>{t('help.subtitle')}</Text>
 
-      <TextInput
-        testID="help-search"
-        value={query}
-        onChangeText={setQuery}
-        placeholder={t('help.searchPlaceholder')}
-        placeholderTextColor={theme.textSecondary}
-        style={[
-          styles.search,
-          {
-            backgroundColor: theme.surface,
-            color: theme.textPrimary,
-            borderColor: theme.border,
-            borderWidth: 1
-          }
-        ]}
-      />
+      <View style={styles.search}>
+        <SearchBar
+          value={query}
+          onChangeText={setQuery}
+          onClear={() => setQuery('')}
+          testID="help-search"
+          placeholder={t('help.searchPlaceholder')}
+          accessibilityLabel={t('help.searchPlaceholder')}
+          clearAccessibilityLabel={t('help.clearSearchAccessibilityLabel')}
+        />
+      </View>
 
-      {filteredItems.map((item) => (
-        <View
-          key={item.id}
-          style={[
-            styles.card,
-            { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1 }
-          ]}
-        >
-          <Pressable
-            onPress={() => toggleExpanded(item.id)}
-            accessibilityRole="button"
-            accessibilityLabel={item.question}
-          >
-            <Text style={[styles.question, { color: theme.textPrimary }]}>{item.question}</Text>
-          </Pressable>
-          {expandedIds[item.id] && (
-            <View style={styles.answerWrap}>
-              <Text style={[styles.answer, { color: theme.textSecondary }]}>{item.answer}</Text>
-              {item.steps && item.steps.length > 0 && (
-                <View style={styles.answerWrap}>
-                  {item.steps.map((step, index) => (
-                    <Text
-                      key={`${item.id}-step-${index}`}
-                      style={[styles.answer, { color: theme.textSecondary }]}
-                    >
-                      {`• ${step}`}
-                    </Text>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
+      {filteredItems.length > 0 ? (
+        <View style={styles.list}>
+          <Surface divided testID="help-faq-list">
+            {filteredItems.map((item) => (
+              <FaqItem
+                key={item.id}
+                item={item}
+                isOpen={openIds.includes(item.id)}
+                onToggle={() => toggleOpen(item.id)}
+              />
+            ))}
+          </Surface>
         </View>
-      ))}
+      ) : (
+        // A miss is not an error: one line, where the list was.
+        <Text testID="help-no-results" style={[styles.noResults, { color: theme.textSecondary }]}>
+          {t('help.noResults', { query: query.trim() })}
+        </Text>
+      )}
 
       <View style={styles.actions}>
-        <Pressable
+        <Button
+          variant="primary"
           testID="help-contact-support"
-          accessibilityRole="button"
           accessibilityLabel={t('help.contactSupportA11y')}
-          onPress={() =>
-            openExternal('mailto:support@myloyaltycards.app', t('help.contactSupportUnavailable'))
-          }
-          style={[styles.actionButton, { backgroundColor: theme.primary }]}
+          onPress={() => void openExternal(SUPPORT_MAIL_URL, t('help.contactSupportUnavailable'))}
         >
-          <Text style={[styles.actionLabelOnPrimary, { color: theme.onPrimary }]}>
-            {t('help.contactSupport')}
-          </Text>
-        </Pressable>
-
-        <Pressable
+          {t('help.contactSupport')}
+        </Button>
+        <Button
+          variant="secondary"
           testID="help-submit-feedback"
-          accessibilityRole="button"
           accessibilityLabel={t('help.submitFeedbackA11y')}
-          onPress={() =>
-            openExternal('https://myloyaltycards.app/feedback', t('help.submitFeedbackUnavailable'))
-          }
-          style={[
-            styles.actionButton,
-            { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1 }
-          ]}
+          onPress={() => void openExternal(FEEDBACK_URL, t('help.submitFeedbackUnavailable'))}
         >
-          <Text style={[styles.actionLabel, { color: theme.textPrimary }]}>
-            {t('help.submitFeedback')}
-          </Text>
-        </Pressable>
+          {t('help.submitFeedback')}
+        </Button>
       </View>
-    </ScrollView>
+    </DocumentScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
-    paddingHorizontal: 48,
-    paddingBottom: 64,
-    paddingTop: 80
-  },
-  title: {
-    ...TYPOGRAPHY.headlineMd,
-    marginBottom: 32
-  },
   subtitle: {
-    ...TYPOGRAPHY.bodyMd,
-    marginBottom: 48
-  },
-  search: {
-    ...inputFont(TYPOGRAPHY.bodyLg),
-    marginBottom: 48,
-    borderRadius: 12,
-    paddingHorizontal: 32,
-    paddingVertical: 24
-  },
-  card: {
-    marginBottom: 32,
-    borderRadius: 12,
-    padding: 32
-  },
-  question: {
-    ...TYPOGRAPHY.bodyLgStrong
-  },
-  answerWrap: {
-    marginTop: 16
-  },
-  answer: {
     ...TYPOGRAPHY.bodyMd
   },
+  search: {
+    marginTop: SPACING.lg
+  },
+  list: {
+    marginTop: SPACING.lg
+  },
+  noResults: {
+    ...TYPOGRAPHY.bodyMd,
+    marginTop: NO_RESULTS_OFFSET,
+    textAlign: 'center'
+  },
+  // Full width and 8 apart, at the default 48: `Buttons` gives 52 only to a footer's primary and a
+  // sheet's actions.
   actions: {
-    marginTop: 32,
-    gap: 24
-  },
-  actionButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: 12,
-    paddingHorizontal: 32,
-    paddingVertical: 24
-  },
-  actionLabelOnPrimary: {
-    ...TYPOGRAPHY.bodyLgStrong
-    // No `color`: supplied at the call site from `theme.onPrimary`, which is
-    // white on the ink fill in light and ink on the beam fill in dark.
-  },
-  actionLabel: {
-    ...TYPOGRAPHY.bodyLgStrong
+    marginTop: SPACING.xl,
+    gap: SPACING.sm
   }
 });
 
