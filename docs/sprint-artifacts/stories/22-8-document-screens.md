@@ -2,7 +2,7 @@
 title: 'Story 22.8: Document Screens — help, the privacy policy and What We Collect on the Cardì system'
 type: 'feature'
 created: '2026-10-17'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 2
 baseline_commit: 'a54b09cbd41ed4c420b7ad635cad26c2af2fad5b'
