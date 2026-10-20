@@ -176,7 +176,7 @@ jest.mock('./EmptyState', () => {
   };
 });
 
-jest.mock('./SearchBar', () => {
+jest.mock('@/shared/components/ui/SearchBar', () => {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const React = require('react');
   // eslint-disable-next-line @typescript-eslint/no-require-imports

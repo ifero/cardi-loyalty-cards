@@ -3,11 +3,12 @@
  * Story 13.2: Restyle Home Screen — AC3 (Search Bar)
  * Story 22.2: The wallet frames' search field
  * Story 22.5: Also the add-card brand list's field, which capture frame A draws exactly as this
+ * Story 22.8: Moved here from `features/cards/components/`, unchanged, so help draws it too
  *
- * Visible when card count >= 2. The field from `cardi-wallet-frames.html`: the touch target tall,
- * a `surface` fill inside a 1px hairline at the 12pt control radius, a magnifier at the left and
- * a clear × at the right once there is something to clear. It is not a form field, so it carries
- * no visible label — its accessibility label names it instead.
+ * The wallet shows it from two cards. The field from `cardi-wallet-frames.html`: the touch target
+ * tall, a `surface` fill inside a 1px hairline at the 12pt control radius, a magnifier at the left
+ * and a clear × at the right once there is something to clear. It is not a form field, so it
+ * carries no visible label — its accessibility label names it instead.
  *
  * Its copy defaults to the wallet's. Another screen drawing the same field passes its own
  * placeholder and labels rather than drawing the field a second time.

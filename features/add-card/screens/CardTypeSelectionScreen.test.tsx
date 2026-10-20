@@ -10,10 +10,9 @@ import ChevronLeft from 'lucide-react-native/icons/chevron-left';
 import React from 'react';
 import { AccessibilityInfo, ScrollView, StyleSheet } from 'react-native';
 
+import { SearchBar } from '@/shared/components/ui/SearchBar';
 import { TOUCH_TARGET } from '@/shared/theme/spacing';
 import { TYPOGRAPHY } from '@/shared/theme/typography';
-
-import { SearchBar } from '@/features/cards/components/SearchBar';
 
 import { CardTypeSelectionScreen } from './CardTypeSelectionScreen';
 
