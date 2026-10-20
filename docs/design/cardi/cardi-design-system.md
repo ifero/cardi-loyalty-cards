@@ -408,6 +408,10 @@ decision, not a constraint. Placeholders, values and error messages stay sentenc
 > **✅ RESOLVED 2026-10-14 (Story 22.6) — `CardForm`'s 32.** Card edit's form now draws
 > `FormScreen` (_Forms_) on the 24px margin, so that one-off is gone.
 >
+> **✅ RESOLVED 2026-10-19 (Story 22.8) — the document screens' 48.** Help, the privacy policy and
+> What We Collect now draw `DocumentScreen` (_Documents_) on the 24px margin, so the last one-off is
+> gone.
+>
 > **Touch target is 48, not 44** — and here the token is the one that moves. Two independent
 > grounds. `app.json` declares **both** platforms, and a minimum binding on two platforms is the
 > **max** of their minimums: Apple HIG 44pt, Material 48dp, so 48. And 44 is off the grid, by
@@ -469,7 +473,9 @@ banner's plate, and never on the app's own ground (_Capture_).
 ## Components
 
 **Every component below exists as a primitive in `shared/components/ui/` — BUILT 2026-09-27
-(Story 22.1), joined by the form pattern's three in Story 22.6 and by settings' two in Story 22.7.**
+(Story 22.1), joined by the form pattern's three in Story 22.6, by settings' two in Story 22.7 and
+by the document screens' three in Story 22.8, the search field among them, moved from
+`features/cards`.**
 That directory is the only one Storybook and Chromatic see, so a primitive placed anywhere else gets
 no story and no visual coverage. Screens compose these; they do not re-draw them.
 
@@ -487,6 +493,9 @@ no story and no visual coverage. Screens compose these; they do not re-draw them
 | A header's icon button        | `HeaderIconButton`                         |
 | A screen's own header         | `ScreenHeader`                             |
 | A pick-one list               | `OptionList`                               |
+| A document's ground           | `DocumentScreen`                           |
+| A bulleted list               | `BulletList`                               |
+| A search field                | `SearchBar`                                |
 
 ### Card tile (the core component)
 
@@ -1179,6 +1188,173 @@ stays ink at 40 %.
 **Unverified.** Android, for which this host has no phone emulator, and with it a sheet's keyboard
 on Android (_Sheets_); VoiceOver and TalkBack.
 
+### Documents
+
+**RULED 2026-10-19 (Story 22.8)**, from `frames/cardi-document-frames.html` and
+`stitch-prompts-document.txt` — frames A (prose: the privacy policy), B (searchable FAQ: help) and
+C (two-column table: What We Collect). Where they are silent, or this document overrules them, the
+ruling is recorded here, so the three screens cannot drift from either without saying so.
+
+**What they say — DECIDED 2026-10-18 (ifero).** A redraw only: every word stays as it shipped — the
+policy, the FAQ in both languages, What We Collect's description and its six rows. The claims the
+code contradicts wait for a story of their own, which also takes the website and the store forms.
+
+**One ground — `DocumentScreen`.** All three draw it: settings' header, ground and scroll.
+
+- **Ground.** `background`, in a safe-area view on the top, left and right edges. The page scrolls
+  on under the home indicator, so the bottom inset goes into its padding instead.
+- **Header.** `ScreenHeader`, its back going back: "Help & FAQ", the policy's own title in each
+  language, and "What We Collect". The frames' 56px bar with a 24px display title is overruled —
+  every stack-pushed screen has a 17px title (_Forms_). The routes hide the native header, so none
+  flashes in the push.
+- **Body.** A scroll view, its content padded 16px at the top, 24px at the sides, and 24px plus the
+  bottom inset at the bottom: the system margin, not the 48px the three drew (_Layout & Spacing_).
+  No title in the body (frames A–C). A press while the keyboard is up acts at once, as on the
+  wallet and the brand list.
+- **Type.** Every sentence is at the 15px floor or above (Story 21.2). Only the policy's meta line
+  and the table's head take the 12px chrome tier.
+
+**Bullets (`BulletList`).** The frames' hanging indent: each item's "•" starts 18px in from the
+list's edge and its text 32px in, so a wrapped line aligns under the text, not the bullet.
+`body-md`, items 8px apart, in `on-surface` or muted as the caller asks. The glyph is not read:
+each item is read as its text. **The space after the glyph is type**, as frame A's "•&nbsp; " is: a
+non-breaking space set with the glyph, in its size, so it stays with the glyph and in its measure.
+So it grows with the text, and the glyph's column — at least the 14px between the two insets —
+widens to hold both: at the accessibility sizes the bullet never closes up against its text. At
+iOS's largest size the column measures 45px, where the glyph alone would take 30.
+
+**Frame A — prose (the privacy policy).** No link, icon, card or box: the e-mail address stays plain
+text.
+
+- **Source.** The bundled policy, parsed as it always was: its first two lines — the title and "Last
+  updated" — are not drawn, a numbered line is a section head, a `•` line a bullet and any other
+  line a paragraph. A blank line draws nothing; the blocks carry the spacing.
+- **Meta.** The version and the date, in `caption-sm` muted: document metadata, the chrome tier.
+- **Section head.** `body-lg` semibold `on-surface`, announced as a heading, 32px below the block
+  before it and 8px above the next. The frame's 16 / 700 maps to 17 / 600, as Story 21.6 moved the
+  frames' 16px type to 17 or 15 by role. The frame's CSS collapses the 8px under a paragraph into
+  the 32px over a head; React Native does not collapse margins, so every block but the last leaves
+  8px below it and a head takes the 24px that remain.
+- **Paragraph.** `body-md` `on-surface`, 8px below.
+- **Bullets.** Consecutive bullet lines are one `BulletList` in `on-surface`, 8px below.
+- **The end.** The last block leaves nothing below it, so the policy ends at the body's 24px plus
+  the bottom inset, as help and the table do.
+
+**Frame B — searchable FAQ (help).**
+
+- **Subtitle.** `body-md` muted.
+- **Search.** The wallet's field, `SearchBar`, moved to `shared/components/ui/` unchanged, 24px
+  below the subtitle. Its placeholder, "Search help", also names it for assistive technology, and
+  its clear × is "Clear search", as the wallet's is. It matches each question's question, answer
+  and tags, trimmed and ignoring case, as it always did, and folds no accents.
+- **List.** 24px below the field, one hairline-outlined surface (_The hairline-outlined surface_)
+  with a full-width rule between questions: tappable rows sit on a card, as the frames' own note has
+  it.
+- **Question row.** At least 48px, padded 12/16, with 12px between its parts: the question in
+  `body-lg` semibold `on-surface`, wrapping, then the chevron, centred on the row — the system row's
+  17px and 48px over the frame's 16 / 600 and 14/16. It takes `surface-container-low` while held,
+  as a row does.
+- **Its chevron turns.** One Lucide `chevron-down`, at 24 / 1.5 in muted: the chevron of every row
+  (_Settings_), over the frame's 18 / 2. It turns with its answer — half a circle, to point up, as
+  the answer opens, on the answer's own motion, and back as it closes; under Reduce Motion, at once
+  — so it never swaps glyphs in one frame while its answer moves. Turned half a circle,
+  `chevron-down` is exactly `chevron-up`'s glyph, so an open question draws frame B's chevron.
+- **Its name.** A button named by its question, saying expanded or collapsed: in the app's own
+  strings on iOS, and on Android in TalkBack's own words, in the system's language.
+  - **iOS.** React Native's view voices "expanded" only while the state is true, and in English
+    whatever the app's language: its strings fall back to English unless an `RCTI18nStrings` bundle
+    holds them, and every `Localizable.strings` this build ships is empty. So on iOS the question
+    takes no expanded state, and its accessibility value says the state both ways, from the app's
+    own strings — "expanded" or "collapsed", "aperto" or "chiuso" — which VoiceOver reads after the
+    name.
+  - **Android.** The state stays: TalkBack voices it both ways, in its own words and the system's
+    language, so a value would be heard twice. TalkBack also offers Expand while closed and
+    Collapse while open, and on either React Native sets the state natively, reaching JS only for
+    an action JS declares. So the question declares the one TalkBack offers, and it opens or closes
+    the question as a press does: the state TalkBack reports is always the answer's.
+- **Answer.** Beneath its question, padded 0 16 16: the answer in `body-md` muted, then its steps
+  8px below as a muted `BulletList`. Frame B draws no steps, but every item has two to four
+  (Story 4.3), and they stay. No tint and no fill.
+- **Several open at once — DECIDED 2026-10-19 (ifero).** Opening a question closes no other, and
+  pressing an open question closes it. At rest all are closed, and an open question stays open
+  through a search, even one that hides it. Frame B's prompt asks for one open at a time; that
+  closed the answer above a tapped question, and moved the question by up to 300px, sometimes off
+  the screen.
+- **Motion — DECIDED 2026-10-19 (ifero): animated, not jumpy.** The answer grows from beneath its
+  question to its full height, and everything below it moves with it, over 220 ms, ease-out, on the
+  UI thread: the sheet's timing (_Sheets_). Closing runs the same motion in reverse, so no press
+  makes the page jump, and under Reduce Motion it opens and closes at once. A closed answer holds no
+  space and is not read.
+  - **The route.** Reanimated animates the height of a clipping window over the answer, from 0 to
+    the height the answer's content measures. The content is laid out closed or open, so the motion
+    knows its distance from its first frame. At rest an open answer takes its natural height, so it
+    comes back whole from a search that hid it, and grows with its text.
+  - **The content lies out of the flow while the answer is closed or moving**, pinned to the
+    window's top and sides, and in the flow at rest when open, in the same frame either way. In the
+    flow, a window held to a height clamps its content's measure to that height — Yoga hands the
+    children of a 0-tall view an at-most-0 height, and React Native's text measures to it — so a
+    closed answer measured 16px, its padding, and opened by creeping a line or two and then
+    snapping whole. Found on the simulator, where the tests cannot see layout.
+  - **What the iOS simulator showed, and all it showed.** Tracked frame by frame, an answer opened
+    in about 230 ms, each step smaller than the last, and closed the same way in reverse; under
+    Reduce Motion it opened and closed in one frame. The switch of `position` and height at each
+    end never showed there. None of this was seen on Android (_Unverified_, below).
+  - **Not `LayoutAnimation`.** In this app it does nothing on Android, where
+    `enableLayoutAnimationsOnAndroid` is off, and it ignores Reduce Motion.
+- **No match.** In the list's place, one line — "No answers matching “…”", the query trimmed — in
+  `body-md` muted, centred, 80px below the field: the wallet's frame D. A miss is not an error, and
+  the actions stay.
+- **Actions.** 32px below the list or the line, full width and 8px apart: Contact Support (primary)
+  above Submit Feedback (secondary), at the default 48px, not the frame's 52 — _Buttons_ gives 52
+  only to a footer's primary and a sheet's actions.
+
+**Frame C — two-column table (What We Collect).** This document had no table; this is the table.
+
+- **Who sees it — DECIDED 2026-10-18 (ifero).** Everyone, signed in or a guest, with no guard and
+  no spinner; Story 6.11 had made it signed-in only. The screen reads no session, so nothing waits
+  and nothing redirects.
+- **Description.** `body-md` muted.
+- **Table,** 32px below: ruled, not boxed. No outer border, card, fill, zebra stripe, vertical rule
+  or colour.
+  - **Rows.** Each row, the head's included: 16px between the columns, padded 12px above and below
+    and 0 at the sides, with a 1px hairline rule beneath — the last row's included, so the table
+    ends rather than trails off. A data row stands at least 48px tall. The head row takes no
+    minimum, so it stands 40px, its 16px line between 12 and 12, as frame C draws it.
+  - **Head.** "Category" and "Data Collected" in `overline` muted, uppercased by style:
+    _Section header_ gives table heads the `overline` tier and its one colour, over the frame's ink.
+  - **Columns.** The category takes 40 % of the width, in `body-md` semibold `on-surface`; the data
+    takes the rest, in `body-md` muted, top-aligned and wrapping. A row not collected draws like
+    every other row: "Not collected" is neither a warning nor a success.
+  - **Large text.** From a font scale of 1.5, each row sets its data under its category, full width,
+    as `ActionRow` sets a value (_Settings_), so no word breaks in a 40 % column.
+  - **Reading.** Each row is one element, read as its category, then its data; the head row is read
+    as its two labels.
+- **After the table, nothing — DECIDED 2026-10-18 (ifero).** Frame C's "Download my data" link and
+  its footnote are not drawn, and the disabled "Download My Data (coming soon)" is gone with its
+  footnote: Settings' Export Data has shipped (Story 13.6).
+
+**Dark** — no frame draws it. Every value is the theme role named above: the ground black `#000000`;
+the FAQ's surface ink `#181824`, outlined `#3A3A48`, as are the table's rules; cream text, muted
+`#B5B5AB`; the primary button in beam with an ink label, and the secondary outlined in beam.
+
+**Known gaps**, each recorded under _Found, not fixed_ in Story 22.8
+(`docs/sprint-artifacts/stories/22-8-document-screens.md`), by its number there:
+
+- **The keyboard** (11, 19). While the field is focused nothing insets the scroll view, so the lower
+  answers and the actions stay under the keyboard until it is dismissed, and dragging the page never
+  dismisses it. The wallet and the brand list do the same, so one fix should take all three.
+- **A search is silent to a screen reader** (12): nothing is announced when the results change or
+  when nothing matches.
+- **An answer opened near the bottom grows out of view** (18): nothing scrolls it in.
+- **Contact Support may never open Mail** (5): `app.json` declares no `mailto` query, on iOS or on
+  Android, so `canOpenURL` likely answers false and shows "No email app available". Inferred from
+  the source, not run.
+
+**Unverified.** Android, for which this host has no phone emulator, and with it the answer's motion
+there — its switch of `position` and height in one frame at each end, and its chevron's turn — and
+Reduce Motion there. What VoiceOver and TalkBack actually speak of a question: the iOS value, and
+TalkBack's state and its Expand and Collapse.
+
 ### Input fields
 
 1px outline, 12px radius, label **always visible above** the field (never floating), 48px
@@ -1318,7 +1494,10 @@ card edit in Story 22.6: the form header's `chevron-left`, the colour picker's `
 moved in Story 22.7 — its rows' `moon`, `globe` and `lightbulb`, the row chevron, the pick-one
 list's `check` and its own header's `chevron-left` — and draws no other icon: its sheets' 40px
 icons, its account avatar and its guest shield are gone. The screens that keep the native header
-still take the root stack's MaterialIcons back chevron (#258 item 11).
+still take the root stack's MaterialIcons back chevron (#258 item 11). Help, the privacy policy
+and What We Collect left it in Story 22.8: each draws `DocumentScreen`'s header, whose back is
+`ScreenHeader`'s `chevron-left`, and help's questions take `chevron-down`, turned to point up while
+open (_Documents_). With the search field's own glyphs, those are the only icons the three draw.
 
 **A glyph is filled only where the fill is its state — RULED 2026-10-09 (Story 22.3).** Two glyphs
 are: the favourited star and the brightness bulb while it is on. Neither fill is decoration — the
