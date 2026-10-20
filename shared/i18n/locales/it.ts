@@ -260,17 +260,17 @@ export const it = {
           category: 'ID dispositivo',
           detail: 'Non raccolti'
         }
-      },
-      downloadButtonA11yLabel: 'Scarica i miei dati',
-      downloadButtonA11yHint: 'Questa funzione non è ancora disponibile',
-      downloadButton: 'Scarica i miei dati (in arrivo)',
-      downloadFooter: "L'esportazione dei dati sarà disponibile in un aggiornamento futuro."
+      }
     }
   },
   help: {
     title: 'Aiuto e FAQ',
     subtitle: 'Trova risposte rapide e passaggi per risolvere i problemi.',
     searchPlaceholder: "Cerca nell'aiuto",
+    clearSearchAccessibilityLabel: 'Cancella ricerca',
+    noResults: 'Nessuna risposta corrisponde a “{{query}}”',
+    expandedAccessibilityValue: 'aperto',
+    collapsedAccessibilityValue: 'chiuso',
     contactSupport: 'Contatta supporto',
     submitFeedback: 'Invia feedback',
     contactSupportA11y: 'Contatta supporto',

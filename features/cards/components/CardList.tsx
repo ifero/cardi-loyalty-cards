@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LoyaltyCard } from '@/core/schemas';
 
+import { SearchBar } from '@/shared/components/ui/SearchBar';
 import { useCloudSync } from '@/shared/hooks/useCloudSync';
 import { useTheme } from '@/shared/theme';
 import { SPACING } from '@/shared/theme/spacing';
@@ -32,7 +33,6 @@ import { TYPOGRAPHY } from '@/shared/theme/typography';
 
 import { CardTile } from './CardTile';
 import { EmptyState } from './EmptyState';
-import { SearchBar } from './SearchBar';
 import { SortFilterRow } from './SortFilterRow';
 import { useCards } from '../hooks/useCards';
 import { useCardSearch } from '../hooks/useCardSearch';

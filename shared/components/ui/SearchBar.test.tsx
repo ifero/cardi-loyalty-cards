@@ -2,6 +2,7 @@
  * SearchBar Component Tests
  * Story 13.2: Restyle Home Screen — AC3
  * Story 22.2: The wallet frames' search field
+ * Story 22.8: Moved with the field from `features/cards/components/`, unchanged
  */
 
 import { render, screen, fireEvent } from '@testing-library/react-native';

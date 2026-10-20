@@ -267,10 +267,27 @@ const RootLayoutContent = ({ isAuthenticated }: { isAuthenticated: boolean }) =>
             title: t('navigation.newPassword')
           }}
         />
+        {/* The document screens draw their own header, `DocumentScreen`'s (Story 22.8). Hidden
+            here rather than by the screens, so no native header flashes in the push. */}
+        <Stack.Screen
+          name="help"
+          options={{
+            title: t('help.title'),
+            headerShown: false
+          }}
+        />
+        <Stack.Screen
+          name="privacy-policy"
+          options={{
+            title: t('privacy.title'),
+            headerShown: false
+          }}
+        />
         <Stack.Screen
           name="data-summary"
           options={{
-            title: t('navigation.whatWeCollect')
+            title: t('navigation.whatWeCollect'),
+            headerShown: false
           }}
         />
       </Stack>
