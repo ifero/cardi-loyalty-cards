@@ -479,23 +479,23 @@ by the document screens' three in Story 22.8, the search field among them, moved
 That directory is the only one Storybook and Chromatic see, so a primitive placed anywhere else gets
 no story and no visual coverage. Screens compose these; they do not re-draw them.
 
-| component                     | primitive                                  |
-| ----------------------------- | ------------------------------------------ |
-| Card tile                     | `Tile` (+ `FavouriteBadge`)                |
-| Buttons                       | `Button`                                   |
-| The primary-action footer     | `PrimaryActionFooter`                      |
-| Input fields                  | `TextField` (+ `FieldLabel`, `FieldError`) |
-| Section header                | `SectionHeader`                            |
-| The hairline-outlined surface | `Surface`                                  |
-| Sheets                        | `BottomSheet`                              |
-| Forms                         | `FormScreen` (+ `FormField`)               |
-| A failed request              | `RequestErrorBanner`                       |
-| A header's icon button        | `HeaderIconButton`                         |
-| A screen's own header         | `ScreenHeader`                             |
-| A pick-one list               | `OptionList`                               |
-| A document's ground           | `DocumentScreen`                           |
-| A bulleted list               | `BulletList`                               |
-| A search field                | `SearchBar`                                |
+| component                     | primitive                                                            |
+| ----------------------------- | -------------------------------------------------------------------- |
+| Card tile                     | `Tile` (+ `FavouriteBadge`)                                          |
+| Buttons                       | `Button`                                                             |
+| The primary-action footer     | `PrimaryActionFooter`                                                |
+| Input fields                  | `TextField` (+ `FieldLabel`, `FieldError`)                           |
+| Section header                | `SectionHeader`                                                      |
+| The hairline-outlined surface | `Surface`                                                            |
+| Sheets                        | `BottomSheet`                                                        |
+| Forms                         | `FormScreen` (+ `FormField`), the auth screens' too since Story 22.9 |
+| A failed request              | `RequestErrorBanner`                                                 |
+| A header's icon button        | `HeaderIconButton`                                                   |
+| A screen's own header         | `ScreenHeader`                                                       |
+| A pick-one list               | `OptionList`                                                         |
+| A document's ground           | `DocumentScreen`                                                     |
+| A bulleted list               | `BulletList`                                                         |
+| A search field                | `SearchBar`                                                          |
 
 ### Card tile (the core component)
 
@@ -653,8 +653,13 @@ typed into.
 **The primary action is always enabled.** Pressing it on an incomplete form reveals the
 field errors; it never sits inert. A permanently visible disabled button is a permanent
 refusal that never says which field is wrong — and once the action is anchored, that refusal
-is in the eye line for the whole session. Both form screens work this way, with validation
-raised on press.
+is in the eye line for the whole session. The form-pattern screens — card setup, card edit and the
+six auth screens — work this way, with validation raised on press.
+
+**A way out under the primary (Story 22.9).** The auth screens' footer also holds a link row, 8px
+under the primary: "Don't have an account? Create one". From a font scale of 1.5 it leaves the
+footer and closes the body instead, so the footer that rides the keyboard holds the primary alone
+(_Authentication_, decision 3).
 
 > **CORRECTED 2026-10-14 (Story 22.6).** This said `CardForm` was the outlier and gated on
 > `!isValid`. That has been false since Story 22.1 made its Save always enabled, and setup's
@@ -942,8 +947,14 @@ shares with them, dismissed by its × or after five seconds. The camera never st
 `stitch-prompts-form-states.txt` — frames 1 (default), 2 (error), 3 (filled) and 4 (saving). Card
 setup's custom form is the drawn exemplar; catalogue setup and card edit derive from it. Where the
 frames and prompts are silent or conflict, or this document overrules them, the ruling is recorded
-here, so the pattern cannot drift from either without saying so. The auth screens move onto it in
-Story 22.9; until then `AuthScreenLayout` and its `ErrorBanner` stay as they are.
+here, so the pattern cannot drift from either without saying so. **AMENDED 2026-10-21 (Story
+22.9):** the six auth screens have moved onto it (_Authentication_), and `AuthScreenLayout` and its
+tinted `ErrorBanner` are gone. The pattern took four extensions for them — an opening block, a
+header without a title, the footer's link row and the busy name from the caller — which a caller
+that passes none of them never sees, and the focused field brought into view, an option a caller
+takes, with a field brought into view on request. Review pass 1 added three rules the auth
+screens keep: a refused press reveals its first invalid field, a request dismisses the keyboard as
+it starts, and the code screen's Confirm is busy during either of its requests (_Authentication_).
 
 **One shape — `FormScreen`.** A header, a top-aligned body and the anchored footer: never centred,
 never the action inside the scroll, and no trailing padding under the last field.
@@ -958,12 +969,25 @@ never the action inside the scroll, and no trailing padding under the last field
   setup follows capture in one stack. At least 48px tall with no rule; `HeaderIconButton` holding Lucide `chevron-left` in `on-surface`,
   named "Go back", its drawn stroke on the 24px margin; the title in `body-lg` semibold `on-surface`, centred,
   announced as the heading, and wrapping rather than clipping under large text; a 48px spacer on
-  the right keeps it centred.
+  the right keeps it centred. **A header without a title (Story 22.9):** a screen whose heading
+  leads its body — the auth screens' brand block — passes no title, and the row holds the back
+  alone, where the titled header puts it. With no back either — nothing beneath it on the stack —
+  there is no header row at all, and the body starts at the top inset.
 - **Body.** A scroll view that lets a field keep its taps, its content padded 24px at the top, the
   sides and the bottom. Fields sit **32px** apart, and each label sits **8px** above its control.
+  **The opening block (Story 22.9)** is what leads the body when the caller passes one — the auth
+  screens' brand block — drawn first, above the banner and the fields, and 32px above whichever of
+  them comes first.
 - **Footer.** _The primary-action footer_, holding one primary `Button` at 52px. It is always
-  enabled. While busy it keeps its fill, shows a spinner, is named "Saving..." and ignores further
-  presses; nothing else on the screen dims.
+  enabled. While busy it keeps its fill, shows a spinner, is named for what it is doing and ignores
+  further presses; nothing else on the screen dims. **The busy name is the caller's (Story 22.9)** —
+  "Signing in..." — and "Saving..." when none is given; the button may also take a fuller name of
+  its own, which must contain the visible label's words (WCAG 2.5.3, Label in Name): forgot
+  password's "Send password reset code" over "Send Reset Code" does not yet (_Authentication_, gap
+  18). **The footer's link row (Story 22.9):** a way out, such as "Don't have an account? Create
+  one", sits under the primary, 8px below it, and only with one. From a font scale of 1.5 it closes
+  the body instead — the last thing in the scroll, 32px below the last field — so the footer that
+  rides the keyboard holds the primary alone (_Authentication_, decision 3).
 - **Keyboard.** The body and the footer share one keyboard-avoiding view below the header, so the
   footer rests on the keyboard's top edge and the body scrolls above it. The view's frame starts
   below the header, inside the full-screen ground, so it needs no vertical offset. iOS takes
@@ -973,17 +997,61 @@ never the action inside the scroll, and no trailing padding under the last field
   keyboard's top edge when it shows but the visible frame's height when it hides, which would leave
   the status bar's height of padding under the footer, so on Android the view is on only while the
   keyboard is up. ⚠️ Unverified on an Android device.
+- **The focused field in view (Story 22.9)** — an option a caller takes; the auth screens do, and
+  setup and edit, which do not, are unchanged. When a field takes the focus, when the keyboard
+  showing or changing leaves the body a new height, and when the focused field itself moves or
+  grows, a field below the visible body — behind the footer that rides the keyboard — rises until
+  it sits 24px above the footer, its label with it. One that is already wholly in view does not
+  move; one scrolled above the body comes down to 24px below its top. Where the body cannot spare
+  24px on both sides — iOS's strong-password panel leaves a 375pt phone about 90px of it — the
+  margins shrink evenly, so the field still shows whole (found on the simulator); one taller than
+  the body shows its top, flush, where its label and input are. React Native does none of this here: Fabric's iOS
+  scroll view moves a focused input only with `automaticallyAdjustKeyboardInsets`, and then above
+  the keyboard's top, not above a footer riding it, and the scroll responder's own helper assumes a
+  full-screen scroll view. So the form keeps its own geometry, from layout and scroll events, and
+  learns which field holds the focus from the focus and blur events that bubble up from its input.
+  Each child of the form is one field for this — a field and what hangs under it, such as the
+  strength meter. **A failed request below an opening block** scrolls the body to the banner, 24px
+  below its top, rather than to the top, so a tall block, large text or the keyboard cannot leave
+  it below the fold. The keyboard goes first, and no field is kept in view any more (review
+  pass 2): a field focused while the request ran would otherwise sit under the footer once the body
+  scrolls, and a field kept in view would draw the body away from the banner at the next relayout.
+  The keyboard goes only when one of the form's own fields holds it (code-review loop, round 1):
+  dismissing it blurs whichever field has the focus, and a screen beneath a push still runs, so a
+  request failing there would close the keyboard of the screen in front.
+- **A field brought into view on request (Story 22.9, review pass 1)** — through the form's `ref`,
+  where the focused field is kept in view. The caller names a field by its place among the form's
+  children, counted from the first, and the form brings it into view by the focused field's rule,
+  whether or not it can take the focus: a field and its label, and whatever hangs under it, rise
+  above the footer, and one already in view stays. The form then keeps it there as it grows — the
+  message that lays it out again — and as the body changes height, until another field takes the
+  focus or a failed request's banner takes the body. A refused press uses it
+  (_Errors have a direction_, below): the consent row takes no focus, and a text field that already
+  has it sends no focus event when focused again, so nothing else would move either into view.
+- **A request and the keyboard (Story 22.9, review pass 1).** The auth screens dismiss the keyboard
+  as each request starts — the primary's press on a valid form, or a screen's own request, such as
+  the code's 8th digit or a resend — and again if it fails, since a field can be focused while it
+  runs. The footer comes down with it, and a failed request's banner is brought into view with the
+  fields below it, none behind the footer. With the keyboard up, the banner and the focused field
+  could not both be in view on a 393pt phone. A refused press keeps the keyboard. Card setup and
+  card edit are unchanged and keep neither rule: a save that succeeds leaves the screen, but a
+  failed one can still leave a focused field under the footer with the keyboard up (Story 22.9,
+  Found, not fixed 19).
 - **Nothing to submit.** A state with no form — card edit's loading and error — draws the header over
   the ground, with no footer.
 - **Strings and test IDs.** The back's name (`sharedUi.screenHeader`, which moved out with the
-  header in Story 22.7) and the busy name (`sharedUi.formScreen`) are shared strings, as
+  header in Story 22.7) and the default busy name (`sharedUi.formScreen`) are shared strings, as
   `BottomSheet`'s are, rather than a feature's. The caller names the
-  parts, so setup's back keeps `setup-back-button` and card edit's scrolling body keeps
-  `edit-card-form`.
+  parts, so setup's back keeps `setup-back-button`, card edit's scrolling body keeps
+  `edit-card-form`, and an auth screen's banner keeps `server-error`.
 - **Errors have a direction** (the design README, 2026-08-21). Validation sits on the field it
   concerns: its outline and its message in the error colour, no icon, no tint, the label still ink.
   Pressing the primary action reveals it. A failed request sits in one banner for the submission
-  and never reddens a field.
+  and never reddens a field. **No press is refused out of sight (Story 22.9, review pass 1):** on
+  the auth screens a refused press brings its first invalid field into view — its label, its
+  control and its message — whether or not that field can take the focus. A text field takes the
+  focus and is brought into view even when it already had it; the consent row, which takes none,
+  is brought into view on its own.
 
 **Fields (`TextField`)** — the frame's input, closing #251 item 1. These reach every `TextField`,
 the auth screens' included.
@@ -1006,10 +1074,14 @@ the auth screens' included.
 padding 16, full width; its message in `body-md` `error` — the save hooks' "Failed to add card" or
 "Failed to update card". No icon, no tint and no dismiss, so the error colour is drawn twice, by the
 outline and the sentence. It is the first thing in the body, 16px above the first field, and the
-body scrolls to the top to show it. It is an alert: a polite live region on Android, and announced
-on iOS, queued in the same way, when it appears or its message changes. It clears when the next press starts a save, because
-each hook resets its error then, and a second failure shows it again. A failed save shows **no
-toast** — two error surfaces for one failure are noise — and keeps its error haptic and its log.
+body scrolls to the top to show it. Below an opening block (Story 22.9) it follows the block
+instead, and the body scrolls to the banner itself, the keyboard dismissed first when one of the
+form's fields holds it. It is an alert: a
+polite live region on Android, and announced on iOS, queued in the same way, when it appears or its
+message changes. It clears when the next press starts a save, because each hook resets its error
+then — on the auth screens, because each screen clears it as its next request starts — and a second
+failure shows it again. A failed save shows **no toast** — two error surfaces for one failure are
+noise — and keeps its error haptic and its log.
 
 **The colour picker (`ColorPicker`)** — the app's only one; card edit's copy is gone.
 
@@ -1355,6 +1427,263 @@ there — its switch of `position` and height in one frame at each end, and its 
 Reduce Motion there. What VoiceOver and TalkBack actually speak of a question: the iOS value, and
 TalkBack's state and its Expand and Collapse.
 
+### Authentication
+
+**RULED 2026-10-21 (Story 22.9)**, from `frames/cardi-auth-frames.html` and
+`stitch-prompts-auth.txt` — frames A (sign in, the exemplar), B (create account), C (forgot
+password), D (the code, which serves `/verify-email` and `/recovery-otp` as one component), E (new
+password) and F (a failed request). Where they are silent, or this document overrules them, the
+ruling is recorded here, so the six screens cannot drift from either without saying so. Where the
+frames and the prompts disagree, the frames win.
+
+**One shape — `FormScreen`.** All six draw the form pattern (_Forms_): its ground, body padding,
+32px field gap, banner, anchored footer, keyboard handling and always-enabled primary. The centred
+`AuthScreenLayout`, with its button inside the scroll, and the tinted `ErrorBanner` with its icon
+are gone. Every screen keeps its calls, its success navigation and params, its links' routes, its
+ways in (welcome, mode selection, settings, the guest banner), its validation rules, each failure's
+message and its test IDs.
+
+- **The top — DECIDED 2026-10-21 (ifero).** A back-only header, with the brand block leading the
+  body. The header row holds only the back chevron — `ScreenHeader` with no title (_Forms_), its
+  stroke on the 24px margin — and only where the stack has a screen beneath, as the native header's
+  did; it goes back, as Android's back and the iOS swipe do. New password after recovery begun from
+  Home is alone on the stack, so it has no header row, and its body starts at the top inset; begun
+  from welcome, `dismissTo('/')` finds no Home, so the screens beneath stay and its back shows, as
+  the native header's did (gap 22). The six routes hide the native header and keep their titles,
+  so none flashes in the push. The frames draw no header at all; where there is a screen to go back
+  to, that is overruled.
+- **The way out — DECIDED 2026-10-21 (ifero).** In the footer, 8px under the primary: "Don't have
+  an account? Create one", "Already have an account? Sign in", "Back to Sign In", "Wrong email? Go
+  back". New password has none (frame E). The frames put the button and its link in the body. From
+  a font scale of 1.5 the link closes the body instead (decision 3, _Large text_ below).
+
+**The brand block** (frames A–E) is the screens' opening block (_Forms_).
+
+- **The mark.** `AppIconHeader` as shipped, centred: the 40px mark in its 80px ink circle, ink in
+  both schemes (Story 20.4). The frames' hand-built ì is a stand-in for it. Its 48px below became
+  32px, as the frames draw it.
+- **The heading.** `headline-md` in `on-surface`, centred, announced as the screen's heading — its
+  only one, since the header holds no title. It wraps under large text.
+- **The subtitle.** `body-md` muted, centred, 8px below the heading. On the code screen the address
+  is set in `body-md` semibold `on-surface` within the sentence (frame D): the thing worth checking.
+  The sentence's words do not change.
+- 32px below the subtitle comes the first field or, after a failed request, the banner, with the
+  first field 16px below it (frame F). Forgot password draws the mark too (frame C), where it used
+  to hide it.
+
+**Fields.** `TextField` as _Forms_ rules it: labels uppercased by style, at least 48px tall, values
+in `body-lg`, 32px apart. That overrules the frames' Title Case labels, 52px fields, 15px values and
+16px gaps. Every field keeps its keyboard, autofill, name and hint.
+
+- **The eye** (`PasswordInput`). Lucide `eye` while the password is hidden and `eye-off` while it is
+  shown, at 24 / 1.5 in muted, centred in its 48px target at the field's end; a press scales it to
+  0.98. "Show password" and "Hide password" stay its names. A failed request never reddens it.
+- **"Forgot password?"** A solo link at the end of its row, 8px below the password field — below its
+  message when one shows — `body-md` semibold in `link`, in a 48px row.
+
+**Links** (`AuthLink`). The lead-in in `body-md` muted, the action in `body-md` semibold in `link` —
+ink in light, beam in dark — with no underline, since it is not inside prose. A solo link ("Back to
+Sign In") is the action alone. The row is at least 48px tall, centred, and one button named as
+before. A press scales it to 0.98, as the system's text rows do; until now no link acknowledged a
+press.
+
+**The strength meter** (`PasswordStrengthIndicator`, frames B and E) counts rather than judges.
+
+- 8px below the password field (below its message when one shows), full width: a track of three
+  equal segments, then the word, 8px after it.
+- Each segment 4px tall, fully rounded, 4px apart. Weak fills one, fair two and strong three, so the
+  fill spans a third, two thirds or all of the track. Filled segments are `on-surface` and empty
+  ones `outline-variant`, at every strength. There is no green, amber or red and no colour ramp: the
+  palette has no "good" colour, and in light the old meter's fair and strong were the same ink.
+- The word in `label-bold` `on-surface`: a label, the chrome tier. It wraps under large text.
+- One element for assistive technology: "Password strength: Fair". Nothing animates.
+- `getPasswordStrength`'s rule and its three words are unchanged. Create account shows the meter once
+  a password is typed; new password always mounts it; on both it draws nothing for an empty
+  password.
+
+**The consent row** (`ConsentCheckbox`, frame B), 32px below the confirm field.
+
+- **The box,** drawn 24 × 24 at radius 4: the frame's proportion, since 12 would make it a radio.
+  Unticked, it is `surface` inside a 1px `outline-variant` outline. Ticked, it is `primary` with
+  Lucide `check` at 16 / 2 in `on-primary` — white on ink, ink on beam, where the old white check was
+  1.52:1 — the glyph sized to its box, as the colour picker's check is to its swatch (_Forms_).
+- **Its target** is 48 × 48 with the box centred, so the drawn box sits on the margin and the
+  sentence starts 12px after it. The box is centred on the sentence's first line at every text size.
+  It stays the checkbox, with its name, hint, state and test IDs.
+- **The sentence** is `body-md` muted. "Privacy Policy" is `body-md` semibold in `link`, underlined,
+  since it is a link inside prose; it keeps its role, hint and route, and stays the one tappable
+  under 48px, as before.
+- **Unticked at the press,** "You must agree to the Privacy Policy." shows under the row in the
+  field-error idiom, and the box's outline turns `error` until it is ticked. Create Account is never
+  disabled: it used to ignore every press until consent was ticked, looking enabled and saying
+  nothing.
+
+**The code field** (frame D) — a `TextField`, extended only as far as it needs.
+
+- It is labelled VERIFICATION CODE, since _Input fields_ gives every field a label; the frame draws
+  none. It keeps its name, "8-digit verification code", and its hint.
+- The digits are in `mono-code-lg`, centred, and tracked only once there are digits. The placeholder,
+  "8-digit code", is in the body face, centred. The field is at least 48px tall, over the frame's 56.
+- One field, never eight boxes. It keeps the number pad, `one-time-code` autofill (React Native maps
+  it to iOS's `oneTimeCode` and Android's `sms-otp`), room for a formatted paste of up to 16
+  characters, sanitised to its digits, selecting its text on focus, and the focus on mount.
+- The 8th digit submits at once, and a request already running refuses another. While either of the
+  screen's requests runs — a code check or a resend — the field takes no input and does not dim
+  (review pass 1).
+- **Confirm** is always enabled; it used to ignore presses until eight digits were typed. Pressed
+  with fewer, "Enter the 8-digit code." shows under the field, and the field takes the focus and
+  comes into view with the message, even when it already had the focus (_Validation_). A check
+  that starts clears that message's trigger, as a successful resend does, so a code typed again
+  after a rejected one is not called short before its eighth digit (review pass 2).
+
+**The resend row**, 16px below the field (below its message when one shows), centred, at least 48px
+tall.
+
+- While it counts down it is text: "Resend in 0:42" in `body-md` muted, with no spinner and no ring;
+  the countdown is what says why it cannot be pressed. While a request runs it is text too: after
+  the cooldown it reads "Resend code" in the countdown's muted `body-md`, disabled, where the old
+  row read "Resend in 0:00" (#248 item 14). Once available it is "Resend code" in `body-md` semibold
+  `link`, and a press scales it to 0.98. Otherwise its names and states are as before. The 60s
+  cooldown keeps its absolute expiry across a remount; an expired code unlocks it, a failed resend
+  leaves it, and a successful one clears the field, focuses it and restarts it.
+- **A resent code** shows as one plain line, 8px below the row: `body-md` muted, centred, with no
+  box, icon or tint, and announced politely. Typing clears it, as before.
+- **Busy during either request (review pass 1).** While a code check or a resend runs, Confirm is
+  busy, named for the request running — "Verifying..." for a check and "Sending code..." for a
+  resend — and the resend row reports busy, as before. The old screen's one shared `loading` made
+  Confirm busy during a resend too; without that, a press on Confirm, or a keystroke, would be
+  refused while the screen showed nothing at work. The two requests guard each other: while one
+  runs, the other is not sent.
+
+**Busy.** The primary keeps its fill and shows a spinner, named for what it is doing; further presses
+do nothing, and nothing dims.
+
+| Screen         | English              | Italian                         |
+| -------------- | -------------------- | ------------------------------- |
+| Sign in        | Signing in...        | Accesso in corso...             |
+| Create account | Creating account...  | Creazione dell'account...       |
+| Forgot         | Sending code...      | Invio del codice...             |
+| Code           | Verifying...         | Verifica in corso...            |
+| Code, resend   | Sending code...      | Invio del codice...             |
+| New password   | Updating password... | Aggiornamento della password... |
+
+**Validation** is the form pattern's: errors appear at the first press of the primary, then follow
+the typing, clearing or erring, and the first invalid text field takes the focus. Nothing is sent
+while a field is invalid, and the button stays enabled. Create account's email no longer errs on
+blur. The password-requirements caption is gone from create account and new password, as frames B
+and E draw them: the rule stays in the placeholder, the validation message and the field's hint.
+
+**A refused press reveals its first invalid field — review pass 1.** It brings that field into view
+— its label, its control and its message — whether or not the field can take the focus, through the
+form's field brought into view on request (_Forms_). A text field takes the focus and is brought
+into view even when it already had the focus and the body had been scrolled away from it; the
+consent row, which takes none, is brought into view with its message, and the field that had the
+focus keeps it. The keyboard stays. No press is refused out of sight: with consent the only
+refusal, the row could sit below the visible body with the keyboard up, and the press would seem to
+do nothing.
+
+**A failed request** (frame F) is one `RequestErrorBanner` (_Forms_) with the message it always
+had, kept as `server-error` — or `verify-email-banner` on the code screen — brought into view and
+announced. No field reddens: sign in used to redden both fields for any failure, a dropped
+connection included. There is no toast. It stays until the next request starts, and typing no
+longer clears it. On the code screen it carries a wrong code, an expired one (which also unlocks
+resend), a check that cannot be made and a failed resend; a wrong or expired code used to redden
+the field, and a resent code sat in a tinted box with an icon. The banner and the resent line never
+show together.
+
+**The keyboard.** The footer rests on the keyboard, and the focused field, with its label, is
+brought into view above it (_Forms_) — on the code screen, the moment the keyboard opens. **Every
+request dismisses it as it starts (review pass 1):** the primary's press on a valid form, the code's
+8th digit and a resend. A field can still be focused while the request runs, so the keyboard goes
+again if it fails (review pass 2). The footer comes down with it, and a failed request's banner is
+brought into view with the fields below it, none behind the footer; with the keyboard up, the
+banner and the focused field could not both be in view on a 393pt phone. A refused press keeps the
+keyboard, and its first invalid field takes the focus. A successful resend focuses the code's field
+again, and the keyboard comes back with it.
+
+**Large text.** From a font scale of 1.5 the way-out link closes the body (decision 3, below). The
+heading, the subtitle, the labels, the links and the meter's word wrap; the fields, the banner and
+the footer grow; the body scrolls. The mark keeps its size. Nothing clips, but for two known gaps
+(below): the heading breaks mid-word at the largest sizes, one word wider than the column (11), and
+the code's digits outgrow their field from a font scale of about 2.6 (12). A hint wider than its
+field shrinks to fit rather than growing, as UIKit sets it (24).
+
+**The way out at the largest sizes — DECIDED 2026-10-21 (ifero), decision 3.** From a font scale of
+1.5 the way-out link leaves the footer and closes the body instead: the last thing in the scroll,
+32px below the last field, as the fields are spaced, and scrolling with them. The footer then holds
+the primary alone. Below 1.5 the link stays in the footer, under the primary (the way out, above).
+1.5 is a cut-off, not an accessibility size: it sits between iOS's xxxLarge (1.353) and its first
+accessibility size (1.786), where Android's 150% setting sits, and it is the breakpoint settings'
+rows (`ActionRow`) and What We Collect already restack at. Found on the simulator: at the largest
+size on a 375 × 667 iPhone the footer, holding the primary and the link, both wrapping, took nearly
+the whole screen — create account's body shrank to about 60px, and with the keyboard up sign in's
+body had no room at all, the focused field out of sight and the link's last line under the keyboard.
+
+**Dark** — no frame draws it. Every value is a theme role: the ground black `#000000`; the fields
+`surface` ink `#181824`, outlined `#3A3A48`, with the focus outline in beam; cream text, muted
+`#B5B5AB`, and links in beam; the primary in beam, with an ink label and spinner; the banner ink,
+outlined and worded in `#FF453A`; the meter cream on `#3A3A48`; the consent box ink, outlined
+`#3A3A48`, and ticked in beam with an ink check; the mark's ink circle unchanged.
+
+**Never.** A control drawn disabled, or a press ignored without saying why; a tinted, boxed or
+iconed message; a meter coloured by strength; a field reddened by a failed request; a toast for a
+failed request; another sign-in method.
+
+**Known gaps**, each recorded under _Found, not fixed_ in Story 22.9
+(`docs/sprint-artifacts/stories/22-9-authentication.md`), by its number there:
+
+- **Consent never reaches the server from a device's first account** (1): `signUp` reads the stored
+  consent before it sends, and create account stores it only after `signUp` returns.
+- **A mistyped code probably reads as expired** (2), and so unlocks resend: inferred from the
+  code, and one wrong code sent to the dev project during the device check came back expired.
+- **"Please verify your email address first." leads nowhere** (3): nothing takes that user to the
+  code screen.
+- **"An account with this email already exists" is likely unreachable** (4) with confirmations on.
+- **The cross-links push** (5): toggling between sign in and create account grows the stack, and
+  "Back to Sign In" pushes a new sign in rather than returning to the one beneath.
+- **The policy link has no 48px target** (6): it is a nested text inside the sentence.
+- **`TextField`'s `hasError` has no caller** (7): sign in was its only user.
+- **Connected but offline, a submit spins until the system's fetch timeout** (8).
+- **The guest-migration flag ignores the user** (9).
+- **Three design sources still describe the old icon or the hand-built ì** (10): the design README's
+  dated entry, `stitch-prompts-auth.txt` and frames A–F.
+- **The heading breaks mid-word at the largest text size** (11) — "Welcom / e Back" — on the 375pt
+  and 393pt phones, one word wider than the column. It wraps rather than clipping, as the old layout
+  set it.
+- **The code's digits outgrow their field at the largest sizes** (12): eight JetBrains Mono digits
+  at 22px, tracked 8, need about 340px at a font scale of 2.643 and about 440px at 3.571, against a
+  313px input. The old field set the same face, tracking and width.
+- **A change of strength is never announced** (13): the meter is one labelled element with no live
+  region, as the old meter's word was plain text.
+- **"Wrong email? Go back" leaves a stale form beneath** (14): it replaces only the code screen, so
+  create account's back returns to the old address, password and ticked consent, and recovery's
+  puts a new forgot password over the first, which keeps the old address.
+- **The code suites still depend on their fake-timer tests running last** (15), #248 item 13.
+- **After a rejected code, a digit typed after the eighth sends the same code again** (16), on every
+  keystroke, as the old handler did: it keeps the first eight digits and submits them.
+- **`ActionRow`'s comment still calls 1.5 "the first of the accessibility sizes"** (17), the wording
+  corrected here; the file is Story 22.7's.
+- **Send Reset Code's spoken name lacks its visible words** (18): "Send password reset code" over
+  "Send Reset Code", against WCAG 2.5.3 (Label in Name).
+- **Setup and edit can leave a focused field under the footer after a failed save** (19), with the
+  keyboard up, as Story 22.6 left them; neither keeps the rules this story gave auth.
+- **A request that finishes after the user has left still navigates** (20): the handlers navigate
+  after the await without checking the screen is still focused.
+- **The return key moves nowhere and submits nothing** (21), #268 item 17.
+- **Recovery begun from welcome leaves forgot password beneath new password** (22): `dismissTo('/')`
+  finds no Home there, so its back shows and returns to forgot password.
+- **At the largest sizes a hint wider than its field shrinks to fit** (24): new password's "Min 8
+  chars, 1 letter, 1 number" and "Re-enter your new password" read near the regular size while
+  their labels grow. React Native sets no font fitting on a single-line iOS input, so it is UIKit's,
+  and the old screens set the same hints in the same fields.
+- **New password's Italian confirm hint truncates** (25): to "Inserisci di nuovo la nuova pass…" at
+  393px, and sooner at 375px, as main's screen truncates it.
+- **Italian's consent sentence has a space after its elision** (26): "Accetto l' Informativa sulla
+  privacy", the prefix joined to the link with a space, while its spoken name has none.
+
+**Unverified.** Android, for which this host has no phone emulator — and with it the keyboard and the
+focused field's scroll there; VoiceOver and TalkBack; one-time-code autofill from a real e-mail.
+
 ### Input fields
 
 1px outline, 12px radius, label **always visible above** the field (never floating), 48px
@@ -1498,6 +1827,12 @@ still take the root stack's MaterialIcons back chevron (#258 item 11). Help, the
 and What We Collect left it in Story 22.8: each draws `DocumentScreen`'s header, whose back is
 `ScreenHeader`'s `chevron-left`, and help's questions take `chevron-down`, turned to point up while
 open (_Documents_). With the search field's own glyphs, those are the only icons the three draw.
+**The six auth screens left MaterialIcons in Story 22.9** (_Authentication_): the root stack's back
+chevron, which their routes no longer show, for `ScreenHeader`'s `chevron-left`; forgot password's
+own second chevron, which is gone; the password field's eye, now Lucide `eye` and `eye-off` at
+24 / 1.5; the code screen's notices, which lost their `error-outline` and `check-circle` with their
+tints, since no message carries an icon; and the consent box's check, now Lucide `check` at 16 / 2.
+They draw no other icon.
 
 **A glyph is filled only where the fill is its state — RULED 2026-10-09 (Story 22.3).** Two glyphs
 are: the favourited star and the brightness bulb while it is on. Neither fill is decoration — the
