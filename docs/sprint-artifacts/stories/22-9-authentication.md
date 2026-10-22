@@ -2,7 +2,7 @@
 title: 'Story 22.9: Authentication — the six account screens on the Cardì form pattern'
 type: 'feature'
 created: '2026-10-20'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: 'f42f1d6d915b693b9d21b724880818ecc1267620'
