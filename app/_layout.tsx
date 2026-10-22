@@ -231,40 +231,48 @@ const RootLayoutContent = ({ isAuthenticated }: { isAuthenticated: boolean }) =>
             headerShown: false
           }}
         />
+        {/* The auth screens draw the form pattern's own header, its back alone (Story 22.9). Hidden
+            here rather than by the screens, so no native header flashes in the push. */}
         <Stack.Screen
           name="create-account"
           options={{
-            title: t('navigation.createAccount')
+            title: t('navigation.createAccount'),
+            headerShown: false
           }}
         />
         <Stack.Screen
           name="verify-email"
           options={{
-            title: t('navigation.verifyEmail')
+            title: t('navigation.verifyEmail'),
+            headerShown: false
           }}
         />
         <Stack.Screen
           name="sign-in"
           options={{
-            title: t('navigation.signIn')
+            title: t('navigation.signIn'),
+            headerShown: false
           }}
         />
         <Stack.Screen
           name="forgot-password"
           options={{
-            title: t('navigation.forgotPassword')
+            title: t('navigation.forgotPassword'),
+            headerShown: false
           }}
         />
         <Stack.Screen
           name="recovery-otp"
           options={{
-            title: t('navigation.recoveryOtp')
+            title: t('navigation.recoveryOtp'),
+            headerShown: false
           }}
         />
         <Stack.Screen
           name="new-password"
           options={{
-            title: t('navigation.newPassword')
+            title: t('navigation.newPassword'),
+            headerShown: false
           }}
         />
         {/* The document screens draw their own header, `DocumentScreen`'s (Story 22.8). Hidden

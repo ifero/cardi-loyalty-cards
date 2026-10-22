@@ -1,27 +1,31 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import { Keyboard, StyleSheet, type TextInput, View } from 'react-native';
 
 import { isValidPassword } from '@/core/auth/validation';
 
-import { Button } from '@/shared/components/ui';
+import { FormScreen, type FormScreenHandle } from '@/shared/components/ui';
 import { updatePassword } from '@/shared/supabase/auth';
-import { useTheme } from '@/shared/theme';
-import { TYPOGRAPHY } from '@/shared/theme/typography';
+import { SPACING } from '@/shared/theme/spacing';
 import { showToast } from '@/shared/toast';
 
-import {
-  AuthScreenLayout,
-  ErrorBanner,
-  PasswordInput,
-  PasswordStrengthIndicator
-} from './components';
+import { AuthBrandBlock, PasswordInput, PasswordStrengthIndicator } from './components';
 import { getSingleParam } from './routeParams';
+import { useStackBack } from './useStackBack';
+
+type NewPasswordErrors = { password?: string; confirmPassword?: string };
+
+/** The form's fields, as `FormScreen` counts its children. */
+const FIELD = { password: 0, confirmPassword: 1 } as const;
 
 /**
- * Shared "set a new password" screen (Story 6.19; reused by Story 6.20).
+ * Shared "set a new password" screen (Story 6.19; reused by Story 6.20) — auth frame E, on the form
+ * pattern (Story 22.9): the brand block, then NEW PASSWORD with the strength meter and CONFIRM
+ * PASSWORD; Update Password alone in the footer. After recovery begun from Home it is alone on the
+ * stack, so it has no back and no header row. Begun from welcome, `dismissTo('/')` finds no Home, so
+ * the screens beneath stay and its back shows, as the native header's did (Story 22.9, Found, not
+ * fixed 22). Reached from Settings, Settings is beneath it and its back goes there.
  *
  * Assumes an authenticated session is already active — for recovery that is the
  * session returned by `verifyPasswordResetOtp`. It only validates the new
@@ -35,21 +39,23 @@ import { getSingleParam } from './routeParams';
  * and returns to the preserved `/settings` screen via `dismissTo`.
  */
 const NewPasswordScreen = () => {
-  const { theme, spacing } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
+  const onBack = useStackBack();
   const params = useLocalSearchParams<{ origin?: string | string[] }>();
   const origin = getSingleParam(params.origin);
   const isSettingsChangePassword = origin === 'change-password';
 
+  const formRef = useRef<FormScreenHandle>(null);
+  const passwordRef = useRef<TextInput>(null);
+  const confirmPasswordRef = useRef<TextInput>(null);
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  // Errors appear at the first press of Update Password, then follow the typing.
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{
-    password?: string;
-    confirmPassword?: string;
-  }>({});
 
   const mapUpdateError = useCallback(
     (message?: string) => {
@@ -68,8 +74,8 @@ const NewPasswordScreen = () => {
     [t]
   );
 
-  const validate = useCallback(() => {
-    const errors: { password?: string; confirmPassword?: string } = {};
+  const validate = useCallback((): NewPasswordErrors => {
+    const errors: NewPasswordErrors = {};
 
     if (!password) {
       errors.password = t('auth.validation.passwordRequired');
@@ -83,17 +89,32 @@ const NewPasswordScreen = () => {
       errors.confirmPassword = t('auth.validation.passwordsMismatch');
     }
 
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    return errors;
   }, [confirmPassword, password, t]);
 
-  const handleUpdatePassword = useCallback(async () => {
-    setError(null);
+  const fieldErrors = hasAttemptedSubmit ? validate() : {};
 
-    if (!validate()) {
+  const handleUpdatePassword = useCallback(async () => {
+    setHasAttemptedSubmit(true);
+
+    // Nothing is sent while a field is invalid. The first invalid field takes the focus and comes
+    // into view with its message, even when it already had the focus; the keyboard stays.
+    const errors = validate();
+    if (errors.password) {
+      passwordRef.current?.focus();
+      formRef.current?.bringFieldIntoView(FIELD.password);
+      return;
+    }
+    if (errors.confirmPassword) {
+      confirmPasswordRef.current?.focus();
+      formRef.current?.bringFieldIntoView(FIELD.confirmPassword);
       return;
     }
 
+    // A request starts: the keyboard goes, and a failure's banner shows with the fields below it.
+    // The banner stays until the next request starts.
+    Keyboard.dismiss();
+    setError(null);
     setLoading(true);
 
     try {
@@ -122,79 +143,63 @@ const NewPasswordScreen = () => {
   }, [isSettingsChangePassword, mapUpdateError, password, router, t, validate]);
 
   return (
-    <AuthScreenLayout
+    <FormScreen
+      ref={formRef}
       testID="new-password-screen"
-      heading={t('auth.newPassword.heading')}
-      headingTestID="new-password-title"
-      subtitle={t('auth.newPassword.subtitle')}
-      subtitleTestID="new-password-subtitle"
-    >
-      <View style={[styles.formGroup, { gap: spacing.md }]}>
-        <ErrorBanner message={error} testID="server-error" />
-
-        <View>
-          <PasswordInput
-            testID="password-input"
-            label={t('auth.fields.newPassword')}
-            value={password}
-            onChangeText={(value) => {
-              setPassword(value);
-              if (fieldErrors.password) {
-                setFieldErrors((previous) => ({ ...previous, password: undefined }));
-              }
-            }}
-            placeholder={t('auth.placeholders.newPassword')}
-            autoComplete="new-password"
-            accessibilityHint={t('auth.accessibility.passwordRuleHint')}
-            error={fieldErrors.password}
-          />
-          <PasswordStrengthIndicator password={password} />
-        </View>
-
-        <PasswordInput
-          testID="confirm-password-input"
-          label={t('auth.fields.confirmPassword')}
-          value={confirmPassword}
-          onChangeText={(value) => {
-            setConfirmPassword(value);
-            if (fieldErrors.confirmPassword) {
-              setFieldErrors((previous) => ({ ...previous, confirmPassword: undefined }));
-            }
-          }}
-          placeholder={t('auth.placeholders.confirmNewPassword')}
-          autoComplete="new-password"
-          accessibilityHint={t('auth.accessibility.confirmNewPasswordHint')}
-          error={fieldErrors.confirmPassword}
+      onBack={onBack}
+      openingBlock={
+        <AuthBrandBlock
+          heading={t('auth.newPassword.heading')}
+          subtitle={t('auth.newPassword.subtitle')}
+          headingTestID="new-password-title"
+          subtitleTestID="new-password-subtitle"
         />
-
-        <Text
-          testID="password-requirements"
-          style={{
-            ...TYPOGRAPHY.captionMd,
-            color: theme.textSecondary
-          }}
-        >
-          {t('auth.createAccount.passwordRequirements')}
-        </Text>
-
-        <Button
-          testID="update-password-button"
-          variant="primary"
-          size="large"
-          onPress={handleUpdatePassword}
-          loading={loading}
-          accessibilityLabel={t('auth.newPassword.button')}
-        >
-          {t('auth.newPassword.button')}
-        </Button>
+      }
+      requestError={error}
+      bannerTestID="server-error"
+      keepFocusedFieldInView
+      primaryAction={{
+        label: t('auth.newPassword.button'),
+        busyLabel: t('auth.busy.newPassword'),
+        onPress: () => void handleUpdatePassword(),
+        busy: loading,
+        testID: 'update-password-button'
+      }}
+    >
+      <View style={styles.passwordGroup}>
+        <PasswordInput
+          ref={passwordRef}
+          testID="password-input"
+          label={t('auth.fields.newPassword')}
+          value={password}
+          onChangeText={setPassword}
+          placeholder={t('auth.placeholders.newPassword')}
+          autoComplete="new-password"
+          accessibilityHint={t('auth.accessibility.passwordRuleHint')}
+          error={fieldErrors.password}
+        />
+        <PasswordStrengthIndicator password={password} />
       </View>
-    </AuthScreenLayout>
+
+      <PasswordInput
+        ref={confirmPasswordRef}
+        testID="confirm-password-input"
+        label={t('auth.fields.confirmPassword')}
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        placeholder={t('auth.placeholders.confirmNewPassword')}
+        autoComplete="new-password"
+        accessibilityHint={t('auth.accessibility.confirmNewPasswordHint')}
+        error={fieldErrors.confirmPassword}
+      />
+    </FormScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  formGroup: {
-    width: '100%'
+  // The meter sits 8 below the password field, below its message when one shows.
+  passwordGroup: {
+    gap: SPACING.sm
   }
 });
 

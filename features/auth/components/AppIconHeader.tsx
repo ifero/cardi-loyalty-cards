@@ -7,6 +7,7 @@ import { StyleSheet } from 'react-native-unistyles';
 // token imported through it is `undefined` at render time. `AppLaunchScreen`
 // avoids the barrel for the same reason. `useTheme` still comes from the
 // barrel, because a test legitimately wants to stub runtime theme state.
+import { SPACING } from '@/shared/theme/spacing';
 import { IDENTITY_COLORS } from '@/shared/theme/tokens.generated';
 
 import CardiMark from '@/assets/images/cardi-mark-inline.svg';
@@ -30,6 +31,9 @@ const MARK_SIZE = 40;
  * cream), because the design system uses beam as a FILL carrying dark text, never
  * as a stroke on a light surface. So the mark brings its own ground, exactly as
  * the app icon and the launch surface do.
+ *
+ * The heading sits 32 below it, `SPACING.xl`, as the auth frames draw it (Story 22.9; it was 48).
+ * The frames' hand-built ì is a stand-in for this mark.
  */
 export const AppIconHeader = () => (
   <View testID="auth-app-icon-circle" style={styles.circle}>
@@ -39,7 +43,7 @@ export const AppIconHeader = () => (
 
 const styles = StyleSheet.create({
   circle: {
-    marginBottom: 48,
+    marginBottom: SPACING.xl,
     height: 80,
     width: 80,
     alignItems: 'center',

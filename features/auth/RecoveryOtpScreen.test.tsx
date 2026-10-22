@@ -1,45 +1,47 @@
+/**
+ * The recovery code — auth frame D on the form pattern (Story 22.9), the recovery purpose of the one
+ * code screen (Story 6.19).
+ */
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { toast } from 'burnt';
 import React from 'react';
+import { Dimensions, StyleSheet } from 'react-native';
+
+import { FormScreen } from '@/shared/components/ui';
+import { LIGHT_THEME } from '@/shared/theme/colors';
 
 import RecoveryOtpScreen from './RecoveryOtpScreen';
 
-jest.mock('react-native-safe-area-context', () => ({
-  useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 })
-}));
+// The real token values, so every role is checked against what the app paints.
+jest.mock('@/shared/theme', () => {
+  const { LIGHT_THEME: light } = jest.requireActual('@/shared/theme/colors');
+  return {
+    useTheme: () => ({ theme: light, isDark: false })
+  };
+});
 
-jest.mock('@/shared/theme', () => ({
-  useTheme: () => ({
-    theme: {
-      background: '#FFFFFF',
-      backgroundSubtle: '#F5F5F5',
-      surface: '#FFFFFF',
-      surfaceElevated: '#F5F5F5',
-      textPrimary: '#1F1F24',
-      textSecondary: '#66666B',
-      textTertiary: '#8F8F94',
-      primary: '#1A73E8',
-      primaryDark: '#1967D2',
-      border: '#E5E5EB',
-      error: '#FF3B30',
-      warning: '#D97706',
-      success: '#16A34A',
-      link: '#1A73E8'
-    },
-    spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 },
-    layout: { safeAreaTopInsetMin: 16, screenHorizontalMargin: 24 },
-    touchTarget: { min: 44 },
-    isDark: false,
-    colorScheme: 'light'
-  })
-}));
+jest.mock('react-native-safe-area-context', () => {
+  const { View } = jest.requireActual('react-native');
+  return {
+    useSafeAreaInsets: () => ({ top: 59, right: 0, bottom: 34, left: 0 }),
+    SafeAreaView: (props: Record<string, unknown>) => <View {...props} />
+  };
+});
 
 const mockDismissTo = jest.fn();
 const mockReplace = jest.fn();
+const mockBack = jest.fn();
+const mockCanGoBack = jest.fn();
 const mockParams: Record<string, string | undefined> = {};
 let sentAtSeed = 0;
 
 jest.mock('expo-router', () => ({
-  useRouter: () => ({ dismissTo: mockDismissTo, replace: mockReplace }),
+  useRouter: () => ({
+    dismissTo: mockDismissTo,
+    replace: mockReplace,
+    back: mockBack,
+    canGoBack: mockCanGoBack
+  }),
   useLocalSearchParams: () => mockParams
 }));
 
@@ -55,24 +57,49 @@ jest.mock('@/shared/supabase/auth', () => ({
   sendPasswordResetOtp: (...args: unknown[]) => mockSendPasswordResetOtp(...args)
 }));
 
+const INCORRECT = 'Incorrect code. Please try again.';
+
+/**
+ * The text size, as `useWindowDimensions` reports it. React Native's Jest mock reports 2, an
+ * accessibility size, at which the way-out link closes the body (decision 3), so every test here
+ * runs at the device's default of 1, as the other auth suites do.
+ */
+let dimensions: jest.SpyInstance | undefined;
+
 describe('RecoveryOtpScreen', () => {
   beforeEach(() => {
+    dimensions = jest
+      .spyOn(Dimensions, 'get')
+      .mockReturnValue({ width: 393, height: 852, scale: 3, fontScale: 1 });
     jest.clearAllMocks();
+    mockCanGoBack.mockReturnValue(true);
     Object.keys(mockParams).forEach((key) => delete mockParams[key]);
     mockParams.email = 'test@example.com';
     mockParams.sentAt = String(Date.now() + sentAtSeed++);
   });
 
   afterEach(() => {
+    dimensions?.mockRestore();
+    dimensions = undefined;
     jest.useRealTimers();
   });
 
-  it('renders the recovery heading and email subtitle', () => {
+  it('draws frame D with the recovery heading and the sentence naming the address', () => {
     render(<RecoveryOtpScreen />);
 
-    expect(screen.getByText('Reset your password')).toBeTruthy();
+    expect(screen.UNSAFE_getAllByType(FormScreen)).toHaveLength(1);
+    expect(screen.getByTestId('auth-app-icon')).toBeTruthy();
+    expect(screen.getByTestId('verify-email-title').props.children).toBe('Reset your password');
     expect(screen.getByText('We sent an 8-digit code to test@example.com')).toBeTruthy();
     expect(screen.getByTestId('otp-input')).toBeTruthy();
+    expect(screen.getByText('Verification Code')).toBeTruthy();
+    expect(screen.getByTestId('verify-email-screen-back')).toBeTruthy();
+  });
+
+  it('draws no header row with nothing beneath it', () => {
+    mockCanGoBack.mockReturnValue(false);
+    render(<RecoveryOtpScreen />);
+    expect(screen.queryByTestId('verify-email-screen-header')).toBeNull();
   });
 
   it('auto-submits the recovery code and navigates to the new-password screen', async () => {
@@ -119,7 +146,8 @@ describe('RecoveryOtpScreen', () => {
     expect(mockDismissTo).not.toHaveBeenCalled();
   });
 
-  it('shows the incorrect-code error on an invalid OTP and clears it on edit', async () => {
+  // Story 22.9: a wrong code is the banner, reddens no field, and stays until the next request.
+  it('shows the incorrect-code error in the banner, keeping it while the code is edited', async () => {
     mockVerifyPasswordResetOtp.mockResolvedValue({
       success: false,
       error: { code: 'invalid_otp', message: 'bad code' }
@@ -130,14 +158,17 @@ describe('RecoveryOtpScreen', () => {
     fireEvent.changeText(screen.getByTestId('otp-input'), '12345678');
 
     await waitFor(() => {
-      expect(screen.getByText('Incorrect code. Please try again.')).toBeTruthy();
+      expect(screen.getByTestId('verify-email-banner')).toBeTruthy();
+      expect(screen.getByText(INCORRECT)).toBeTruthy();
     });
+    expect(StyleSheet.flatten(screen.getByTestId('otp-input').props.style).borderColor).toBe(
+      LIGHT_THEME.border
+    );
+    expect(screen.queryByTestId('otp-input-error')).toBeNull();
+    expect(toast).not.toHaveBeenCalled();
 
     fireEvent.changeText(screen.getByTestId('otp-input'), '1234567');
-
-    await waitFor(() => {
-      expect(screen.queryByText('Incorrect code. Please try again.')).toBeNull();
-    });
+    expect(screen.getByText(INCORRECT)).toBeTruthy();
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
@@ -156,6 +187,11 @@ describe('RecoveryOtpScreen', () => {
       expect(screen.getByText('This code has expired. Please request a new one.')).toBeTruthy();
       expect(screen.getByText('Resend code')).toBeTruthy();
     });
+    expect(StyleSheet.flatten(screen.getByTestId('otp-input').props.style).borderColor).toBe(
+      LIGHT_THEME.border
+    );
+    expect(screen.queryByTestId('otp-input-error')).toBeNull();
+    expect(toast).not.toHaveBeenCalled();
 
     fireEvent.press(screen.getByTestId('resend-code-button'));
 
@@ -180,6 +216,11 @@ describe('RecoveryOtpScreen', () => {
         screen.getByText("Couldn't verify right now. Check your connection and try again.")
       ).toBeTruthy();
     });
+    expect(StyleSheet.flatten(screen.getByTestId('otp-input').props.style).borderColor).toBe(
+      LIGHT_THEME.border
+    );
+    expect(screen.queryByTestId('otp-input-error')).toBeNull();
+    expect(toast).not.toHaveBeenCalled();
   });
 
   it('redirects to forgot-password when the email param is missing', async () => {

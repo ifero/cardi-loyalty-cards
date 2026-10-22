@@ -345,7 +345,8 @@ export const it = {
       email: 'Email',
       password: 'Password',
       newPassword: 'Nuova password',
-      confirmPassword: 'Conferma password'
+      confirmPassword: 'Conferma password',
+      verificationCode: 'Codice di verifica'
     },
     placeholders: {
       email: 'tu@esempio.com',
@@ -363,7 +364,6 @@ export const it = {
       forgotPasswordEmailHint: 'Inserisci il tuo indirizzo email per ricevere un codice di reset',
       confirmNewPasswordHint: 'Inserisci di nuovo la nuova password per confermare',
       forgotPassword: 'Password dimenticata',
-      back: 'Indietro',
       sendResetCode: 'Invia codice di reimpostazione',
       backToSignIn: "Torna all'accesso",
       verificationCodeLabel: 'Codice di verifica a 8 cifre',
@@ -378,7 +378,8 @@ export const it = {
       passwordRule: 'Minimo 8 caratteri, almeno una lettera e un numero.',
       confirmPasswordRequired: 'Conferma la password.',
       passwordsMismatch: 'Le password non corrispondono.',
-      consentRequired: "Devi accettare l'Informativa sulla privacy."
+      consentRequired: "Devi accettare l'Informativa sulla privacy.",
+      codeIncomplete: 'Inserisci il codice a 8 cifre.'
     },
     signIn: {
       heading: 'Bentornato',
@@ -398,8 +399,6 @@ export const it = {
       button: 'Crea un account',
       alreadyHaveAccount: 'Hai già un account?',
       signInAction: 'Accedi',
-      passwordRequirements:
-        'La password deve contenere almeno 8 caratteri con almeno una lettera e un numero.',
       accountExists: 'Esiste già un account con questa email. Accedi invece di crearne uno nuovo.',
       networkError: 'Impossibile connettersi. Controlla internet e riprova.',
       genericError: 'Si è verificato un errore imprevisto. Riprova.'
@@ -450,7 +449,16 @@ export const it = {
     passwordStrength: {
       weak: 'Debole',
       fair: 'Discreta',
-      strong: 'Forte'
+      strong: 'Forte',
+      accessibilityLabel: 'Sicurezza della password: {{strength}}'
+    },
+    busy: {
+      signIn: 'Accesso in corso...',
+      createAccount: "Creazione dell'account...",
+      forgotPassword: 'Invio del codice...',
+      verifyCode: 'Verifica in corso...',
+      resendCode: 'Invio del codice...',
+      newPassword: 'Aggiornamento della password...'
     },
     passwordInput: {
       show: 'Mostra password',
