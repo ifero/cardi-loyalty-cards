@@ -27,3 +27,12 @@ export const Default: Story = {};
 export const LongTitle: Story = {
   args: { title: 'Informativa sulla privacy e dati raccolti' }
 };
+
+/**
+ * The auth screens' header (Story 22.9): their heading leads the body, so the row holds the back
+ * alone, where the titled header puts it.
+ */
+export const BackOnly: Story = {
+  name: 'Back only',
+  args: { title: undefined }
+};

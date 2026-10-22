@@ -356,6 +356,71 @@ describe('TextField', () => {
     });
   });
 
+  /**
+   * Story 22.9 — the one-field verification code (auth frame D): the digits in `monoCodeLg`,
+   * tracked only once there are digits so eight are countable at a glance, centred; the placeholder
+   * in the body face, centred, untracked.
+   */
+  describe('the code field', () => {
+    const codeField = (value: string) => (
+      <TextField
+        label="Verification Code"
+        value={value}
+        placeholder="8-digit code"
+        onChangeText={jest.fn()}
+        code
+        testID="field"
+      />
+    );
+
+    it('sets its digits in mono-code-lg, tracked 8, centred', () => {
+      render(codeField('2046'));
+      expect(flattenStyle(screen.getByTestId('field').props.style)).toMatchObject({
+        fontFamily: 'JetBrains Mono',
+        fontSize: 22,
+        fontWeight: '500',
+        letterSpacing: 8,
+        textAlign: 'center'
+      });
+    });
+
+    it('keeps its placeholder in the body face, untracked and centred', () => {
+      render(codeField(''));
+      const style = flattenStyle(screen.getByTestId('field').props.style);
+      expect(style).toMatchObject({ fontFamily: 'Inter', fontSize: 17, textAlign: 'center' });
+      expect(style.letterSpacing).toBe(0);
+    });
+
+    // It is a field like the others: the label, the outline, the error idiom and the 48 minimum.
+    it('keeps the field idiom: its label, its 1pt outline and its minimum height', () => {
+      render(codeField(''));
+      expect(screen.getByText('Verification Code')).toBeTruthy();
+      expect(flattenStyle(screen.getByTestId('field').props.style)).toMatchObject({
+        borderWidth: 1,
+        borderColor: LIGHT_THEME.border,
+        backgroundColor: LIGHT_THEME.surface,
+        minHeight: 47
+      });
+    });
+
+    it('centres no other field', () => {
+      render(<TextField label="Name" value="Mario" onChangeText={jest.fn()} testID="field" />);
+      expect(flattenStyle(screen.getByTestId('field').props.style).textAlign).toBeUndefined();
+    });
+  });
+
+  it('selects its value on focus only when asked', () => {
+    const view = render(
+      <TextField label="Name" value="" onChangeText={jest.fn()} testID="field" />
+    );
+    expect(screen.getByTestId('field').props.selectTextOnFocus).toBeUndefined();
+
+    view.rerender(
+      <TextField label="Name" value="" onChangeText={jest.fn()} selectTextOnFocus testID="field" />
+    );
+    expect(screen.getByTestId('field').props.selectTextOnFocus).toBe(true);
+  });
+
   // AC10 / AC4b — the height IS the token, so 16.33's 44 → 48 reaches every input with no literal
   // here to hunt for (`tokens.generated.test.ts` pins the value itself).
   it('takes its minimum height from the touch-target token, at the 12pt control radius', () => {

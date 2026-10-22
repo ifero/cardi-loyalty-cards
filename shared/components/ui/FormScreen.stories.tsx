@@ -1,10 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/react-native-web-vite';
 import Camera from 'lucide-react-native/icons/camera';
-import { Pressable } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 
 import type { CardColor } from '@/core/schemas';
 
 import { useTheme } from '@/shared/theme';
+import { IDENTITY_COLORS } from '@/shared/theme/tokens.generated';
+import { TYPOGRAPHY } from '@/shared/theme/typography';
 
 import { ColorPicker } from './ColorPicker';
 import { FormField, FormScreen } from './FormScreen';
@@ -128,5 +130,137 @@ export const RequestFailed: Story = {
   args: {
     children: customCardFields(filled),
     requestError: 'Failed to add card'
+  }
+};
+
+/**
+ * The auth screens' brand block, for the stories only: the real one is `features/auth`'s, out of
+ * this directory's reach, and draws the Cardì mark in this ink circle. The heading in `headline-md`,
+ * centred and announced as the heading; the subtitle 8 below it in `body-md` muted.
+ */
+const BrandBlockStandIn = ({ heading, subtitle }: { heading: string; subtitle: string }) => {
+  const { theme } = useTheme();
+  return (
+    <View style={{ alignItems: 'center' }}>
+      <View
+        style={{
+          width: 80,
+          height: 80,
+          borderRadius: 40,
+          marginBottom: 32,
+          backgroundColor: IDENTITY_COLORS.ink
+        }}
+      />
+      <Text
+        accessibilityRole="header"
+        style={{ ...TYPOGRAPHY.headlineMd, color: theme.textPrimary, textAlign: 'center' }}
+      >
+        {heading}
+      </Text>
+      <Text
+        style={{
+          ...TYPOGRAPHY.bodyMd,
+          color: theme.textSecondary,
+          textAlign: 'center',
+          marginTop: 8
+        }}
+      >
+        {subtitle}
+      </Text>
+    </View>
+  );
+};
+
+/** The way-out link, for the stories only: `features/auth`'s link row. */
+const WayOutStandIn = () => {
+  const { theme } = useTheme();
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Create one"
+      style={{ minHeight: 48, justifyContent: 'center', alignItems: 'center' }}
+    >
+      <Text style={{ ...TYPOGRAPHY.bodyMd, color: theme.textSecondary, textAlign: 'center' }}>
+        {"Don't have an account? "}
+        <Text style={{ ...TYPOGRAPHY.bodyMdStrong, color: theme.link }}>Create one</Text>
+      </Text>
+    </Pressable>
+  );
+};
+
+const signInFields = [
+  <TextField
+    key="email"
+    label="Email"
+    value=""
+    placeholder="you@example.com"
+    onChangeText={() => {}}
+  />,
+  <TextField
+    key="password"
+    label="Password"
+    value=""
+    placeholder="Your password"
+    secureTextEntry
+    onChangeText={() => {}}
+  />
+];
+
+/**
+ * Story 22.9 — the auth shape (frame A): the header holds the back alone, the brand block leads the
+ * body, and the way out sits under the primary in the footer.
+ */
+export const OpeningBlock: Story = {
+  name: 'Opening block (auth)',
+  args: {
+    title: undefined,
+    openingBlock: (
+      <BrandBlockStandIn
+        heading="Welcome Back"
+        subtitle="Sign in to sync your loyalty cards across devices"
+      />
+    ),
+    primaryAction: { label: 'Sign In', onPress: () => {}, busyLabel: 'Signing in...' },
+    footerLink: <WayOutStandIn />,
+    keepFocusedFieldInView: true,
+    children: signInFields
+  }
+};
+
+/** Frame F: the request failed — the banner below the brand block, 16 above the first field. */
+export const OpeningBlockRequestFailed: Story = {
+  name: 'Opening block, request failed (auth)',
+  args: {
+    ...OpeningBlock.args,
+    requestError: 'Incorrect email or password. Please try again.'
+  }
+};
+
+/** Busy, named by the caller: the spinner keeps the fill, and the button is "Signing in...". */
+export const OpeningBlockBusy: Story = {
+  name: 'Opening block, busy (auth)',
+  args: {
+    ...OpeningBlock.args,
+    primaryAction: { label: 'Sign In', onPress: () => {}, busy: true, busyLabel: 'Signing in...' }
+  }
+};
+
+/**
+ * Nothing beneath it on the stack — new password after recovery (frame E): no back, so no header
+ * row, and the body starts at the top inset.
+ */
+export const NoHeader: Story = {
+  name: 'No header (auth)',
+  args: {
+    title: undefined,
+    onBack: undefined,
+    openingBlock: (
+      <BrandBlockStandIn
+        heading="Set New Password"
+        subtitle="Choose a strong new password for your account."
+      />
+    ),
+    primaryAction: { label: 'Update Password', onPress: () => {} },
+    children: signInFields
   }
 };

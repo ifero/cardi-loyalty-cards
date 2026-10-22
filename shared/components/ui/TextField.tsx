@@ -58,6 +58,14 @@ type TextFieldProps = {
    * someone reads them; the placeholder stays in the body face, as the form frames set it.
    */
   mono?: boolean;
+  /**
+   * The one-field verification code (auth frame D, Story 22.9): the value in `monoCodeLg`, tracked
+   * only once there are digits so that eight are countable at a glance, and the value and the
+   * placeholder centred. The placeholder stays in the body face, as a card number's does.
+   */
+  code?: boolean;
+  /** Selects the whole value when the field takes the focus, so a new code replaces the old. */
+  selectTextOnFocus?: boolean;
 };
 
 type FieldTextProps = {
@@ -123,7 +131,9 @@ export const TextField = ({
   containerStyle,
   maxLength,
   showCharacterCount = false,
-  mono = false
+  mono = false,
+  code = false,
+  selectTextOnFocus
 }: TextFieldProps) => {
   const { theme } = useUnistyles();
   const [focused, setFocused] = useState(false);
@@ -176,10 +186,13 @@ export const TextField = ({
           returnKeyType={returnKeyType}
           onSubmitEditing={onSubmitEditing}
           maxLength={maxLength}
+          selectTextOnFocus={selectTextOnFocus}
           style={[
             styles.input,
             // The value only: an empty mono field shows its placeholder in the body face.
             mono && value.length > 0 ? styles.inputMono : null,
+            code ? styles.inputCentred : null,
+            code && value.length > 0 ? styles.inputCode : null,
             {
               borderColor,
               backgroundColor: disabled ? theme.colors.backgroundSubtle : theme.colors.surface,
@@ -265,6 +278,13 @@ const styles = StyleSheet.create((theme) => ({
   },
   inputMono: {
     ...inputFont(TYPOGRAPHY.monoCode)
+  },
+  inputCentred: {
+    textAlign: 'center'
+  },
+  // The token's tracking comes with its face, so an empty field's placeholder is untracked.
+  inputCode: {
+    ...inputFont(TYPOGRAPHY.monoCodeLg)
   },
   adornment: {
     position: 'absolute',
