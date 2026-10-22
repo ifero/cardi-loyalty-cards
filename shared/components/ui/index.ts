@@ -12,6 +12,7 @@ export { FavouriteBadge, Tile, getTileAppearance } from './Tile';
 export { HeaderIconButton } from './HeaderIconButton';
 export { RequestErrorBanner } from './RequestErrorBanner';
 export { FormField, FormScreen } from './FormScreen';
+export type { FormScreenHandle } from './FormScreen';
 export { OptionList } from './OptionList';
 export type { OptionListOption } from './OptionList';
 export { ScreenHeader } from './ScreenHeader';

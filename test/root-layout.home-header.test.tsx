@@ -271,3 +271,48 @@ describe('RootLayout — the document screens (Story 22.8)', () => {
     expect(mockSharedOptions?.headerStyle?.backgroundColor).toBe(SURFACE);
   });
 });
+
+/**
+ * The auth screens — Story 22.9. Each of the six routes draws `FormScreen`'s own header, its back
+ * alone, so each hides the native one, set on the route for the same reason as settings': no native
+ * header flashes in the push. Each keeps its title.
+ */
+describe('RootLayout — the auth screens (Story 22.9)', () => {
+  beforeEach(async () => {
+    mockScreenOptions.clear();
+    mockSharedOptions = undefined;
+    await act(async () => {
+      await changeAppLanguage('en');
+    });
+  });
+
+  it.each([
+    ['sign-in', 'Sign In'],
+    ['create-account', 'Create Account'],
+    ['forgot-password', 'Forgot Password'],
+    ['verify-email', 'Verify Email'],
+    ['recovery-otp', 'Reset Password'],
+    ['new-password', 'New Password']
+  ])('hides the native header on %s, titled "%s"', async (route, title) => {
+    await renderHome();
+    expect(mockScreenOptions.get(route)).toEqual({ title, headerShown: false });
+  });
+
+  it('titles them in the language the app speaks', async () => {
+    await act(async () => {
+      await changeAppLanguage('it');
+    });
+    await renderHome();
+    expect(mockScreenOptions.get('sign-in')?.title).toBe('Accedi');
+    expect(mockScreenOptions.get('new-password')?.title).toBe('Nuova password');
+  });
+
+  // The routes' options only: the root stack's shared header, and its back, stay as they were.
+  it('leaves the shared screen options alone', async () => {
+    await renderHome();
+    expect(mockSharedOptions?.headerShown).toBeUndefined();
+    expect(mockSharedOptions?.headerLeft).toEqual(expect.any(Function));
+    expect(mockSharedOptions?.headerStyle?.backgroundColor).toBe(SURFACE);
+    expect(mockScreenOptions.get('card/[id]')).toEqual({ title: 'Card Details' });
+  });
+});

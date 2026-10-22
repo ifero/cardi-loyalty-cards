@@ -343,7 +343,8 @@ export const en = {
       email: 'Email',
       password: 'Password',
       newPassword: 'New Password',
-      confirmPassword: 'Confirm Password'
+      confirmPassword: 'Confirm Password',
+      verificationCode: 'Verification Code'
     },
     placeholders: {
       email: 'you@example.com',
@@ -361,7 +362,6 @@ export const en = {
       forgotPasswordEmailHint: 'Enter your email address to receive a reset code',
       confirmNewPasswordHint: 'Re-enter your new password to confirm',
       forgotPassword: 'Forgot password',
-      back: 'Back',
       sendResetCode: 'Send password reset code',
       backToSignIn: 'Back to Sign In',
       verificationCodeLabel: '8-digit verification code',
@@ -376,7 +376,8 @@ export const en = {
       passwordRule: 'Min 8 characters, at least one letter and one number.',
       confirmPasswordRequired: 'Please confirm your password.',
       passwordsMismatch: 'Passwords do not match.',
-      consentRequired: 'You must agree to the Privacy Policy.'
+      consentRequired: 'You must agree to the Privacy Policy.',
+      codeIncomplete: 'Enter the 8-digit code.'
     },
     signIn: {
       heading: 'Welcome Back',
@@ -396,8 +397,6 @@ export const en = {
       button: 'Create Account',
       alreadyHaveAccount: 'Already have an account?',
       signInAction: 'Sign in',
-      passwordRequirements:
-        'Password must be at least 8 characters with at least one letter and one number.',
       accountExists: 'An account with this email already exists. Sign in instead.',
       networkError: 'Unable to connect. Check your internet and try again.',
       genericError: 'An unexpected error occurred. Please try again.'
@@ -448,7 +447,16 @@ export const en = {
     passwordStrength: {
       weak: 'Weak',
       fair: 'Fair',
-      strong: 'Strong'
+      strong: 'Strong',
+      accessibilityLabel: 'Password strength: {{strength}}'
+    },
+    busy: {
+      signIn: 'Signing in...',
+      createAccount: 'Creating account...',
+      forgotPassword: 'Sending code...',
+      verifyCode: 'Verifying...',
+      resendCode: 'Sending code...',
+      newPassword: 'Updating password...'
     },
     passwordInput: {
       show: 'Show password',

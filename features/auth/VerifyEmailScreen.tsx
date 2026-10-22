@@ -1,13 +1,20 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text, TextInput, View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import {
+  AccessibilityInfo,
+  Keyboard,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  type TextInput,
+  View
+} from 'react-native';
 
 import { isValidEmail } from '@/core/auth/validation';
 
-import { Button } from '@/shared/components/ui';
+import { FormScreen, type FormScreenHandle, TextField } from '@/shared/components/ui';
 import {
   type AuthResult,
   type AuthSession,
@@ -17,15 +24,24 @@ import {
   verifyPasswordResetOtp
 } from '@/shared/supabase/auth';
 import { useTheme } from '@/shared/theme';
-import { TYPOGRAPHY, inputFont } from '@/shared/theme/typography';
+import { SPACING, TOUCH_TARGET } from '@/shared/theme/spacing';
+import { TYPOGRAPHY } from '@/shared/theme/typography';
 
-import { AuthLink, AuthScreenLayout, ErrorBanner } from './components';
+import { AuthBrandBlock, AuthLink } from './components';
 import { getSingleParam } from './routeParams';
+import { useStackBack } from './useStackBack';
 
 const OTP_LENGTH = 8;
 const OTP_INPUT_MAX_LENGTH = OTP_LENGTH * 2;
+const OTP_PATTERN = new RegExp(`^\\d{${OTP_LENGTH}}$`);
 const RESEND_COOLDOWN_MS = 60_000;
 const resendCooldownExpiryByFlow = new Map<string, number>();
+
+/** The form's one field — the code, its resend row and the resent line — as `FormScreen` counts it. */
+const CODE_FIELD = 0;
+
+/** Tap feedback — the design system's 0.98× scale, as the system's text rows take it (§ _Elevation_). */
+const PRESSED_SCALE = 0.98;
 
 /**
  * The two OTP flows this screen serves (Story 6.19). `signup` verifies a new
@@ -170,53 +186,99 @@ const resolveInitialCooldownExpiry = (sentAt: string | undefined) => {
 const resolvePersistedCooldownExpiry = (cooldownFlowKey: string, sentAt: string | undefined) =>
   resendCooldownExpiryByFlow.get(cooldownFlowKey) ?? resolveInitialCooldownExpiry(sentAt);
 
-type StatusNoticeProps = {
-  message: string;
-  tone: 'error' | 'success';
-  boxed?: boolean;
+type ResendRowProps = {
+  label: string;
+  /** The cooldown has run out and no request is running: the row is a link. */
+  available: boolean;
+  /** A request is running — the resend's own, or the code's. */
+  busy: boolean;
+  onPress: () => void;
 };
 
-const StatusNotice = ({ message, tone, boxed = false }: StatusNoticeProps) => {
-  const { theme, spacing } = useTheme();
-  const color = tone === 'error' ? theme.error : theme.success;
-  const iconName = tone === 'error' ? 'error-outline' : 'check-circle';
+/**
+ * The resend row (frame D), 16 below the code field and at least 48 tall, centred. While it counts
+ * down it is text — "Resend in 0:42" in `body-md` muted — and cannot be pressed; the countdown is
+ * what says why. While a request runs after the cooldown it reads "Resend code" in the same muted
+ * text, disabled (review pass 2, row 34). Once available it is the link, "Resend code" in `body-md`
+ * semibold `link`, and a press scales it to 0.98. Its name is the words it shows.
+ */
+const ResendRow = ({ label, available, busy, onPress }: ResendRowProps) => {
+  const { theme } = useTheme();
+  const [isPressed, setIsPressed] = useState(false);
 
   return (
-    <View
-      style={[
-        boxed ? styles.noticeBoxed : styles.noticePlain,
-        {
-          justifyContent: boxed ? 'flex-start' : 'center',
-          backgroundColor: boxed ? `${color}14` : 'transparent',
-          paddingHorizontal: boxed ? spacing.md : 0,
-          paddingVertical: boxed ? spacing.sm : 0,
-          marginTop: spacing.sm,
-          minHeight: boxed ? undefined : spacing.lg
-        }
-      ]}
+    <Pressable
+      testID="resend-code-button"
+      onPress={onPress}
+      onPressIn={() => setIsPressed(true)}
+      onPressOut={() => setIsPressed(false)}
+      disabled={!available}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !available, busy }}
+      style={[styles.resendRow, isPressed && available ? styles.pressed : null]}
     >
-      <MaterialIcons name={iconName} size={18} color={color} />
       <Text
-        style={{
-          // Plain, it annotates the code field above it (chrome); boxed, it is a banner
-          // sentence (body) — Story 21.2's function rule, applied per mode.
-          ...(boxed ? TYPOGRAPHY.bodyMd : TYPOGRAPHY.captionMd),
-          color,
-          marginLeft: spacing.sm,
-          flexShrink: 1,
-          textAlign: boxed ? 'left' : 'center'
-        }}
+        style={[
+          available ? styles.resendLink : styles.resendCountdown,
+          { color: available ? theme.link : theme.textSecondary }
+        ]}
       >
-        {message}
+        {label}
       </Text>
-    </View>
+    </Pressable>
   );
 };
 
+/**
+ * A resent code (frame D): one plain line, 8 below the resend row — `body-md` muted, centred, with
+ * no box, icon or tint — announced politely: through the live region on Android and, queued, on
+ * iOS, which has none.
+ */
+const ResentNotice = ({ message }: { message: string }) => {
+  const { theme } = useTheme();
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AccessibilityInfo.announceForAccessibilityWithOptions?.(message, { queue: true });
+    }
+  }, [message]);
+
+  return (
+    <Text
+      testID="resend-success"
+      accessibilityLiveRegion="polite"
+      style={[styles.resent, { color: theme.textSecondary }]}
+    >
+      {message}
+    </Text>
+  );
+};
+
+/**
+ * The code — auth frame D, on the form pattern (Story 22.9), for both routes: `/verify-email` and,
+ * through `RecoveryOtpScreen`, `/recovery-otp`. The brand block, its subtitle naming the address in
+ * semibold ink; the one code field, labelled and focused; the resend row beneath it; Confirm in
+ * the footer with "Wrong email? Go back" under it.
+ *
+ * - **The code.** 8 digits, digits only; a formatted paste of up to 16 characters is sanitised. The
+ *   8th digit submits at once, and a request already running refuses a second. While either
+ *   request runs — a code check or a resend — the field takes no input but does not dim.
+ * - **Confirm** is always enabled. Pressed with fewer than 8 digits it says so under the field,
+ *   which takes the focus and comes into view with the message. It is busy while either request
+ *   runs, named for it: "Verifying..." or "Sending code..." (review pass 1).
+ * - **A request** — the 8th digit, Confirm or a resend — dismisses the keyboard as it starts.
+ * - **A failed request** — a wrong or expired code, the check or a resend failing — is the banner,
+ *   and reddens nothing. It stays until the next request starts; an expired code also unlocks
+ *   resend.
+ * - **Resend** keeps its 60 s cooldown, whose absolute expiry survives a remount. A failed resend
+ *   leaves it; a successful one clears the field, focuses it, restarts it and shows "Code resent…"
+ *   as one plain line, which typing clears. The banner and that line never show together.
+ */
 const VerifyEmailScreen = ({ purpose = 'signup' }: { purpose?: VerifyOtpPurpose }) => {
-  const { theme, spacing, touchTarget } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
+  const onBack = useStackBack();
   const params = useLocalSearchParams<{
     email?: string | string[];
     sentAt?: string | string[];
@@ -234,15 +296,17 @@ const VerifyEmailScreen = ({ purpose = 'signup' }: { purpose?: VerifyOtpPurpose 
     [purpose, email, sentAt]
   );
 
+  const formRef = useRef<FormScreenHandle>(null);
   const inputRef = useRef<TextInput | null>(null);
   const isVerifyingRef = useRef(false);
 
   const [otpValue, setOtpValue] = useState('');
-  const [isOtpFocused, setIsOtpFocused] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [otpErrorMessage, setOtpErrorMessage] = useState<string | null>(null);
-  const [bannerErrorMessage, setBannerErrorMessage] = useState<string | null>(null);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  // "Enter the 8-digit code." appears at a press of Confirm, then follows the typing.
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
+  const [bannerMessage, setBannerMessage] = useState<string | null>(null);
+  const [resentMessage, setResentMessage] = useState<string | null>(null);
   const [cooldownExpiresAt, setCooldownExpiresAt] = useState(
     resolvePersistedCooldownExpiry(cooldownFlowKey, sentAt)
   );
@@ -290,235 +354,166 @@ const VerifyEmailScreen = ({ purpose = 'signup' }: { purpose?: VerifyOtpPurpose 
     () => Math.max(0, Math.ceil((cooldownExpiresAt - now) / 1000)),
     [cooldownExpiresAt, now]
   );
-  const isOtpComplete = new RegExp(`^\\d{${OTP_LENGTH}}$`).test(otpValue);
-  const resendDisabled = loading || remainingSeconds > 0;
-  const otpFieldBorderColor = otpErrorMessage
-    ? theme.error
-    : isOtpFocused
-      ? theme.primary
-      : otpValue.length > 0
-        ? theme.textSecondary
-        : theme.border;
-  const otpFieldBackgroundColor = loading
-    ? theme.backgroundSubtle
-    : otpErrorMessage
-      ? `${theme.error}14`
-      : isOtpFocused
-        ? `${theme.primary}14`
-        : theme.surfaceElevated;
-  const otpFieldBorderWidth = otpErrorMessage || isOtpFocused ? 2 : 1.5;
-
-  const clearFeedback = useCallback(() => {
-    setOtpErrorMessage(null);
-    setBannerErrorMessage(null);
-    setSuccessMessage(null);
-  }, []);
-
-  const focusInput = useCallback(() => {
-    inputRef.current?.focus();
-    setIsOtpFocused(true);
-  }, []);
+  const isOtpComplete = OTP_PATTERN.test(otpValue);
+  const isRequestRunning = isVerifying || isResending;
+  const isResendAvailable = !isRequestRunning && remainingSeconds === 0;
+  const codeError =
+    hasAttemptedSubmit && !isOtpComplete ? t('auth.validation.codeIncomplete') : undefined;
 
   const handleVerify = useCallback(
     async (code: string) => {
       if (
         !isEmailParamValid ||
-        loading ||
+        isVerifying ||
+        isResending ||
         isVerifyingRef.current ||
-        !new RegExp(`^\\d{${OTP_LENGTH}}$`).test(code)
+        !OTP_PATTERN.test(code)
       ) {
         return;
       }
 
-      clearFeedback();
+      // A request starts: the keyboard goes, and the banner and the resent line from the last one.
+      // So does Confirm's short-code check, as a successful resend clears it: a code typed again
+      // after this one is short until its eighth digit, which is no reason to say so (review pass 2).
+      Keyboard.dismiss();
+      setBannerMessage(null);
+      setResentMessage(null);
+      setHasAttemptedSubmit(false);
       isVerifyingRef.current = true;
-      setLoading(true);
+      setIsVerifying(true);
 
       try {
         const result = await config.verify(email, code);
 
         if (!result.success) {
           if (result.error.code === 'invalid_otp') {
-            setOtpErrorMessage(t(config.copy.incorrectCode));
+            setBannerMessage(t(config.copy.incorrectCode));
             return;
           }
 
           if (result.error.code === 'expired_otp') {
             const nextCooldownExpiresAt = Date.now();
-            setOtpErrorMessage(t(config.copy.expiredCode));
+            setBannerMessage(t(config.copy.expiredCode));
             resendCooldownExpiryByFlow.set(cooldownFlowKey, nextCooldownExpiresAt);
             setCooldownExpiresAt(nextCooldownExpiresAt);
             setNow(nextCooldownExpiresAt);
             return;
           }
 
-          setBannerErrorMessage(t(config.copy.verifyUnavailable));
+          setBannerMessage(t(config.copy.verifyUnavailable));
           return;
         }
 
         config.onVerified(router, { origin });
       } catch {
-        setBannerErrorMessage(t(config.copy.verifyUnavailable));
+        setBannerMessage(t(config.copy.verifyUnavailable));
       } finally {
         isVerifyingRef.current = false;
-        setLoading(false);
+        setIsVerifying(false);
       }
     },
-    [clearFeedback, config, cooldownFlowKey, email, isEmailParamValid, loading, origin, router, t]
+    [config, cooldownFlowKey, email, isEmailParamValid, isResending, isVerifying, origin, router, t]
   );
 
   const handleOtpChange = useCallback(
     (value: string) => {
-      if (loading) {
+      // While a request runs the field takes no input; it does not dim.
+      if (isVerifying || isResending) {
         return;
       }
 
       const sanitized = value.replace(/\D/g, '').slice(0, OTP_LENGTH);
-      clearFeedback();
-
+      // Typing clears a resent line, as it always did; the banner waits for the next request.
+      setResentMessage(null);
       setOtpValue(sanitized);
 
       if (sanitized.length === OTP_LENGTH) {
         void handleVerify(sanitized);
       }
     },
-    [clearFeedback, handleVerify, loading]
+    [handleVerify, isResending, isVerifying]
   );
 
-  const handleResend = useCallback(async () => {
-    if (resendDisabled || !isEmailParamValid) {
+  const handleConfirm = useCallback(() => {
+    setHasAttemptedSubmit(true);
+
+    // Nothing is sent before the 8th digit: the field says so, takes the focus and comes into view
+    // with the message, even when it already had the focus; the keyboard stays.
+    if (!isOtpComplete) {
+      inputRef.current?.focus();
+      formRef.current?.bringFieldIntoView(CODE_FIELD);
       return;
     }
 
-    clearFeedback();
-    setLoading(true);
+    void handleVerify(otpValue);
+  }, [handleVerify, isOtpComplete, otpValue]);
+
+  const handleResend = useCallback(async () => {
+    if (!isResendAvailable || !isEmailParamValid) {
+      return;
+    }
+
+    // A request starts: the keyboard goes, and the banner and the resent line from the last one.
+    Keyboard.dismiss();
+    setBannerMessage(null);
+    setResentMessage(null);
+    setIsResending(true);
 
     try {
       const result = await config.resend(email);
 
       if (!result.success) {
-        setBannerErrorMessage(t(config.copy.resendFailure));
+        setBannerMessage(t(config.copy.resendFailure));
         return;
       }
 
       const nextCooldownExpiresAt = Date.now() + RESEND_COOLDOWN_MS;
       resendCooldownExpiryByFlow.set(cooldownFlowKey, nextCooldownExpiresAt);
       setOtpValue('');
-      setSuccessMessage(t(config.copy.resendSuccess));
+      setHasAttemptedSubmit(false);
+      setResentMessage(t(config.copy.resendSuccess));
       setCooldownExpiresAt(nextCooldownExpiresAt);
       setNow(Date.now());
-      focusInput();
+      inputRef.current?.focus();
     } catch {
-      setBannerErrorMessage(t(config.copy.resendFailure));
+      setBannerMessage(t(config.copy.resendFailure));
     } finally {
-      setLoading(false);
+      setIsResending(false);
     }
-  }, [
-    clearFeedback,
-    config,
-    cooldownFlowKey,
-    email,
-    focusInput,
-    isEmailParamValid,
-    resendDisabled,
-    t
-  ]);
+  }, [config, cooldownFlowKey, email, isEmailParamValid, isResendAvailable, t]);
 
   if (!isEmailParamValid) {
     return null;
   }
 
   return (
-    <AuthScreenLayout
+    <FormScreen
+      ref={formRef}
       testID="verify-email-screen"
-      heading={t(config.copy.heading)}
-      subtitle={t(config.copy.subtitle, { email })}
-      headingTestID="verify-email-title"
-      subtitleTestID="verify-email-subtitle"
-    >
-      <View style={[styles.formGroup, { gap: spacing.md }]}>
-        <TextInput
-          ref={inputRef}
-          testID="otp-input"
-          value={otpValue}
-          onChangeText={handleOtpChange}
-          onFocus={() => setIsOtpFocused(true)}
-          onBlur={() => setIsOtpFocused(false)}
-          editable={!loading}
-          keyboardType="number-pad"
-          textContentType="oneTimeCode"
-          autoComplete="one-time-code"
-          maxLength={OTP_INPUT_MAX_LENGTH}
-          selectTextOnFocus
-          placeholder={t('auth.placeholders.verificationCode')}
-          placeholderTextColor={theme.textTertiary}
-          accessibilityLabel={t('auth.accessibility.verificationCodeLabel')}
-          accessibilityHint={t('auth.accessibility.verificationCodeHint')}
-          accessibilityState={{ disabled: loading }}
-          style={{
-            minHeight: 52,
-            borderRadius: 12,
-            borderWidth: otpFieldBorderWidth,
-            borderColor: otpFieldBorderColor,
-            backgroundColor: otpFieldBackgroundColor,
-            ...inputFont(TYPOGRAPHY.monoCodeLg),
-            // Tracked only once there are digits, so the placeholder still reads as a phrase.
-            letterSpacing: otpValue ? TYPOGRAPHY.monoCodeLg.letterSpacing : 0,
-            color: theme.textPrimary,
-            textAlign: 'center',
-            paddingHorizontal: spacing.md,
-            paddingVertical: 0
-          }}
+      onBack={onBack}
+      openingBlock={
+        <AuthBrandBlock
+          heading={t(config.copy.heading)}
+          subtitle={t(config.copy.subtitle, { email })}
+          emphasis={email}
+          headingTestID="verify-email-title"
+          subtitleTestID="verify-email-subtitle"
         />
-
-        {otpErrorMessage ? <StatusNotice message={otpErrorMessage} tone="error" /> : null}
-
-        <Button
-          testID="confirm-code-button"
-          variant="primary"
-          size="large"
-          onPress={() => void handleVerify(otpValue)}
-          loading={loading}
-          disabled={!isOtpComplete}
-          accessibilityLabel={t('auth.accessibility.confirmCode')}
-        >
-          {t(config.copy.confirm)}
-        </Button>
-
-        <Pressable
-          testID="resend-code-button"
-          onPress={() => void handleResend()}
-          disabled={resendDisabled}
-          accessibilityRole="button"
-          accessibilityLabel={
-            resendDisabled
-              ? t(config.copy.resendIn, { time: formatCooldown(remainingSeconds) })
-              : t(config.copy.resendCode)
-          }
-          accessibilityState={{ disabled: resendDisabled, busy: loading }}
-          style={{
-            minHeight: touchTarget.min,
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}
-        >
-          <Text
-            style={{
-              ...(resendDisabled ? TYPOGRAPHY.bodyMd : TYPOGRAPHY.bodyMdStrong),
-              color: resendDisabled ? theme.textSecondary : theme.link
-            }}
-          >
-            {resendDisabled
-              ? t(config.copy.resendIn, { time: formatCooldown(remainingSeconds) })
-              : t(config.copy.resendCode)}
-          </Text>
-        </Pressable>
-
-        {successMessage ? <StatusNotice message={successMessage} tone="success" boxed /> : null}
-        {bannerErrorMessage ? (
-          <ErrorBanner message={bannerErrorMessage} testID="verify-email-banner" />
-        ) : null}
-
+      }
+      requestError={bannerMessage}
+      bannerTestID="verify-email-banner"
+      keepFocusedFieldInView
+      primaryAction={{
+        label: t(config.copy.confirm),
+        accessibilityLabel: t('auth.accessibility.confirmCode'),
+        // Busy while either request runs, named for it, so a press or a keystroke the screen
+        // refuses is never refused while it shows nothing at work (review pass 1).
+        busyLabel: isResending ? t('auth.busy.resendCode') : t('auth.busy.verifyCode'),
+        onPress: handleConfirm,
+        busy: isRequestRunning,
+        testID: 'confirm-code-button'
+      }}
+      footerLink={
         <AuthLink
           testID="wrong-email-link"
           prefixText={t(config.copy.wrongEmail)}
@@ -526,25 +521,71 @@ const VerifyEmailScreen = ({ purpose = 'signup' }: { purpose?: VerifyOtpPurpose 
           onPress={() => config.onWrongEmail(router, { email, origin })}
           accessibilityLabel={t('auth.accessibility.wrongEmailGoBack')}
         />
+      }
+    >
+      <View>
+        <TextField
+          ref={inputRef}
+          testID="otp-input"
+          label={t('auth.fields.verificationCode')}
+          value={otpValue}
+          onChangeText={handleOtpChange}
+          keyboardType="number-pad"
+          autoComplete="one-time-code"
+          maxLength={OTP_INPUT_MAX_LENGTH}
+          selectTextOnFocus
+          code
+          placeholder={t('auth.placeholders.verificationCode')}
+          accessibilityLabel={t('auth.accessibility.verificationCodeLabel')}
+          accessibilityHint={t('auth.accessibility.verificationCodeHint')}
+          error={codeError}
+        />
+
+        <View style={styles.resend}>
+          <ResendRow
+            label={
+              remainingSeconds > 0
+                ? t(config.copy.resendIn, { time: formatCooldown(remainingSeconds) })
+                : t(config.copy.resendCode)
+            }
+            available={isResendAvailable}
+            busy={isRequestRunning}
+            onPress={() => void handleResend()}
+          />
+        </View>
+
+        {resentMessage ? <ResentNotice message={resentMessage} /> : null}
       </View>
-    </AuthScreenLayout>
+    </FormScreen>
   );
 };
 
 const styles = StyleSheet.create({
-  formGroup: {
-    width: '100%'
+  // 16 below the code field, below its message when one shows.
+  resend: {
+    marginTop: SPACING.md
   },
-  noticeBoxed: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    borderRadius: 12
-  },
-  noticePlain: {
-    width: '100%',
-    flexDirection: 'row',
+  resendRow: {
+    minHeight: TOUCH_TARGET.min,
+    justifyContent: 'center',
     alignItems: 'center'
+  },
+  pressed: {
+    transform: [{ scale: PRESSED_SCALE }]
+  },
+  resendCountdown: {
+    ...TYPOGRAPHY.bodyMd,
+    textAlign: 'center'
+  },
+  resendLink: {
+    ...TYPOGRAPHY.bodyMdStrong,
+    textAlign: 'center'
+  },
+  // 8 below the resend row.
+  resent: {
+    ...TYPOGRAPHY.bodyMd,
+    textAlign: 'center',
+    marginTop: SPACING.sm
   }
 });
 

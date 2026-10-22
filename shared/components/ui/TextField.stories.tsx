@@ -82,3 +82,19 @@ export const WithTrailingControl: Story = {
 export const WithCharacterCount: Story = {
   args: { label: 'Card name', value: 'Esselunga', maxLength: 50, showCharacterCount: true }
 };
+
+/** The verification code (auth frame D): digits in mono, tracked and centred (Story 22.9). */
+export const VerificationCode: Story = {
+  args: {
+    label: 'Verification Code',
+    value: '20461532',
+    code: true,
+    keyboardType: 'number-pad',
+    maxLength: 16
+  }
+};
+
+/** An empty code keeps its placeholder in the body face, centred and untracked. */
+export const VerificationCodeEmpty: Story = {
+  args: { label: 'Verification Code', placeholder: '8-digit code', code: true }
+};

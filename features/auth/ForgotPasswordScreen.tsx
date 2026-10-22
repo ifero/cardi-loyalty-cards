@@ -1,27 +1,37 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import { Keyboard, type TextInput } from 'react-native';
 
 import { isValidEmail } from '@/core/auth/validation';
 
-import { Button, TextField } from '@/shared/components/ui';
+import { FormScreen, type FormScreenHandle, TextField } from '@/shared/components/ui';
 import { sendPasswordResetOtp } from '@/shared/supabase/auth';
-import { useTheme } from '@/shared/theme';
 
-import { AuthLink, AuthScreenLayout, ErrorBanner } from './components';
+import { AuthBrandBlock, AuthLink } from './components';
+import { useStackBack } from './useStackBack';
 
+/** The form's one field, as `FormScreen` counts its children. */
+const EMAIL_FIELD = 0;
+
+/**
+ * Forgot password — auth frame C, the shortest form, on the form pattern (Story 22.9): the brand
+ * block — the mark included, where it used to hide it — then EMAIL; Send Reset Code is the
+ * footer's, with "Back to Sign In" under it. One back, the header's.
+ */
 const ForgotPasswordScreen = () => {
-  const { theme, spacing, touchTarget } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
+  const onBack = useStackBack();
+
+  const formRef = useRef<FormScreenHandle>(null);
+  const emailRef = useRef<TextInput>(null);
 
   const [email, setEmail] = useState('');
+  // The error appears at the first press of Send Reset Code, then follows the typing.
+  const [hasAttemptedSubmit, setHasAttemptedSubmit] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<{ email?: string }>({});
 
   const mapForgotPasswordErrorMessage = useCallback(
     (message?: string) => {
@@ -40,26 +50,33 @@ const ForgotPasswordScreen = () => {
     [t]
   );
 
-  const validate = useCallback(() => {
-    const errors: { email?: string } = {};
-
+  const validateEmail = useCallback((): string | undefined => {
     if (!email.trim()) {
-      errors.email = t('auth.validation.emailRequired');
-    } else if (!isValidEmail(email)) {
-      errors.email = t('auth.validation.emailInvalid');
+      return t('auth.validation.emailRequired');
     }
-
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    if (!isValidEmail(email)) {
+      return t('auth.validation.emailInvalid');
+    }
+    return undefined;
   }, [email, t]);
 
-  const handleSendReset = useCallback(async () => {
-    setError(null);
+  const emailError = hasAttemptedSubmit ? validateEmail() : undefined;
 
-    if (!validate()) {
+  const handleSendReset = useCallback(async () => {
+    setHasAttemptedSubmit(true);
+
+    // Nothing is sent while the email is invalid. The field takes the focus and comes into view
+    // with its message, even when it already had the focus; the keyboard stays.
+    if (validateEmail()) {
+      emailRef.current?.focus();
+      formRef.current?.bringFieldIntoView(EMAIL_FIELD);
       return;
     }
 
+    // A request starts: the keyboard goes, and a failure's banner shows with the field below it.
+    // The banner stays until the next request starts.
+    Keyboard.dismiss();
+    setError(null);
     setLoading(true);
 
     try {
@@ -87,84 +104,58 @@ const ForgotPasswordScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [email, mapForgotPasswordErrorMessage, router, t, validate]);
+  }, [email, mapForgotPasswordErrorMessage, router, t, validateEmail]);
 
   return (
-    <AuthScreenLayout
+    <FormScreen
+      ref={formRef}
       testID="forgot-password-screen"
-      heading={t('auth.forgotPassword.heading')}
-      headingTestID="forgot-password-title"
-      subtitle={t('auth.forgotPassword.subtitle')}
-      subtitleTestID="forgot-password-subtitle"
-      centerContent
-      showAppIcon={false}
-      headerContent={
-        <Pressable
-          testID="forgot-password-back-chevron"
-          accessibilityRole="button"
-          accessibilityLabel={t('auth.accessibility.back')}
-          onPress={() => router.back()}
-          style={{
-            minHeight: touchTarget.min,
-            minWidth: touchTarget.min,
-            justifyContent: 'center',
-            alignItems: 'flex-start',
-            marginBottom: spacing.md
-          }}
-        >
-          <MaterialIcons name="chevron-left" size={28} color={theme.textPrimary} />
-        </Pressable>
-      }
-    >
-      <View style={[styles.formGroup, { gap: spacing.md }]}>
-        <ErrorBanner message={error} testID="server-error" />
-
-        <TextField
-          testID="email-input"
-          label={t('auth.fields.email')}
-          value={email}
-          onChangeText={(value) => {
-            setEmail(value);
-            if (fieldErrors.email) {
-              setFieldErrors({});
-            }
-          }}
-          placeholder={t('auth.placeholders.email')}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          autoComplete="email"
-          autoCorrect={false}
-          accessibilityLabel={t('auth.fields.email')}
-          accessibilityHint={t('auth.accessibility.forgotPasswordEmailHint')}
-          error={fieldErrors.email}
+      onBack={onBack}
+      openingBlock={
+        <AuthBrandBlock
+          heading={t('auth.forgotPassword.heading')}
+          subtitle={t('auth.forgotPassword.subtitle')}
+          headingTestID="forgot-password-title"
+          subtitleTestID="forgot-password-subtitle"
         />
-
-        <Button
-          testID="send-reset-button"
-          variant="primary"
-          size="large"
-          onPress={handleSendReset}
-          loading={loading}
-          accessibilityLabel={t('auth.accessibility.sendResetCode')}
-        >
-          {t('auth.forgotPassword.sendResetCode')}
-        </Button>
-
+      }
+      requestError={error}
+      bannerTestID="server-error"
+      keepFocusedFieldInView
+      primaryAction={{
+        label: t('auth.forgotPassword.sendResetCode'),
+        accessibilityLabel: t('auth.accessibility.sendResetCode'),
+        busyLabel: t('auth.busy.forgotPassword'),
+        onPress: () => void handleSendReset(),
+        busy: loading,
+        testID: 'send-reset-button'
+      }}
+      footerLink={
         <AuthLink
           testID="back-to-sign-in-link"
           actionText={t('auth.forgotPassword.backToSignIn')}
           onPress={() => router.push('/sign-in')}
           accessibilityLabel={t('auth.accessibility.backToSignIn')}
         />
-      </View>
-    </AuthScreenLayout>
+      }
+    >
+      <TextField
+        ref={emailRef}
+        testID="email-input"
+        label={t('auth.fields.email')}
+        value={email}
+        onChangeText={setEmail}
+        placeholder={t('auth.placeholders.email')}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        autoComplete="email"
+        autoCorrect={false}
+        accessibilityLabel={t('auth.fields.email')}
+        accessibilityHint={t('auth.accessibility.forgotPasswordEmailHint')}
+        error={emailError}
+      />
+    </FormScreen>
   );
 };
-
-const styles = StyleSheet.create({
-  formGroup: {
-    width: '100%'
-  }
-});
 
 export default ForgotPasswordScreen;

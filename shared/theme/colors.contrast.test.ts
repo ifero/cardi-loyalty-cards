@@ -64,18 +64,19 @@ describe('Theme contrast compliance', () => {
 
   /**
    * `textTertiary` was never asserted here, and it is not decoration: it is the
-   * `placeholderTextColor` of the OTP field, and the colour of `TextField`'s
-   * character count and the brand list's note. (`TextField`'s placeholder moved
-   * to `textSecondary` on `surface` in Story 22.6 — asserted below; the wallet's
-   * search placeholder, empty-state subtitle and single-card tip moved to
-   * `textSecondary` in Story 22.2, and the brand list's search field became the
-   * wallet's in Story 22.5.) None of that qualifies for the WCAG "large text"
-   * 3:1 exemption, so it is held to AA against every ground a FIELD uses.
-   * `backgroundSubtle` is deliberately absent: its two consumers are genuinely
-   * inactive fields — `TextField`'s `disabled` branch (`editable={!disabled}`)
-   * and `VerifyEmailScreen`'s `loading` branch (`editable={!loading}`) — which
-   * 1.4.3 exempts. (A third, the multi-code picker's pressed row, took the 0.98×
-   * press instead in Story 22.5.)
+   * colour of `TextField`'s character count and the brand list's note. (The OTP
+   * field's placeholder went with the code field's move onto `TextField` in
+   * Story 22.9; `TextField`'s placeholder moved to `textSecondary` on `surface`
+   * in Story 22.6 — asserted below; the wallet's search placeholder, empty-state
+   * subtitle and single-card tip moved to `textSecondary` in Story 22.2, and the
+   * brand list's search field became the wallet's in Story 22.5.) None of that
+   * qualifies for the WCAG "large text" 3:1 exemption, so it is held to AA
+   * against every ground a FIELD uses.
+   * `backgroundSubtle` is deliberately absent: its one consumer is a genuinely
+   * inactive field — `TextField`'s `disabled` branch (`editable={!disabled}`) —
+   * which 1.4.3 exempts. (`VerifyEmailScreen`'s `loading` branch
+   * (`editable={!loading}`) went with the same move in Story 22.9, and the
+   * multi-code picker's pressed row took the 0.98× press instead in Story 22.5.)
    */
   it('meets AA contrast for tertiary text on every active ground (>= 4.5)', () => {
     (['background', 'surface', 'surfaceElevated'] as const).forEach((ground) => {

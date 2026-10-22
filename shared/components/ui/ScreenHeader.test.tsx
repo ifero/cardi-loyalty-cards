@@ -127,6 +127,34 @@ describe('ScreenHeader', () => {
     expect(tree.indexOf('"header-back"')).toBeGreaterThan(-1);
     expect(tree.indexOf('"header-back"')).toBeLessThan(tree.indexOf('"header-title"'));
   });
+
+  /**
+   * Story 22.9 — the auth screens' heading leads their body, so their header holds the back alone:
+   * no title, no heading role and no spacer, the back where the titled header puts it.
+   */
+  describe('with no title', () => {
+    it('holds the back alone, with no title, no heading and no spacer', () => {
+      renderHeader({ title: undefined });
+      expect(screen.queryByTestId('header-title')).toBeNull();
+      expect(screen.queryByRole('header')).toBeNull();
+      expect(screen.getByTestId('header').children).toHaveLength(1);
+      expect(screen.getByTestId('header-back').props.accessibilityLabel).toBe('Go back');
+    });
+
+    it('keeps the row and the back where the titled header puts them', () => {
+      renderHeader({ title: undefined });
+      const header = flat('header');
+      expect(header).toMatchObject({ flexDirection: 'row', alignItems: 'center', minHeight: 48 });
+      expect(header.paddingHorizontal).toBeCloseTo(24 - (12 + 9 - 0.75));
+      expect(header.borderBottomWidth).toBeUndefined();
+    });
+
+    it('still goes back', async () => {
+      const { onBack } = renderHeader({ title: undefined });
+      await userEvent.press(screen.getByTestId('header-back'));
+      expect(onBack).toHaveBeenCalledTimes(1);
+    });
+  });
 });
 
 /**

@@ -1,9 +1,9 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
-import { StyleSheet } from 'react-native-unistyles';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { useTheme } from '@/shared/theme';
+import { SPACING } from '@/shared/theme/spacing';
 import { TYPOGRAPHY } from '@/shared/theme/typography';
 
 export type PasswordStrength = 'weak' | 'fair' | 'strong';
@@ -24,11 +24,28 @@ export const getPasswordStrength = (password: string): PasswordStrength => {
   return 'fair';
 };
 
+/** The meter's three segments, and how many each strength fills. */
+const SEGMENTS = [0, 1, 2] as const;
+const FILLED_SEGMENTS: Record<PasswordStrength, number> = { weak: 1, fair: 2, strong: 3 };
+
+/** Each segment is 4pt tall and fully rounded, 4pt from the next. */
+const SEGMENT_HEIGHT = 4;
+
 type PasswordStrengthIndicatorProps = {
   password: string;
   testID?: string;
 };
 
+/**
+ * The strength meter (auth frames B and E, Story 22.9). It COUNTS rather than judges: a track of
+ * three equal segments, of which weak fills one, fair two and strong three, so the fill spans a
+ * third, two thirds or all of the track. Filled segments are `textPrimary` and empty ones `border`
+ * at every strength — the palette has no "good" colour, and the meter needs none. The word follows
+ * 8pt after the track in `label-bold`, the chrome tier, also in `textPrimary`. Assistive technology
+ * reads it as one element: "Password strength: Fair". Nothing animates.
+ *
+ * It draws nothing for an empty password.
+ */
 export const PasswordStrengthIndicator = ({
   password,
   testID = 'password-strength-indicator'
@@ -42,7 +59,7 @@ export const PasswordStrengthIndicator = ({
   // violation but silently remounted useTranslation's language subscription on
   // every empty<->non-empty transition, and any hook added above the return
   // would have turned it into a hard crash.
-  const { theme, spacing } = useTheme();
+  const { theme } = useTheme();
   const { t } = useTranslation();
 
   if (!password.trim()) {
@@ -50,56 +67,55 @@ export const PasswordStrengthIndicator = ({
   }
 
   const strength = getPasswordStrength(password);
-
-  const width = strength === 'weak' ? '33%' : strength === 'fair' ? '66%' : '100%';
-  const color =
-    strength === 'weak' ? theme.error : strength === 'fair' ? theme.warning : theme.success;
-
-  const label =
-    strength === 'weak'
-      ? t('auth.passwordStrength.weak')
-      : strength === 'fair'
-        ? t('auth.passwordStrength.fair')
-        : t('auth.passwordStrength.strong');
+  const filled = FILLED_SEGMENTS[strength];
+  const word = t(`auth.passwordStrength.${strength}`);
 
   return (
     <View
       testID={testID}
-      style={[styles.container, { marginTop: spacing.sm, marginBottom: spacing.md }]}
+      accessible
+      accessibilityLabel={t('auth.passwordStrength.accessibilityLabel', { strength: word })}
+      style={styles.meter}
     >
-      <View
-        testID={`${testID}-track`}
-        style={{
-          flex: 1,
-          height: 6,
-          borderRadius: 999,
-          backgroundColor: theme.border,
-          overflow: 'hidden'
-        }}
-      >
-        <View
-          testID={`${testID}-bar`}
-          style={{ width, height: '100%', borderRadius: 999, backgroundColor: color }}
-        />
+      <View testID={`${testID}-track`} style={styles.track}>
+        {SEGMENTS.map((segment) => (
+          <View
+            key={segment}
+            testID={`${testID}-segment-${segment}`}
+            style={[
+              styles.segment,
+              { backgroundColor: segment < filled ? theme.textPrimary : theme.border }
+            ]}
+          />
+        ))}
       </View>
-      <Text
-        testID={`${testID}-label`}
-        style={{
-          ...TYPOGRAPHY.labelBold,
-          marginLeft: spacing.sm,
-          color
-        }}
-      >
-        {label}
+      <Text testID={`${testID}-label`} style={[styles.word, { color: theme.textPrimary }]}>
+        {word}
       </Text>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  meter: {
     width: '100%',
     flexDirection: 'row',
-    alignItems: 'center'
+    alignItems: 'center',
+    gap: SPACING.sm
+  },
+  track: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: SPACING.xs
+  },
+  segment: {
+    flex: 1,
+    height: SEGMENT_HEIGHT,
+    borderRadius: SEGMENT_HEIGHT / 2
+  },
+  // Under large text the word wraps beside the track rather than pushing it off the row.
+  word: {
+    ...TYPOGRAPHY.labelBold,
+    flexShrink: 1
   }
 });

@@ -1,5 +1,5 @@
 # generated: 2026-01-03
-# last_updated: 2026-10-20
+# last_updated: 2026-10-21
 # project: myLoyaltyCards
 # project_key: NOKEY
 # tracking_system: file-system
@@ -47,7 +47,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-01-03
-last_updated: 2026-10-20
+last_updated: 2026-10-21
 project: myLoyaltyCards
 project_key: NOKEY
 tracking_system: file-system
@@ -781,7 +781,7 @@ development_status:
   22-6-the-form-pattern: done # PICKED UP 2026-10-14 (wave_2). REFINED 2026-10-14 through bmad-build, approved by ifero ("1a 2a", "keep", "approve and continue"). Decided: setup and edit move onto the shared FormScreen now and the auth screens wait for 22.9; catalogue setup shows the brand's wallet tile; the spec is kept whole; spec at docs/sprint-artifacts/stories/22-6-the-form-pattern.md
   22-7-settings: done # READY FOR REVIEW 2026-10-16: built through bmad-build; the four-layer review raised 28 findings (15 rows patched as 12 groups, 7 deferred, 11 rejected), no loopback; device-checked on the iOS 26.5 simulator in light and dark (frames A-F, busy, failed, keyboard, largest text), where three largest-text defects were fixed; the code loop (0, 2, 3, 3, 3) and the QA loop (4, 7, 4, 6) each ended at ifero's call after their last fixes; Android, VoiceOver and TalkBack unverified; not committed, awaiting ifero's review. PICKED UP 2026-10-15 (wave_3). REFINED 2026-10-15 through bmad-build, approved by ifero ("keep, 1a 2a 3b", "approve and continue"). Decided: guests still see no Sync row; every confirmation is the confirm sheet, with card detail's Delete and edit's Discard moving in a follow-up; What We Collect returns to About after Privacy Policy; the spec is kept whole; spec at docs/sprint-artifacts/stories/22-7-settings.md
   22-8-document-screens: done # READY FOR REVIEW 2026-10-20: built through bmad-build in three derivations (review pass 1 looped back on the FAQ jump, an intent gap ifero answered "several open, the opening animated", and on the head row; pass 2 on VoiceOver mixing languages and the chevron); pass 3 patched 5 rows; device-checked on the iOS 26.5 simulator in light and dark, where typed text overflowing the shared search field at the largest size went to ifero; the code loop (2, 0, 2, 5) and the QA loop (3, 1, 6) each ended at ifero's call after their last fixes, all fixes tests only; Android, VoiceOver and TalkBack unverified; not committed, awaiting ifero's review. PICKED UP 2026-10-17 (wave_3). REFINED 2026-10-18 through bmad-build, approved by ifero ("1a 2a 3b, keep the spec whole", "approve and continue"). Decided: the policy and What We Collect keep every word, their false claims going to a story of their own; the disabled download placeholder goes; What We Collect opens to everyone; the spec is kept whole; spec at docs/sprint-artifacts/stories/22-8-document-screens.md
-  22-9-authentication: backlog
+  22-9-authentication: review # READY FOR REVIEW 2026-10-21: built through bmad-build in two derivations (derivation 1 halted on the largest text on the 375pt phone, which ifero answered "1a", decision 3; review pass 1 looped back on Confirm during a resend, revealing a refused field and the keyboard at a request); pass 2 patched 13 rows; device-checked on the iOS 26.5 simulator at 393 and 375 in light and dark (182 shots; card setup and edit pixel-identical to main), where a keyboard defect the code loop found was fixed and re-shot; the code loop (3, 4, 1, 1) ended at ifero's call, with a final round 5 (1) after the QA loop (3, 3, 0); the code's digits outgrowing their field at the largest sizes went to ifero; Android, VoiceOver and TalkBack unverified; not committed, awaiting ifero's review. PICKED UP 2026-10-21 (wave_3). REFINED 2026-10-21 through bmad-build, approved by ifero ("1a 2a keep", "approve and continue"). Decided: a back-only header with the brand block leading the body; the way-out link in the footer, under the primary; the spec is kept whole; spec at docs/sprint-artifacts/stories/22-9-authentication.md
   22-10-onboarding: backlog # BLOCKED: needs commissioned illustrations
   epic-22-retrospective: optional
 

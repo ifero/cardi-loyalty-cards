@@ -8,6 +8,9 @@
  * under large text; and a 48pt spacer on the right that keeps the title centred. Home's 24pt display
  * title is the one exception, and it is the native header's.
  *
+ * A screen whose heading leads its body — the auth screens' brand block (Story 22.9) — passes no
+ * title, and the row holds the back alone, where the titled header puts it.
+ *
  * Like `FormScreen` and `HeaderIconButton`, this file imports nothing from `react-native-unistyles`
  * (Story 22.7's task): it follows this directory's pattern, its geometry in React Native's
  * `StyleSheet` and its colours from `useTheme()`.
@@ -35,8 +38,11 @@ const BACK_GLYPH_INK_INSET = (TOUCH_TARGET.min - 24) / 2 + 9 - 1.5 / 2;
 const HEADER_PADDING_X = LAYOUT.screenHorizontalMargin - BACK_GLYPH_INK_INSET;
 
 type ScreenHeaderProps = {
-  /** The screen's title: centred, and announced as its heading. */
-  title: string;
+  /**
+   * The screen's title: centred, and announced as its heading. Leave it out when the heading is in
+   * the body: the row then holds the back alone, with no title and no spacer.
+   */
+  title?: string;
   /** The back chevron's action. A screen with unsaved changes asks before it leaves. */
   onBack: () => void;
   /** The header row's testID. */
@@ -65,14 +71,18 @@ export const ScreenHeader = ({
         onPress={onBack}
         testID={backTestID ?? `${testID}-back`}
       />
-      <Text
-        testID={titleTestID ?? `${testID}-title`}
-        accessibilityRole="header"
-        style={[styles.title, { color: theme.textPrimary }]}
-      >
-        {title}
-      </Text>
-      <View style={styles.spacer} />
+      {title !== undefined ? (
+        <>
+          <Text
+            testID={titleTestID ?? `${testID}-title`}
+            accessibilityRole="header"
+            style={[styles.title, { color: theme.textPrimary }]}
+          >
+            {title}
+          </Text>
+          <View style={styles.spacer} />
+        </>
+      ) : null}
     </View>
   );
 };
