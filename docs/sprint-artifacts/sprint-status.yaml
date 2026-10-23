@@ -47,7 +47,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-01-03
-last_updated: 2026-10-21
+last_updated: 10-23-2026 12:19
 project: myLoyaltyCards
 project_key: NOKEY
 tracking_system: file-system
@@ -783,7 +783,7 @@ development_status:
   22-8-document-screens: done # READY FOR REVIEW 2026-10-20: built through bmad-build in three derivations (review pass 1 looped back on the FAQ jump, an intent gap ifero answered "several open, the opening animated", and on the head row; pass 2 on VoiceOver mixing languages and the chevron); pass 3 patched 5 rows; device-checked on the iOS 26.5 simulator in light and dark, where typed text overflowing the shared search field at the largest size went to ifero; the code loop (2, 0, 2, 5) and the QA loop (3, 1, 6) each ended at ifero's call after their last fixes, all fixes tests only; Android, VoiceOver and TalkBack unverified; not committed, awaiting ifero's review. PICKED UP 2026-10-17 (wave_3). REFINED 2026-10-18 through bmad-build, approved by ifero ("1a 2a 3b, keep the spec whole", "approve and continue"). Decided: the policy and What We Collect keep every word, their false claims going to a story of their own; the disabled download placeholder goes; What We Collect opens to everyone; the spec is kept whole; spec at docs/sprint-artifacts/stories/22-8-document-screens.md
   22-9-authentication: done # READY FOR REVIEW 2026-10-21: built through bmad-build in two derivations (derivation 1 halted on the largest text on the 375pt phone, which ifero answered "1a", decision 3; review pass 1 looped back on Confirm during a resend, revealing a refused field and the keyboard at a request); pass 2 patched 13 rows; device-checked on the iOS 26.5 simulator at 393 and 375 in light and dark (182 shots; card setup and edit pixel-identical to main), where a keyboard defect the code loop found was fixed and re-shot; the code loop (3, 4, 1, 1) ended at ifero's call, with a final round 5 (1) after the QA loop (3, 3, 0); the code's digits outgrowing their field at the largest sizes went to ifero; Android, VoiceOver and TalkBack unverified; not committed, awaiting ifero's review. PICKED UP 2026-10-21 (wave_3). REFINED 2026-10-21 through bmad-build, approved by ifero ("1a 2a keep", "approve and continue"). Decided: a back-only header with the brand block leading the body; the way-out link in the footer, under the primary; the spec is kept whole; spec at docs/sprint-artifacts/stories/22-9-authentication.md
   22-10-onboarding: backlog # BLOCKED: needs commissioned illustrations
-  epic-22-retrospective: optional
+  epic-22-retrospective: done
 
   # --- Epic 23: Cardì on the Watch -------------------------------------------
   # Six surfaces with NO Cardì design at all — watchOS ContentView/CardListView/
@@ -841,13 +841,13 @@ action_items:
     action: 'Epic 5 generic-complication follow-up (carried Sprint 14 -> 15 -> 16): consciously PARKED per ifero (2026-07-11) — fold into Epic 10 (Wear OS) when watch work resumes. Satisfies Epic 9 action #5 (draft or consciously park). [REVIEWED 2026-08-20 at the Epic 10 retro: the park did NOT hold — Epic 10 closed with the story still unwritten, and ALL SIX of its stories independently flagged the gap in their out-of-scope sections. Four sprints carried. RE-PARKED WITH A TRIGGER (DEC-E10-RETRO-002) instead of a fifth open-ended deferral: draft it when the Wear OS APK is published to Play, the same gate 10-1 flagged for the remaining release plumbing (Play Console, keystore, Digital Asset Links, Fastlane watch lanes). 10-2 notes it is the ONE deliverable needing a real Wear drawable pipeline plus the per-logo luminance analysis the watchOS widget uses.]'
     owner: 'ifero'
     category: 'accountability'
-    status: parked
+    status: open
   # --- Sprint 17 retro (2026-07-20) ---
   - epic: 16
     action: 'Draft & scope a story for FormatJS Intl polyfill adoption: @formatjs/intl-getcanonicallocales -> intl-locale -> intl-pluralrules -> intl-relativetimeformat, imported with /polyfill-force + en/it locale data at app entry (before any Intl use). Fold in a lint rule enforcing the polyfill entry import (supersedes the dropped interim ban); opportunistically migrate core/utils/relative-time.ts off hardcoded Italian strings. Prevents recurrence of the 16-15 iOS-Hermes crash class.'
     owner: 'Amelia (draft) + Winston (scope)'
     category: 'tech-debt'
-    status: open
+    status: done
   # --- Epic 18 creation (2026-08-02) ---
   - epic: 18
     action: 'Register the custom domain for the share page once Story 18-1 reports back. Purchase and ownership sit with ifero (payment + registrar account), so the spike can recommend but cannot complete this. Blocks 18-9 (site migration) and therefore 18-10 (Universal Links) — the whole rest of Epic 18 builds without it. Constraints agreed 2026-08-02: European servers, maximum reliability; candidates Netsons / Namecheap / Spaceship / Infomaniak / OVHcloud.'
@@ -869,7 +869,7 @@ action_items:
     action: "Split oversized stories at REFINEMENT, not at implementation. 10-6 was flagged as under-scoped three times (refinement pass, story header, its own out-of-scope section proposing 10-6a/10-6b) and still shipped whole at ~3.8x the median sibling insertions, because re-keying mid-sprint felt costly — so the tracker's shape drove an engineering decision, and both of the epic's serious bugs lived in that story. Done when the next story flagged 'should probably be split' is either split or carries a recorded decision not to."
     owner: 'Amelia'
     category: 'process'
-    status: open
+    status: done
   - epic: 10
     action: 'Draft the Wear OS complication story when the Wear APK ships to Play (DEC-E10-RETRO-002 trigger). Done when the story exists or the trigger is formally retired.'
     owner: 'ifero'
@@ -890,3 +890,75 @@ action_items:
     owner: 'ifero'
     category: 'tech-debt'
     status: open
+  - id: 'epic-22-retro-item-1-file-22-3-and-22-4-follow-up-issues'
+    epic: 22
+    action: "File the missing follow-up issues for 22-3 (17 Found-not-fixed items) and 22-4 (15), leaving out what later stories resolved (22-3's 5, 9, 14), and link them from PRs #264 and #265. (Retro P-1)"
+    owner: 'Amelia'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
+  - id: 'epic-22-retro-item-2-triage-wave-a-follow-up-backlog'
+    epic: 22
+    action: 'Triage the Wave A follow-up backlog (#258, #266, #268, #271, #273, #275 plus the two issues from item 1) before Sprint 22 refinement: close what is fixed, merge duplicates, promote the medium defects into stories (unrenderable-barcode state, iOS swipe-back skipping the discard prompt, flash brightness on background, refused re-present, deep link usage vs FR76, picker at AX4-AX5, form-behaviour parity). (Retro P-1, B-1, B-2, A-3)'
+    owner: 'ifero (priority) + Amelia (prep)'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
+  - id: 'epic-22-retro-item-3-correct-guest-visible-privacy-copy'
+    epic: 22
+    action: 'Correct the privacy copy guests can now read: the no-analytics, device-ID and encrypted-database claims on What We Collect and the privacy policy (22-8 FNF 10, #273 item 10); user copy may say only no ads, no advertising identifiers. (Retro R-1)'
+    owner: 'ifero (wording) + Amelia'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
+  - id: 'epic-22-retro-item-4-record-styling-convention'
+    epic: 22
+    action: 'Record the decided styling convention in docs/project-context.md (lines 228-243): new code uses React Native StyleSheet + useTheme(), Unistyles stays where it is, no migration. Stops the nine-times-rejected reviewer finding. (Retro A-1, Decision 4)'
+    owner: 'Amelia'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
+  - id: 'epic-22-retro-item-5-bmad-build-loop-cap-and-fnf-filing'
+    epic: 22
+    action: "Update _bmad/custom/bmad-build.toml: (a) after 3 review-loop rounds report the per-round trend and offer to stop; (b) filing the Found-not-fixed issue is a FINISH step and the PR body must link it; (c) say where a looped-back pass's defers go. (Retro P-1, P-3, P-7)"
+    owner: 'Amelia (ifero approves)'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
+  - id: 'epic-22-retro-item-6-bmad-build-mechanism-probe-rule'
+    epic: 22
+    action: 'Add a mechanism rule to bmad-build for runtime-behaviour specs: freeze outcomes, and freeze an API mechanism only after a probe has shown its behaviour on the target platform and locale. Apply first in Sprint 22 refinement. (Retro P-2)'
+    owner: 'Amelia + Winston'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
+  - id: 'epic-22-retro-item-7-android-pass-wave-a-screens'
+    epic: 22
+    action: "Run an Android verification pass over the Wave A screens, including TalkBack and the Android-only keyboard path in FormScreen.tsx:170-187, on ifero's device or a phone AVD (install system images alongside Sprint 22's Wear AVDs). (Retro P-4)"
+    owner: 'ifero'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
+  - id: 'epic-22-retro-item-8-rule-on-22-9-otp-large-text'
+    epic: 22
+    action: "Rule on 22-9's OTP field at the largest text sizes (frozen never-clip row breached from font scale ~2.6): fix it or record an accepted deviation (#275 item 12). (Retro R-2)"
+    owner: 'ifero'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
+  - id: 'epic-22-retro-item-9-record-ios-26-hero-drop'
+    epic: 22
+    action: "Record card detail's iOS 26 hero drop (15pt for ~3 frames on every push) durably: a design-system known limit plus an issue tied to the React Navigation upgrade that fixes it. (Retro R-3)"
+    owner: 'Amelia'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
+  - id: 'epic-22-retro-item-10-wave-a-consolidation-chore'
+    epic: 22
+    action: 'Wave A consolidation chore: sort sheet onto OptionList, Add Card onto ScreenHeader, one keyboard hook, shared press-scale / icon-size / large-text constants, retire the dead root headerLeft; add a test/utils module (flat, setFontScale, isInside, expectInOrder) and drop redundant expo-router mocks. (Retro A-2, A-5, A-6)'
+    owner: 'Amelia'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
+  - id: 'epic-22-retro-item-11-stop-recompiling-epic-context'
+    epic: 22
+    action: 'Stop recompiling the epic context in every story session (~78 min across Sprint 21): commit docs/sprint-artifacts/epic-*-context.md or cache it outside the worktree. (Retro P-6)'
+    owner: 'Amelia'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
+  - id: 'epic-22-retro-item-12-reconcile-agents-md-sign-off-gate'
+    epic: 22
+    action: "Reconcile AGENTS.md's stakeholder sign-off gate with practice: bmad-walkthrough ran in 2 of 8 Wave A sessions, so either run it every time or document the gate as bmad-build's present step plus the device shots. (Retro P-7)"
+    owner: 'ifero'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
