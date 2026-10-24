@@ -60,3 +60,9 @@ docs/design/cardi/*.html
 # the committed output would break that check permanently and for no gain, so the
 # generators stay the source of truth here. Same case as the Room schemas above.
 docs/design/cardi/frames/*.html
+
+# The onboarding Lottie animations, built by docs/design/cardi/lottie/build-onboarding-lottie.py.
+# Minified on purpose (they ship in the bundle), and `--check` compares them byte for byte with a
+# fresh build. Prettier would reflow each one into thousands of lines that the generator can never
+# reproduce, so the generator stays the source of truth. Same case as the frames above.
+assets/animations/

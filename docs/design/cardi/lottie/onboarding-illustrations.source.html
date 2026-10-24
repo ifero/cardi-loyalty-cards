@@ -1,0 +1,669 @@
+<!doctype html>
+<!--
+  The four Cardì onboarding drawings and their motion: the source that
+  build-onboarding-lottie.py turns into assets/animations/onboarding/*.json.
+
+  Each <template> is one drawing, the markup of the Design canvas the set was
+  adopted on. The classes are the whole style system (g ground, k bars, t/m/gl
+  widths, bm/bf the beam); the generator resolves them per scheme. `an` plus a
+  motion class marks an animated element, and the keyframes below are the motion
+  the generator restates. Change both together, then re-run the generator.
+
+  Opened in a browser, the page shows each drawing at rest and a strip of frames
+  through its motion, in light mode.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Onboarding illustrations</title>
+    <style>
+      .il {
+        fill: none;
+        stroke: #181824;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        display: block;
+        overflow: hidden;
+      }
+      .il .g {
+        fill: #f0f0e8;
+      }
+      .il .k {
+        fill: #181824;
+        stroke: none;
+      }
+      .il .t {
+        stroke-width: 2;
+      }
+      .il .m {
+        stroke-width: 2.5;
+      }
+      .il .gl {
+        stroke-width: 2.5;
+      }
+      .il .st {
+        stroke-width: 1.5;
+        stroke-dasharray: 3 4;
+      }
+      .il .bm {
+        stroke: #fccc0c;
+        stroke-width: 4;
+      }
+      .il .bf {
+        fill: #fccc0c;
+        stroke-width: 2;
+      }
+      .il .dt {
+        stroke-width: 2.5;
+        stroke-dasharray: 0.1 7;
+      }
+      .il .dt6 {
+        stroke-width: 2.5;
+        stroke-dasharray: 0.1 6;
+      }
+      .il .ds {
+        stroke-width: 2.5;
+        stroke-dasharray: 7 6;
+      }
+      .il .ds5 {
+        stroke-width: 2;
+        stroke-dasharray: 5 5;
+      }
+      .an {
+        animation-duration: 6s;
+        animation-fill-mode: both;
+        animation-timing-function: cubic-bezier(0.22, 0.8, 0.24, 1);
+      }
+      .m-loop .an {
+        animation-iteration-count: infinite;
+      }
+      .m-once .an {
+        animation-iteration-count: 1;
+      }
+      .m-off .an {
+        animation: none;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .an {
+          animation: none !important;
+        }
+      }
+      .w-back {
+        transform-box: view-box;
+        transform-origin: 140px 150px;
+        transform: rotate(-19deg);
+        animation-name: w-back;
+      }
+      .w-front {
+        transform-box: view-box;
+        transform-origin: 140px 150px;
+        transform: rotate(15deg);
+        animation-name: w-front;
+      }
+      .w-beam {
+        animation-name: w-beam;
+      }
+      @keyframes w-back {
+        0%,
+        15% {
+          transform: rotate(-2deg);
+        }
+        28%,
+        100% {
+          transform: rotate(-19deg);
+        }
+      }
+      @keyframes w-front {
+        0%,
+        15% {
+          transform: rotate(-2deg);
+        }
+        28%,
+        100% {
+          transform: rotate(15deg);
+        }
+      }
+      @keyframes w-beam {
+        0%,
+        31.9% {
+          opacity: 0;
+          transform: translateY(-9px);
+        }
+        32% {
+          opacity: 1;
+          transform: translateY(-9px);
+        }
+        40% {
+          opacity: 1;
+          transform: translateY(9px);
+        }
+        45%,
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .h1-c1 {
+        animation-name: h1-rise1;
+      }
+      .h1-c2 {
+        animation-name: h1-rise2;
+      }
+      .h1-c3 {
+        animation-name: h1-rise3;
+      }
+      @keyframes h1-rise1 {
+        0% {
+          transform: translateY(18px);
+        }
+        8%,
+        100% {
+          transform: translateY(0);
+        }
+      }
+      @keyframes h1-rise2 {
+        0%,
+        2% {
+          transform: translateY(18px);
+        }
+        10%,
+        100% {
+          transform: translateY(0);
+        }
+      }
+      @keyframes h1-rise3 {
+        0%,
+        4% {
+          transform: translateY(18px);
+        }
+        12%,
+        100% {
+          transform: translateY(0);
+        }
+      }
+      .h1-arc {
+        animation-name: h1-arc;
+      }
+      @keyframes h1-arc {
+        0%,
+        8% {
+          opacity: 0;
+        }
+        20%,
+        100% {
+          opacity: 1;
+        }
+      }
+      .h1-fly {
+        animation-name: h1-fly;
+      }
+      @keyframes h1-fly {
+        0%,
+        9% {
+          transform: translate(-48px, 36px);
+          opacity: 0;
+        }
+        12% {
+          opacity: 1;
+        }
+        19% {
+          transform: translate(-24px, -4px);
+        }
+        27%,
+        100% {
+          transform: translate(0, 0);
+          opacity: 1;
+        }
+      }
+      .h1-tile {
+        transform-box: fill-box;
+        transform-origin: 50% 50%;
+        animation-name: h1-tile;
+      }
+      @keyframes h1-tile {
+        0%,
+        26% {
+          transform: scale(0);
+        }
+        31% {
+          transform: scale(1.1);
+        }
+        35%,
+        100% {
+          transform: scale(1);
+        }
+      }
+      .h2-phone {
+        transform-box: view-box;
+        transform-origin: 110px 54px;
+        animation-name: h2-phone;
+      }
+      @keyframes h2-phone {
+        0% {
+          transform: translateY(-6px) rotate(-6deg);
+        }
+        12%,
+        100% {
+          transform: translateY(0) rotate(0deg);
+        }
+      }
+      .h2-sight {
+        animation-name: h2-sight;
+      }
+      @keyframes h2-sight {
+        0%,
+        9% {
+          opacity: 0;
+        }
+        15%,
+        100% {
+          opacity: 1;
+        }
+      }
+      .h2-beam {
+        animation-name: h2-beam;
+      }
+      @keyframes h2-beam {
+        0%,
+        11.9% {
+          opacity: 0;
+          transform: translateY(-9px);
+        }
+        12% {
+          opacity: 1;
+          transform: translateY(-9px);
+        }
+        15% {
+          opacity: 1;
+          transform: translateY(-9px);
+        }
+        26% {
+          opacity: 1;
+          transform: translateY(9px);
+        }
+        32%,
+        100% {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .h2-hand {
+        animation-name: h2-press;
+      }
+      @keyframes h2-press {
+        0%,
+        34% {
+          transform: translateY(0);
+        }
+        37% {
+          transform: translateY(3px);
+        }
+        41%,
+        100% {
+          transform: translateY(0);
+        }
+      }
+      .h3-arc {
+        stroke-dasharray: 224;
+        stroke-dashoffset: 0;
+        animation-name: h3-arc;
+      }
+      @keyframes h3-arc {
+        0%,
+        4% {
+          stroke-dashoffset: 224;
+        }
+        6% {
+          stroke-dashoffset: 195;
+        }
+        12% {
+          stroke-dashoffset: 157;
+        }
+        17% {
+          stroke-dashoffset: 123;
+        }
+        22% {
+          stroke-dashoffset: 92;
+        }
+        30%,
+        100% {
+          stroke-dashoffset: 0;
+        }
+      }
+      .h3-card {
+        transform-box: view-box;
+        transform-origin: 138px 44px;
+        animation-name: h3-card;
+      }
+      @keyframes h3-card {
+        0%,
+        4% {
+          transform: translate(-72px, 70px) rotate(-30deg);
+          opacity: 0;
+        }
+        6% {
+          opacity: 1;
+        }
+        12% {
+          transform: translate(-54px, 37px) rotate(-18deg);
+        }
+        17% {
+          transform: translate(-28px, 15px) rotate(-8deg);
+        }
+        22%,
+        100% {
+          transform: translate(0, 0) rotate(0deg);
+          opacity: 1;
+        }
+      }
+      .h3-ticks {
+        animation-name: h3-ticks;
+      }
+      @keyframes h3-ticks {
+        0%,
+        21% {
+          opacity: 0;
+        }
+        27%,
+        100% {
+          opacity: 1;
+        }
+      }
+      .h3-slot {
+        transform-box: fill-box;
+        transform-origin: 50% 50%;
+        animation-name: h3-slot;
+      }
+      @keyframes h3-slot {
+        0%,
+        29% {
+          transform: scale(1);
+        }
+        32% {
+          transform: scale(1.14);
+        }
+        37%,
+        100% {
+          transform: scale(1);
+        }
+      }
+    </style>
+    <style>
+      body {
+        margin: 0;
+        background: #f0f0e8;
+        font: 11px system-ui;
+        color: #181824;
+        padding: 12px;
+      }
+      .rest {
+        display: grid;
+        grid-template-columns: repeat(2, 560px);
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .rest .cell svg {
+        width: 560px;
+        height: 380px;
+      }
+      .row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .cell {
+        outline: 1px solid #d6d6cb;
+      }
+      .row .cell svg {
+        width: 280px;
+        height: 190px;
+      }
+      .cell .an {
+        animation-play-state: paused !important;
+        animation-delay: calc(var(--t) * -1s) !important;
+        animation-iteration-count: 1 !important;
+      }
+    </style>
+  </head>
+  <body class="m-once">
+    <template id="w"
+      ><svg class="il" viewBox="0 0 280 190">
+        <g class="an w-back">
+          <rect class="g" x="100" y="76" width="80" height="52" rx="7"></rect>
+          <circle class="t" cx="113" cy="90" r="5"></circle>
+          <path class="t" d="M123 88h24M123 95h14"></path>
+        </g>
+        <g transform="rotate(-2 140 150)">
+          <rect class="g" x="100" y="76" width="80" height="52" rx="7"></rect>
+          <circle class="t" cx="113" cy="90" r="5"></circle>
+          <path class="t" d="M123 88h24M123 95h14"></path>
+        </g>
+        <g class="an w-front">
+          <path
+            class="g"
+            d="M141.4 116.5C155.5 107.5 169.7 98.6 181.5 92.3C186.9 89.4 191.9 92.6 190.2 97.7C188.2 101.9 183.6 104.1 176.4 108.2L146.4 127.6Z"
+          ></path>
+          <path class="t" d="M182.6 94.6C184.6 92.5 187.8 92.7 188.9 95"></path>
+          <rect class="g" x="100" y="76" width="80" height="52" rx="7"></rect>
+          <circle class="t" cx="113" cy="88" r="5"></circle>
+          <path class="t" d="M123 88h22"></path>
+          <g class="k" transform="translate(112 98)">
+            <rect x="0" width="2" height="18"></rect>
+            <rect x="3" width="1" height="18"></rect>
+            <rect x="5" width="1" height="18"></rect>
+            <rect x="7" width="3" height="18"></rect>
+            <rect x="11" width="1" height="18"></rect>
+            <rect x="13" width="2" height="18"></rect>
+            <rect x="16" width="1" height="18"></rect>
+            <rect x="18" width="1" height="18"></rect>
+            <rect x="20" width="3" height="18"></rect>
+            <rect x="24" width="2" height="18"></rect>
+            <rect x="27" width="1" height="18"></rect>
+            <rect x="29" width="1" height="18"></rect>
+            <rect x="31" width="2" height="18"></rect>
+            <rect x="34" width="1" height="18"></rect>
+            <rect x="36" width="3" height="18"></rect>
+            <rect x="40" width="1" height="18"></rect>
+            <rect x="42" width="2" height="18"></rect>
+            <rect x="45" width="1" height="18"></rect>
+            <rect x="47" width="1" height="18"></rect>
+            <rect x="49" width="3" height="18"></rect>
+            <rect x="53" width="1" height="18"></rect>
+            <rect x="55" width="1" height="18"></rect>
+          </g>
+          <path class="bm an w-beam" d="M104 107h72"></path>
+        </g>
+        <path
+          class="g"
+          d="M116 190C115 176 115 162 118 154C120 146 123 136 128 128C131 122 134 116 138 114C142 112 146 115 145 120C144 126 141 132 139 139C148 144 157 152 160 164L160 190"
+        ></path>
+        <path class="t" d="M137.5 118.5C139 116.5 142 116.5 143 118.5"></path>
+        <path class="g" d="M108 190V179C124 175 152 175 168 179V190"></path></svg
+    ></template>
+    <template id="h1"
+      ><svg class="il" viewBox="0 0 280 190">
+        <path class="gl" d="M20 168h106M176 168h84"></path>
+        <g class="an h1-c1">
+          <g transform="rotate(-14 62 104)">
+            <rect class="g m" x="40" y="78" width="48" height="31" rx="5"></rect>
+            <circle class="t" cx="48" cy="86" r="3"></circle>
+            <path class="t" d="M55 85h14"></path>
+          </g>
+        </g>
+        <g class="an h1-c2">
+          <g transform="rotate(6 76 100)">
+            <rect class="g m" x="54" y="74" width="48" height="31" rx="5"></rect>
+            <circle class="t" cx="62" cy="82" r="3"></circle>
+            <path class="t" d="M69 81h14"></path>
+          </g>
+        </g>
+        <g class="an h1-c3">
+          <g transform="rotate(20 88 104)">
+            <rect class="g m" x="66" y="82" width="48" height="31" rx="5"></rect>
+            <circle class="t" cx="74" cy="90" r="3"></circle>
+            <path class="t" d="M81 89h14"></path>
+          </g>
+        </g>
+        <rect class="g" x="30" y="104" width="90" height="64" rx="11"></rect>
+        <path class="t" d="M30 122h90"></path>
+        <path
+          class="st"
+          d="M38 113h74M38 129V155C38 158 40 160 43 160H107C110 160 112 158 112 155V150"
+        ></path>
+        <rect class="g m" x="100" y="128" width="26" height="18" rx="6"></rect>
+        <circle class="k" cx="109" cy="137" r="2.2"></circle>
+        <path class="dt an h1-arc" d="M106 66C126 18 176 16 200 50"></path>
+        <g class="an h1-fly">
+          <g transform="rotate(16 152 34)">
+            <rect class="g m" x="134" y="23" width="36" height="23" rx="4"></rect>
+            <circle class="t" cx="141" cy="30" r="2.5"></circle>
+            <path class="t" d="M147 29h12"></path>
+          </g>
+        </g>
+        <rect class="g" x="190" y="50" width="62" height="118" rx="12"></rect>
+        <path class="t" d="M213 59h16M214 160h14"></path>
+        <rect class="bf an h1-tile" x="199" y="70" width="20" height="28" rx="4"></rect>
+        <g class="t">
+          <rect x="223" y="70" width="20" height="28" rx="4"></rect>
+          <rect x="199" y="104" width="20" height="28" rx="4"></rect>
+          <rect x="223" y="104" width="20" height="28" rx="4"></rect>
+        </g></svg
+    ></template>
+    <template id="h2"
+      ><svg class="il" viewBox="0 0 280 190">
+        <path class="gl" d="M16 168h140M192 168h72"></path>
+        <path class="dt6 an h2-sight" d="M86 96L40 112M136 96L116 112"></path>
+        <g class="an h2-phone">
+          <g transform="rotate(-10 110 54)">
+            <rect class="g" x="82" y="8" width="56" height="92" rx="11"></rect>
+            <path class="t" d="M103 16h14M104 92h12"></path>
+            <path class="t" d="M94 34v-6h6M126 28h6v6M132 70v6h-6M100 76h-6v-6"></path>
+            <g class="k" transform="translate(99 44)">
+              <rect x="0" width="2" height="16"></rect>
+              <rect x="3" width="1" height="16"></rect>
+              <rect x="5" width="1" height="16"></rect>
+              <rect x="7" width="3" height="16"></rect>
+              <rect x="11" width="1" height="16"></rect>
+              <rect x="13" width="2" height="16"></rect>
+              <rect x="16" width="1" height="16"></rect>
+              <rect x="18" width="1" height="16"></rect>
+              <rect x="20" width="3" height="16"></rect>
+            </g>
+          </g>
+        </g>
+        <rect class="g" x="30" y="112" width="96" height="56" rx="8"></rect>
+        <circle class="t" cx="41" cy="122" r="4"></circle>
+        <path class="t" d="M50 121h24"></path>
+        <g class="k" transform="translate(50 130)">
+          <rect x="0" width="2" height="18"></rect>
+          <rect x="3" width="1" height="18"></rect>
+          <rect x="5" width="1" height="18"></rect>
+          <rect x="7" width="3" height="18"></rect>
+          <rect x="11" width="1" height="18"></rect>
+          <rect x="13" width="2" height="18"></rect>
+          <rect x="16" width="1" height="18"></rect>
+          <rect x="18" width="1" height="18"></rect>
+          <rect x="20" width="3" height="18"></rect>
+          <rect x="24" width="2" height="18"></rect>
+          <rect x="27" width="1" height="18"></rect>
+          <rect x="29" width="1" height="18"></rect>
+          <rect x="31" width="2" height="18"></rect>
+          <rect x="34" width="1" height="18"></rect>
+          <rect x="36" width="3" height="18"></rect>
+          <rect x="40" width="1" height="18"></rect>
+          <rect x="42" width="2" height="18"></rect>
+          <rect x="45" width="1" height="18"></rect>
+          <rect x="47" width="1" height="18"></rect>
+          <rect x="49" width="3" height="18"></rect>
+          <rect x="53" width="1" height="18"></rect>
+          <rect x="55" width="1" height="18"></rect>
+        </g>
+        <path class="bm an h2-beam" d="M22 139h112"></path>
+        <path class="dt" d="M174 60v100"></path>
+        <rect class="g" x="192" y="58" width="70" height="110" rx="12"></rect>
+        <path class="t" d="M202 74h50"></path>
+        <g class="t">
+          <rect x="202" y="90" width="14" height="14" rx="4"></rect>
+          <rect x="220" y="90" width="14" height="14" rx="4"></rect>
+          <rect x="238" y="90" width="14" height="14" rx="4"></rect>
+          <rect x="202" y="110" width="14" height="14" rx="4"></rect>
+          <rect x="220" y="110" width="14" height="14" rx="4"></rect>
+          <rect x="238" y="110" width="14" height="14" rx="4"></rect>
+          <rect x="202" y="130" width="14" height="14" rx="4"></rect>
+          <rect x="220" y="130" width="14" height="14" rx="4"></rect>
+          <rect x="238" y="130" width="14" height="14" rx="4"></rect>
+        </g>
+        <g class="an h2-hand">
+          <path
+            class="g"
+            d="M234 190C234 176 235 166 237 158L238 126C238 120.5 241.5 117 245 117C248.5 117 251 120 251 125V146C256 146 262 150 262 158C262 168 262 178 262 190"
+          ></path>
+          <path class="t" d="M241.5 123C243 121.5 246.5 121.5 248 123"></path>
+          <path class="t" d="M251 153C254 153 256.5 155 256.5 158"></path>
+          <path class="g" d="M229 190V182C240 178.5 256 178.5 267 182V190"></path>
+        </g></svg
+    ></template>
+    <template id="h3"
+      ><svg class="il" viewBox="0 0 280 190">
+        <path class="gl" d="M16 168h96M176 168h88"></path>
+        <path class="ds" d="M26 168V114C26 106 32 100 40 100H82C90 100 96 106 96 114V168"></path>
+        <path class="bm an h3-arc" d="M60 142C70 40 184 18 214 88"></path>
+        <g class="an h3-card">
+          <g transform="rotate(14 138 44)">
+            <rect class="g" x="110" y="26" width="56" height="36" rx="5"></rect>
+            <circle class="t" cx="118.5" cy="34.5" r="3.5"></circle>
+            <path class="t" d="M126 34h14"></path>
+            <g class="k" transform="translate(124 40)">
+              <rect x="0" width="2" height="14"></rect>
+              <rect x="3" width="1" height="14"></rect>
+              <rect x="5" width="1" height="14"></rect>
+              <rect x="7" width="3" height="14"></rect>
+              <rect x="11" width="1" height="14"></rect>
+              <rect x="13" width="2" height="14"></rect>
+              <rect x="16" width="1" height="14"></rect>
+              <rect x="18" width="1" height="14"></rect>
+              <rect x="20" width="3" height="14"></rect>
+              <rect x="24" width="2" height="14"></rect>
+              <rect x="27" width="1" height="14"></rect>
+              <rect x="29" width="1" height="14"></rect>
+              <rect x="31" width="2" height="14"></rect>
+              <rect x="34" width="1" height="14"></rect>
+              <rect x="36" width="3" height="14"></rect>
+            </g>
+          </g>
+        </g>
+        <path class="t an h3-ticks" d="M100 30c-5 3-8 8-8 14M94 22c-6 4-10 10-11 17"></path>
+        <rect class="g" x="184" y="56" width="62" height="112" rx="12"></rect>
+        <path class="t" d="M207 65h16M208 160h14"></path>
+        <rect class="ds5 an h3-slot" x="195" y="96" width="40" height="27" rx="5"></rect></svg
+    ></template>
+    <div class="rest" id="rest"></div>
+    <div id="frames"></div>
+    <script>
+      for (const id of ['w', 'h1', 'h2', 'h3']) {
+        const c = document.createElement('div');
+        c.className = 'cell';
+        c.style.setProperty('--t', 5.9);
+        c.appendChild(document.getElementById(id).content.cloneNode(true));
+        document.getElementById('rest').appendChild(c);
+      }
+      const times = [0.3, 0.6, 0.9, 1.2, 1.5, 1.8, 2.1, 2.4];
+      for (const id of ['w', 'h1', 'h2', 'h3']) {
+        const row = document.createElement('div');
+        row.className = 'row';
+        for (const t of times) {
+          const c = document.createElement('div');
+          c.className = 'cell';
+          c.style.setProperty('--t', t);
+          c.appendChild(document.getElementById(id).content.cloneNode(true));
+          const l = document.createElement('div');
+          l.textContent = id + ' t=' + t + 's';
+          c.appendChild(l);
+          row.appendChild(c);
+        }
+        document.getElementById('frames').appendChild(row);
+      }
+    </script>
+  </body>
+</html>
