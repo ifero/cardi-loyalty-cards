@@ -178,11 +178,13 @@ current_sprint:
   # COMMITTED 2026-10-24 (Sprint 21 -> 22 roll-over), per ifero: 22-10 FIRST, then the three
   # Epic 23 stories STAGED here on 2026-10-01 (Sprint 20 -> 21 roll-over). Committed BEFORE
   # refinement, like Sprint 21: none of the four has a story file on any git ref (179 refs
-  # scanned 2026-10-24), so the waves below are PROVISIONAL until the specs' Code Maps exist.
+  # scanned 2026-10-24), so the waves were PROVISIONAL until the specs' Code Maps existed.
+  # REFINED 2026-10-25: all four specs approved by ifero ("Approve and stop"); the waves below are
+  # now DERIVED from their Code Maps by file overlap.
   number: 22
   name: 'Sprint 22: Finishing the Redesign — Onboarding and the Watch (Epics 22 and 23)'
   goal: "Finish the Cardì redesign. Onboarding first (22-10): Epic 22's Wave B, unblocked at this roll-over by the adopted illustration set, whose four drawings and Welcome brand moment are already built as Lottie (#278). Then the watch half: implement the watch grammar Story 23-1 wrote in Sprint 20, surface by surface: the watchOS app (23-2: `CardListView`, `BarcodeFlashView`), the Wear OS app (23-3: `CardListScreen`, `BarcodeScreen`, `SortPickerScreen`) and the Apple Watch widget and complication (23-4). The Wear part is overdue rather than merely next: the Wear OS app in the Cardì 1.0.0 build still paints the pre-rebrand palette, which 23-3 owns."
-  status: planned # COMMITTED 2026-10-24 at the Sprint 21 -> 22 roll-over, per ifero, BEFORE its refinement gate: all four stories refine through `bmad-build <story-key>`, one per run, by its new-story route. Previously `proposed`: STAGED 2026-10-01 as Epic 23 alone; 22-10 was added in front of it at commit, at the same roll-over that lifted its block.
+  status: planned # REFINEMENT GATE CLEARED 2026-10-25: all four stories `ready-for-dev`, each approved by ifero with "Approve and stop"; nothing is picked up yet. COMMITTED 2026-10-24 at the Sprint 21 -> 22 roll-over, per ifero, BEFORE its refinement gate: all four stories refine through `bmad-build <story-key>`, one per run, by its new-story route. Previously `proposed`: STAGED 2026-10-01 as Epic 23 alone; 22-10 was added in front of it at commit, at the same roll-over that lifted its block.
   planning_date: 2026-10-24
   epics: [22, 23]
   stories:
@@ -193,13 +195,26 @@ current_sprint:
   waves:
     wave_1:
       stories: [22-10]
-      note: "FIRST, per ifero: it closes the phone redesign. Its own wave because it is the only phone story, and it is not expected to share a file with wave_2 (phone onboarding against the watch targets) — confirm that from the specs; going first is ifero's priority, not a file constraint. ALREADY BUILT (#278): the four drawings and their motion in `docs/design/cardi/lottie/onboarding-illustrations.source.html`; nine Lottie files in `assets/animations/onboarding/`, light and dark, built by `build-onboarding-lottie.py`, whose `--check` proves them current; and brand moment D, `cardi-mark-intro.json`, a drop-in for Welcome's `<BrandedIcon size={100} iconSize={34} />`. STILL NEEDED: `lottie-react-native` is NOT installed. The SDK pins `~7.3.4` and it is a native module, so it takes `npx expo install` and a new dev build: this story's native risk. There are four drawings for more than four frames, so mode selection, the difference sheet and scan-or-add may take none ('if no drawing from the set fits, use none'). Each animation plays once; under Reduce Motion show its last frame, which is the static drawing. ⚠️ THE FRAMES' MARK IS A STAND-IN: `cardi-onboarding-frames.html` builds the ì from one stem and a stroke accent, but the shipped mark is three bars with the beam laid across them. Take it from `assets/images/cardi-mark-inline.svg`, as the Lottie does."
+      note: "FIRST, per ifero: it closes the phone redesign. DERIVED 2026-10-25 from the Code Maps: it shares no file with any Epic 23 story (it writes `features/onboarding/`, `shared/i18n/locales/`, `jest.setup.js`, `package.json`, `yarn.lock` and `cardi-design-system.md`), so going first is ifero's priority, not a file constraint, and Epic 23 need not wait for it to merge. It adds the sprint's one native module, `lottie-react-native` (`~7.3.4`), so it needs a new native build. It plays the adopted Lottie files from #278 and takes the mark from `assets/images/cardi-mark-inline.svg`, not the frames' stand-in ì."
     wave_2:
-      stories: [23-2, 23-3, 23-4]
-      note: "The watch half, as STAGED 2026-10-01. No waves were derived then, on purpose, and none can be now: none of the three has a story file. PROVISIONAL, so re-derive the grouping from the specs' Code Maps. Known without them: 23-2 and 23-4 both live in the Apple watch targets (`targets/watch/` and its widget extension `targets/watch-widget/`), so they are not assumed parallel-safe; 23-3 is `watch-android/` and shares neither. Every story here ends on hardware — see notes."
+      stories: [23-2, 23-3]
+      note: "watchOS and Wear OS, PARALLEL-SAFE by file (DERIVED 2026-10-25). 23-2 writes only the `targets/watch/` Swift, its contract suites, `test/watch-accent.test.ts` and an unrun UI test; 23-3 writes only the `watch-android/` Kotlin, its README and a new `test/wear-cardi-palette.test.ts`. Their one shared file is `cardi-watch-grammar.md`: each records its own platform, but both repoint the same stale §4.2 table, a column each, so the second to land rebases that table. 23-2 ends on ifero's Apple Watch (the cream title and the §6a clock-strip measurement). 23-3's hardware pass is an ACCEPTED RISK, with no Wear OS device, and Story 21.5 AC5 (the Wear store screenshots) stays open."
+    wave_3:
+      stories: [23-4]
+      note: "The complication, AFTER 23-2. Not a file constraint: the two share no source file (23-4 writes `targets/watch-widget/`, `scripts/build-brand-icons.mjs`, the complication frames' generator and their tests). They share the Apple watch build, the watch simulator and ifero's Apple Watch pass, and the grammar's §4.2 table once more. 23-4 also HALTS mid-build for ifero's pick between the full mark and a one-bar reduction, rendered in all four families, full colour and tinted."
   notes: |
     Committed 2026-10-24 at the Sprint 21 -> 22 roll-over, per ifero ("commit Sprint 22 as 22-10
     first plus the staged Epic 23 stories"), with all eight Sprint 21 stories done.
+
+    REFINED 2026-10-25, all four through `bmad-build` by its new-story route, each approved by ifero
+    with "Approve and stop" and committed before the next run so each started on a clean tree. Every
+    spec ran over the skill's 1,600-token guide (about 3,400 to 4,000) and ifero kept each whole.
+    The decisions: 22-10, a highlight shown again rests on its last frame; 23-2, a tap no longer
+    leaves the barcode; 23-3, the same, no Wear OS device (an accepted risk) and 21.5 AC5 left open;
+    23-4, the full mark rendered against a one-bar reduction with a halt for the pick, and two lines
+    on the rectangular family. The waves are re-derived from the Code Maps (see waves). Two traps the
+    specs name: the design frames draw a stand-in ì, not the shipped mark (22-10, 23-4), and the
+    grammar's "shipped" columns predate Stories 21.2a and 21.3 (23-2 to 23-4).
 
     22-10 JOINS, AND LEADS. Sprint 21 excluded it as BLOCKED on a commissioned illustration set
     that did not exist. The gate cleared by adoption rather than commission: on 2026-10-23/24
