@@ -4247,10 +4247,10 @@ Wallet while Settings still waits costs nothing.
 
 **Sequencing:** 22.1 first — the shared primitives every other story consumes. Then Wave A
 (wallet, card detail, barcode, capture, form, settings, document, auth), which is
-illustration-free and can proceed immediately. **Wave B is onboarding, and it is blocked** on a
-commissioned illustration set that does not exist. That constraint is the design system working,
-not failing: the alternative is inventing a per-screen illustration style, which is explicitly
-forbidden.
+illustration-free and can proceed immediately. **Wave B is onboarding.** It was blocked on a
+commissioned illustration set that did not exist, because the alternative, inventing a per-screen
+illustration style, is explicitly forbidden. **Unblocked 2026-10-24:** ifero adopted a drawn
+onboarding set in place of a commissioned one; see the design system's _Illustrations_.
 
 ### Story 22.1: Design-System Components [Enabling]
 
@@ -4400,7 +4400,7 @@ new user sees are the brand.
   currently uses is not in the palette and is replaced.
 - `AppIconHeader` renders the Cardì mark, already delivered in 20.4.
 
-### Story 22.10: Onboarding [BLOCKED — needs illustrations]
+### Story 22.10: Onboarding
 
 **As a** new user, **I want** onboarding redesigned, **So that** my first impression is the brand
 at its best.
@@ -4409,8 +4409,10 @@ at its best.
 
 - The six onboarding frames are implemented: welcome, mode selection, the difference sheet, the
   scan-or-add-manually screen, and the highlights carousel.
-- **Blocked until a commissioned illustration set exists.** Inventing a per-screen illustration
-  style is forbidden, and the placeholder drawings in the frames are references, not artwork.
+- **Uses the adopted onboarding illustration set** (unblocked 2026-10-24): the four drawings in
+  `docs/design/cardi/lottie/`, shipped as Lottie in `assets/animations/onboarding/`. Inventing a
+  per-screen illustration style is still forbidden, and the placeholder drawings in the frames are
+  references, not artwork.
 - Illustrations are two-colour — ink line-work plus one beam accent — with no gradients and no
   third colour.
 - The splash-adjacent brand animation lands here if it lands anywhere: the launch surface is

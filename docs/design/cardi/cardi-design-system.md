@@ -1856,11 +1856,31 @@ it: an icon is chrome and never takes a card accent. See
 
 ### Illustrations
 
-Illustrations are a **commissioned set**, not per-screen decoration. They appear **only**
+Illustrations come from **one set**, not per-screen decoration. They appear **only**
 in onboarding and true empty states — never on the wallet, barcode, settings or forms.
 The set is flat, two-tone (ink line-work on cream) with **beam yellow as the single
 accent**, no gradients and no third colour. Do not invent a new illustration style per
 screen; if no illustration from the set fits, use none.
+
+**The set — ADOPTED 2026-10-24 (ifero).** Four onboarding drawings: welcome (a hand holding a
+fan of cards), all your cards, scan or type, and your data. They were drawn rather than
+commissioned, and adopting them is what unblocked Story 22.10. The drawings live in
+[`lottie/onboarding-illustrations.source.html`](lottie/onboarding-illustrations.source.html)
+and ship as Lottie in `assets/animations/onboarding/`, built by
+[`lottie/build-onboarding-lottie.py`](lottie/build-onboarding-lottie.py) (see its
+[README](lottie/README.md)). A new drawing joins the set by being drawn in it, with the same
+classes and line weights (3 for silhouettes, 2.5 for small objects, 2 for detail), not by
+being made for one screen.
+
+- **Dark** is a rule, not a second drawing: cream lines on black, the beam unchanged, every
+  stroke 0.25 lighter. The fills that hide what is behind go black, never ink.
+- **Motion** plays once and rests on exactly the static drawing, so Reduce Motion shows that
+  frame and loses nothing. The beam never fades: it cuts on, then draws, sweeps or scales. A
+  scan beam appears full width and sweeps top to bottom.
+- **The Welcome brand moment** is the accent arriving as the scan beam it is in motion ("scan,
+  then settle"): the beam sweeps the mark's bars, comes back, and turns 35° into the accent
+  (`cardi-mark-intro.json`). It belongs to onboarding alone; the launch surface stays
+  anti-spectacle.
 
 ## Dark mode
 
