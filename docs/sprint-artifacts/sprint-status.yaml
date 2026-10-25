@@ -650,7 +650,7 @@ development_status:
   # and no header is a different grammar, not the phone system scaled down.
   epic-23: in-progress # 2026-09-14: 23-1 refined (the DESIGN gate); 23-2..23-4 stay backlog
   23-1-the-watch-grammar: done # READY FOR REVIEW 2026-09-15. PICKED UP 2026-09-15 (wave_0, the first story of Sprint 20). REFINED 2026-09-14. DESIGN; GATES 23-2..23-4. Refinement found the job is bigger than "extend the system": cardi-design-system.md FORBIDS every frame this story must draw ("Design nothing else" + Forbidden: "any frame that is not 393 x 852"), so it must AMEND the system, not append to it. And there are TWO design systems in the repo — the watch code implements "Carbon Utility" (docs/ux-design-specification.md), cited by name in CarbonTheme.kt; the word "watch" does not appear in the Cardi doc at all. Reconciling them is the story's real subject. Also: watchOS has NO theme layer (empty AccentColor), and `orange` ships on all three watch surfaces while Cardi bans it by name.
-  23-2-watchos-implementation: backlog
+  23-2-watchos-implementation: ready-for-dev # REFINED 2026-10-25 through bmad-build, approved by ifero ("Approve and stop"); full spec kept at ~4,000 tokens by ifero's choice; decision 1: a tap no longer leaves the barcode screen, only the swipe and the back chevron; ends on a real Apple Watch (ifero), where the cream title and the grammar's §6a clock-strip measurement are checked; spec at docs/sprint-artifacts/stories/23-2-watchos-implementation.md
   23-3-wear-os-implementation: backlog
   23-4-watch-widget-and-complication: backlog
   epic-23-retrospective: optional
