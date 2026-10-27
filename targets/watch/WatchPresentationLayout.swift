@@ -38,6 +38,11 @@ struct WatchCardRowLayoutMetrics {
     (avatarSize * (1 - (1 / 2.0.squareRoot()))) / 2
   }
 
+  /// The card row, derived from its content (watch grammar §5.3): `max(28, 30) + 2 × 9 = 48`,
+  /// which is also the system's touch target. On the card row `minimumTapHeight` therefore never
+  /// binds — it was 44 until Story 23.2 and moving it to 48 moved no row pixel; it states the
+  /// intent, so nobody "fixes" it downwards. The sort picker's rows take the same floor, and
+  /// there it DOES bind: their content is shorter, so they grew from 44 to 48 (measured at 40 mm).
   static let compact = WatchCardRowLayoutMetrics(
     rowSpacing: 10,
     horizontalPadding: 10,
@@ -46,7 +51,7 @@ struct WatchCardRowLayoutMetrics {
     accentHeight: 28,
     avatarSize: 30,
     cornerRadius: 14,
-    minimumTapHeight: 44
+    minimumTapHeight: 48
   )
 }
 

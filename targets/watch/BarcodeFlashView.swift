@@ -15,19 +15,18 @@ import WatchKit
     subsystem: "com.iferoporefi.myloyaltycards.watch", category: "BarcodeGeometry")
 #endif
 
-/// Cream `#F0F0E8` — the tint this screen substitutes for the app's beam accent.
-///
-/// Kept as a named constant rather than inlined so that `test/watch-accent.test.ts` can
-/// assert BOTH halves of the carve-out: that the cream literal is present here, and that
-/// beam `#FCCC0C` is absent. See the `toolbarForegroundStyle` call site below for why the
-/// substitution exists at all, and why cream rather than ink.
-private let barcodeTitleTint = parseHexColor("#F0F0E8")
-
-// Full-screen barcode flash view — restyled to match Figma Apple Watch barcode design
+// Full-screen barcode flash view — restyled to match Figma Apple Watch barcode design.
+//
+// ⚠️ NOTHING ON THIS SCREEN DISMISSES IT EXCEPT THE TWO SYSTEM WAYS BACK — the swipe from the
+// left edge and the navigation bar's back chevron (Story 23.2, watch grammar §8). The Digital
+// Crown used to dismiss it on any movement, and a tap on the code used to as well. Both bound
+// an accidental input — a single detent, a sleeve, the other hand steadying the watch, a stray
+// touch while the wrist is held to a scanner — to losing the barcode mid-scan, which is the
+// failure this app exists to prevent. The crown now does nothing here: the screen does not
+// scroll, and no crown handler is attached.
 struct BarcodeFlashView: View {
   let card: WatchCard
 
-  @Environment(\.dismiss) private var dismiss
   // The dimmed Always-On state, which is as close as watchOS lets an app get to the
   // display's luminance: there is no brightness API to call and no keep-awake API to
   // hold the wake period open (Story 16.26's AC1 determination, recorded in that
@@ -36,9 +35,6 @@ struct BarcodeFlashView: View {
   // presented to the scanner — just dimmer.
   @Environment(\.isLuminanceReduced) private var isLuminanceReduced
   @State private var barcodeImage: Image? = nil
-  @FocusState private var isFocused: Bool
-  @State private var crownRotation: Double = 0.0
-  @State private var crownTriggered: Bool = false
   // `.zero` until the `GeometryReader` reports a size. It used to default to 156 x 88,
   // which rendered one image against a guess and a second against the real geometry —
   // and with an orientation to resolve, that first guess would be a visible flip on
@@ -170,7 +166,6 @@ struct BarcodeFlashView: View {
               .frame(width: layout.barcodeSize.width, height: layout.barcodeSize.height)
               .accessibilityIdentifier("barcode-image")
               .accessibilityLabel(barcodeAccessibilityLabel)
-              .onTapGesture { dismiss() }
           } else {
             barcodePlaceholder(layout: layout)
           }
@@ -237,20 +232,6 @@ struct BarcodeFlashView: View {
         .padding(.vertical, layout.outerVerticalPadding)
       }
       .ignoresSafeArea(edges: [.horizontal, .bottom])
-      .focusable(true)
-      .focused($isFocused)
-      .digitalCrownRotation(
-        $crownRotation, from: -1.0, through: 1.0, by: 0.1, sensitivity: .low, isContinuous: true,
-        isHapticFeedbackEnabled: true
-      )
-      .onChange(of: crownRotation) { _, newValue in
-        // Dismiss on any crown movement (single-shot)
-        guard !crownTriggered else { return }
-        if abs(newValue) > 0.01 {
-          crownTriggered = true
-          dismiss()
-        }
-      }
     }
     // The navigation bar and the card's name STAY (ifero's call, 2026-09-04): the back
     // chevron and the title are what make this screen navigable rather than a slab of
@@ -275,6 +256,11 @@ struct BarcodeFlashView: View {
     // dark mode and stays white; it ignores the accent for the same reason and in the
     // same breath.
     //
+    // The cream is the shared `WatchColor.cream` (Story 23.2), not a second literal: it
+    // is the same body-text cream the list paints, and the only `WatchColor` this screen
+    // reads. `test/watch-accent.test.ts` asserts this line, and that no ink and no beam
+    // appear anywhere in this file.
+    //
     // ⚠️ `.tint()` DOES NOT WORK HERE, and it fails silently. It was the first attempt
     // and it changed nothing on a 46 mm simulator: this view is a `navigationDestination`
     // of the list's `NavigationStack`, and the bar is drawn by the STACK, so a tint set
@@ -282,11 +268,9 @@ struct BarcodeFlashView: View {
     // modifier for bars SwiftUI manages — and it is watchOS-only (watchOS 9.0+,
     // explicitly unavailable on iOS, macOS and tvOS), which is the clue that it exists
     // precisely for this strip.
-    .toolbarForegroundStyle(barcodeTitleTint, for: .navigationBar)
+    .toolbarForegroundStyle(WatchColor.cream, for: .navigationBar)
     .accessibilityIdentifier("barcode-view")
     .task(id: card.id) {
-      // focus the view for crown events and play haptic
-      isFocused = true
       WKInterfaceDevice.current().play(.success)
       // Story 9.6 (ADR-2026-06-09-001): a displayed barcode is a card "open" —
       // emit the usage event so the phone counts it toward shared sorting.
@@ -353,10 +337,6 @@ struct BarcodeFlashView: View {
           """
         )
       #endif
-    }
-    .onDisappear {
-      // reset focus so crown events don't leak to other screens
-      isFocused = false
     }
   }
 
@@ -432,7 +412,6 @@ struct BarcodeFlashView: View {
       .frame(width: layout.barcodeSize.width, height: layout.barcodeSize.height)
       .accessibilityIdentifier("barcode-image")
       .accessibilityLabel(WatchL10n.format("watch.barcode.accessibility.value_format", titleText))
-      .onTapGesture { dismiss() }
     } else {
       Image(systemName: "barcode")
         .resizable()
@@ -441,7 +420,6 @@ struct BarcodeFlashView: View {
         .frame(width: layout.barcodeSize.width, height: layout.barcodeSize.height)
         .accessibilityIdentifier("barcode-image")
         .accessibilityLabel(WatchL10n.format("watch.barcode.accessibility.image_format", titleText))
-        .onTapGesture { dismiss() }
     }
   }
 }

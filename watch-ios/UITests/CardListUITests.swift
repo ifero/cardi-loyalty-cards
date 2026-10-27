@@ -16,11 +16,12 @@ final class CardListUITests: XCTestCase {
   }
 
   func test_list_showsCards_and_supportsScrolling() throws {
-    let cards = [
-      ["id": "1", "name": "Card A", "brandId": NSNull(), "colorHex": "#1e90ff"],
-      ["id": "2", "name": "Card B", "brandId": NSNull(), "colorHex": "#ff6b6b"],
-      ["id": "3", "name": "Card C", "brandId": NSNull(), "colorHex": "green"],
-    ]
+    // Eight rows at a 52 pt pitch overflow even the tallest watch, so the last one starts below
+    // the fold and only a scroll can bring it up (A-Z order, no favourites: Card H is last).
+    let cards = (1...8).map { index -> [String: Any] in
+      let letter = String(UnicodeScalar(UInt8(64 + index)))
+      return ["id": "\(index)", "name": "Card \(letter)", "brandId": NSNull(), "colorHex": "green"]
+    }
     let jsonData = try JSONSerialization.data(withJSONObject: cards, options: [])
     let json = String(data: jsonData, encoding: .utf8)!
 
@@ -34,17 +35,25 @@ final class CardListUITests: XCTestCase {
     let firstRow = app.buttons["card-row-1"]
     XCTAssertTrue(firstRow.waitForExistence(timeout: 2), "Row identifier should be present")
 
-    // Attempt to scroll: simulate a crown rotation or swipe
-    if #available(watchOS 10.0, *) {
-      // XCUIRemote rotate may be available on watchOS simulators; fallback to swipe
-      XCUIRemote.shared().rotate(.clockwise, withVelocity: 4)
-    } else {
-      app.swipeUp()
-    }
+    let lastRow = app.buttons["card-row-8"]
+    XCTAssertFalse(lastRow.exists && lastRow.isHittable, "The last row should start off screen")
 
-    // After scrolling, ensure another card is reachable
-    let third = app.staticTexts["Card C"]
-    XCTAssertTrue(third.waitForExistence(timeout: 2))
+    // Scroll with the Digital Crown, which the list takes explicitly (Story 23.2, watch grammar
+    // §8). `XCUIRemote` is the tvOS remote and has no rotation; the crown is `XCUIDevice`'s.
+    XCUIDevice.shared.rotateDigitalCrown(delta: 5.0)
+
+    waitUntilHittable(lastRow, "The crown should scroll the last row into reach")
+  }
+
+  /// Waits for `element` to exist AND be hittable. `waitForExistence` alone returns at once for
+  /// an element that already exists off screen, or under a pushed screen mid-pop.
+  private func waitUntilHittable(
+    _ element: XCUIElement, _ message: String, file: StaticString = #filePath, line: UInt = #line
+  ) {
+    let hittable = XCTNSPredicateExpectation(
+      predicate: NSPredicate(format: "exists == true AND hittable == true"), object: element)
+    XCTAssertEqual(
+      XCTWaiter().wait(for: [hittable], timeout: 3), .completed, message, file: file, line: line)
   }
 
   func test_importSampleCards_buttonAddsCards() throws {
@@ -91,7 +100,13 @@ final class CardListUITests: XCTestCase {
     XCTAssertTrue(barcodeImage.waitForExistence(timeout: 1))
   }
 
-  func test_tapBarcode_dismissesToList() throws {
+  /// Opens card 1's barcode and returns the screen's back chevron.
+  ///
+  /// The chevron, not `barcode-image`, is what proves the barcode screen is up: the screen's
+  /// own `.accessibilityIdentifier("barcode-view")` propagates to its children and replaces
+  /// their identifiers, so no element carries `barcode-image` (measured on a 40 mm watchOS 26.5
+  /// simulator, before and after Story 23.2).
+  private func openBarcode() throws -> (row: XCUIElement, back: XCUIElement) {
     let cards = [
       ["id": "1", "name": "Esselunga", "brandId": NSNull(), "colorHex": "#1e90ff", "barcodeValue": "5901234123457", "barcodeFormat": "EAN13"]
     ]
@@ -105,42 +120,53 @@ final class CardListUITests: XCTestCase {
     XCTAssertTrue(firstRow.waitForExistence(timeout: 2))
     firstRow.tap()
 
-    let barcodeImage = app.images["barcode-image"]
-    XCTAssertTrue(barcodeImage.waitForExistence(timeout: 1))
-
-    // Tap to dismiss
-    barcodeImage.tap()
-
-    // Back to list
-    XCTAssertTrue(firstRow.waitForExistence(timeout: 1))
+    let back = app.navigationBars.buttons["BackButton"]
+    XCTAssertTrue(back.waitForExistence(timeout: 2), "The barcode screen should open")
+    return (firstRow, back)
   }
 
-  func test_crownRotation_dismissesToList() throws {
-    let cards = [
-      ["id": "1", "name": "Esselunga", "brandId": NSNull(), "colorHex": "#1e90ff", "barcodeValue": "5901234123457", "barcodeFormat": "EAN13"]
-    ]
-    let jsonData = try JSONSerialization.data(withJSONObject: cards, options: [])
-    let json = String(data: jsonData, encoding: .utf8)!
+  func test_tapBarcode_keepsBarcode() throws {
+    let (firstRow, back) = try openBarcode()
 
-    app.launchEnvironment["UITEST_CARDS"] = json
-    app.launch()
+    // A tap no longer leaves the barcode (Story 23.2, decision 1): a stray touch while the
+    // code is held to a scanner must not close it. Tapped in the middle of the white field.
+    app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)).tap()
 
-    let firstRow = app.buttons["card-row-1"]
-    XCTAssertTrue(firstRow.waitForExistence(timeout: 2))
-    firstRow.tap()
+    XCTAssertFalse(back.waitForNonExistence(timeout: 1), "A tap must not dismiss the barcode")
+    XCTAssertFalse(firstRow.exists && firstRow.isHittable)
+  }
 
-    let barcodeImage = app.images["barcode-image"]
-    XCTAssertTrue(barcodeImage.waitForExistence(timeout: 1))
+  func test_crownRotation_keepsBarcode() throws {
+    let (firstRow, back) = try openBarcode()
 
-    // Simulate Digital Crown rotation to dismiss (watchOS simulator)
-    if #available(watchOS 10.0, *) {
-      XCUIRemote.shared().rotate(.clockwise, withVelocity: 4)
-    } else {
-      // Fallback: swipe down to simulate dismissal
-      app.swipeDown()
-    }
+    // The crown does nothing on the barcode screen (Story 23.2, watch grammar §8): it used to
+    // dismiss on a single detent. Turn it both ways; the barcode stays.
+    XCUIDevice.shared.rotateDigitalCrown(delta: 1.0)
+    XCUIDevice.shared.rotateDigitalCrown(delta: -1.0)
 
-    // Back to list
-    XCTAssertTrue(firstRow.waitForExistence(timeout: 1))
+    XCTAssertFalse(
+      back.waitForNonExistence(timeout: 1), "The crown must not dismiss the barcode")
+    XCTAssertFalse(firstRow.exists && firstRow.isHittable)
+  }
+
+  func test_backChevron_returnsToList() throws {
+    let (firstRow, back) = try openBarcode()
+
+    // With the tap and the crown gone, the back chevron is one of the screen's two ways back.
+    back.tap()
+
+    waitUntilHittable(firstRow, "The back chevron should return to the list")
+  }
+
+  func test_edgeSwipe_returnsToList() throws {
+    let (firstRow, _) = try openBarcode()
+
+    // The other way back: the system swipe from the left edge. A fast drag from the very edge;
+    // a slow one, or one started inside the screen, is read as a touch on the code.
+    let edge = app.coordinate(withNormalizedOffset: CGVector(dx: 0.0, dy: 0.55))
+    let across = app.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.55))
+    edge.press(forDuration: 0.01, thenDragTo: across, withVelocity: .fast, thenHoldForDuration: 0)
+
+    waitUntilHittable(firstRow, "A swipe from the left edge should return to the list")
   }
 }

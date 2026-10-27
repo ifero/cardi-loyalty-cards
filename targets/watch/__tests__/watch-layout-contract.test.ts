@@ -178,6 +178,35 @@ type GeometryCase = {
 const withoutComments = (source: string) =>
   source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
+/**
+ * Every way SwiftUI offers to hide the navigation bar or its back button — the bar that carries
+ * the barcode screen's back chevron and its cream title. A pattern rather than exact spellings,
+ * so another placement list or a sibling modifier cannot slip past it.
+ */
+const HIDES_THE_NAVIGATION_BAR =
+  /\.toolbar\(\s*\.hidden\b|\.toolbarVisibility\(\s*\.hidden\b|\.navigationBarHidden\(|\.navigationBarBackButtonHidden\b/;
+
+/**
+ * The modifier chain applied to the container that opens at `signature`: the lines straight
+ * after its closing brace that start with `.`, up to the next sibling. A modifier written inside
+ * the container — on a row, a link or a stack — is not in it.
+ */
+const containerModifiers = (code: string, signature: string) => {
+  const body = swiftDeclaration(code, signature, 'CardListView.swift');
+  const after = code.slice(code.indexOf(body) + body.length).split('\n');
+  const chain: string[] = [];
+
+  for (const line of after.slice(1)) {
+    if (!line.trim().startsWith('.')) {
+      break;
+    }
+
+    chain.push(line.trim());
+  }
+
+  return { body, chain };
+};
+
 const caseKey = ({
   width,
   height,
@@ -419,17 +448,87 @@ describe('watch layout contract', () => {
     expect(barcodeView).not.toContain('.navigationTitle("")');
   });
 
-  it('keeps the primary interaction flow wired from list row to barcode dismissal', () => {
-    const barcodeView = fs.readFileSync(barcodeViewPath, 'utf8');
+  it('keeps the list → barcode flow, and leaves the barcode only by the system ways back', () => {
+    const barcodeCode = withoutComments(fs.readFileSync(barcodeViewPath, 'utf8'));
     const cardListView = fs.readFileSync(cardListViewPath, 'utf8');
 
     expect(cardListView).toContain('NavigationLink(value: WatchCardRoute(cardId: card.id))');
     expect(cardListView).toContain('.navigationDestination(for: WatchCardRoute.self) { route in');
     expect(cardListView).toContain('BarcodeFlashView(card: card)');
-    expect(barcodeView).toContain('.onTapGesture { dismiss() }');
-    expect(barcodeView).toContain('.digitalCrownRotation(');
-    expect(barcodeView).toContain('crownTriggered = true');
-    expect(barcodeView).toContain('dismiss()');
+
+    // Story 23.2 INVERTED what this test used to pin. The barcode screen dismissed on a tap
+    // (decision 1, ifero 2026-10-25) and on any crown movement (watch grammar §8); both are
+    // gone, so a stray touch or a single detent while the code is held to a scanner cannot
+    // close it. What is left is the system's swipe from the left and the navigation bar's
+    // back chevron — neither of which is code in this file, which is the point: the screen
+    // calls `dismiss()` nowhere, and does not even read the action.
+    expect(barcodeCode).not.toContain('.onTapGesture');
+    expect(barcodeCode).not.toContain('.digitalCrownRotation(');
+    expect(barcodeCode).not.toContain('crownTriggered');
+    expect(barcodeCode).not.toContain('dismiss()');
+    expect(barcodeCode).not.toContain('@Environment(\\.dismiss)');
+    // The navigation bar — which carries the back chevron — is still drawn, by any spelling.
+    expect(barcodeCode).not.toMatch(HIDES_THE_NAVIGATION_BAR);
+  });
+
+  it('gives the crown to the list and the picker, explicitly, and to no handler at all', () => {
+    // Watch grammar §8: "The crown and the rotary scroll. They never act." The list and the
+    // picker scroll by the crown because each takes its focus by name — behaviour that only
+    // works by inheritance silently disappears when a container is swapped. The barcode
+    // screen takes nothing: it does not scroll, and no crown handler exists to act.
+    const cardListCode = withoutComments(fs.readFileSync(cardListViewPath, 'utf8'));
+    const barcodeCode = withoutComments(fs.readFileSync(barcodeViewPath, 'utf8'));
+
+    // Pinned as the ScrollView's and the List's OWN modifiers — the chain after each one's
+    // closing brace — so the pair cannot drift onto the LazyVStack, a NavigationLink or a
+    // picker row inside, where it would focus something that does not scroll.
+    const list = containerModifiers(cardListCode, 'ScrollView {');
+    const pickerCode = cardListCode.slice(
+      cardListCode.indexOf('struct WatchSortPickerView: View {')
+    );
+    const picker = containerModifiers(pickerCode, 'List {');
+
+    expect(cardListCode).toContain('@FocusState private var listHasCrown: Bool');
+    expect(list.body).toContain('LazyVStack(spacing: 4)');
+    expect(list.chain).toEqual(['.focused($listHasCrown)', '.defaultFocus($listHasCrown, true)']);
+
+    expect(pickerCode).toContain('@FocusState private var optionsHaveCrown: Bool');
+    expect(picker.body).toContain('ForEach(WatchSortMode.allCases)');
+    expect(picker.chain).toEqual([
+      '.listStyle(.plain)',
+      '.scrollContentBackground(.hidden)',
+      '.focused($optionsHaveCrown)',
+      '.defaultFocus($optionsHaveCrown, true)',
+      '.background(WatchColor.ground)',
+      '.navigationTitle(WatchL10n.string("watch.sort.title"))'
+    ]);
+
+    // And neither pair appears anywhere else — in particular not inside either container.
+    for (const modifier of ['.focused(', '.defaultFocus(']) {
+      expect(cardListCode.split(modifier).length - 1).toBe(2);
+      expect(list.body).not.toContain(modifier);
+      expect(picker.body).not.toContain(modifier);
+    }
+
+    // No surface reads the crown's value, so none can act on it — and in particular nothing
+    // dismisses on it, which is what the barcode screen used to do.
+    // Across the whole watch app, not just these two screens: the frozen "no crown action but
+    // scrolling" is target-wide, and WatchKit's crown delegate and sequencer are readers too.
+    const watchDir = path.join(repoRoot, 'targets', 'watch');
+    const crownReaders = fs
+      .readdirSync(watchDir, { recursive: true, encoding: 'utf8' })
+      .filter((relative) => relative.endsWith('.swift') && !relative.includes('__tests__'))
+      .filter((relative) =>
+        /digitalCrownRotation|onCrownRotate|WKCrownSequencer|WKCrownDelegate|crownSequencer/.test(
+          withoutComments(fs.readFileSync(path.join(watchDir, relative), 'utf8'))
+        )
+      );
+
+    expect(crownReaders).toEqual([]);
+
+    // The barcode screen holds no focus of its own any more: its only reason was the crown.
+    expect(barcodeCode).not.toContain('@FocusState');
+    expect(barcodeCode).not.toContain('.focusable(');
   });
 
   it('preserves watch-safe accessibility labels and minimum tap target sizing', () => {
@@ -497,7 +596,7 @@ describe('watch layout contract', () => {
     // top edge also ignored, the clock renders white glyphs straight THROUGH the black
     // bars — a wider module bought by breaking the symbol is not a wider module.
     expect(barcodeView).toContain('.ignoresSafeArea(edges: [.horizontal, .bottom])');
-    expect(withoutComments(barcodeView)).not.toContain('.toolbar(.hidden, for: .navigationBar)');
+    expect(withoutComments(barcodeView)).not.toMatch(HIDES_THE_NAVIGATION_BAR);
     expect(barcodeView).toContain('.navigationTitle(titleText)');
   });
 
@@ -636,20 +735,73 @@ describe('watch layout contract', () => {
     const baselineSpacing = 8;
     const containerHeight = 160;
 
-    expect(layout).toContain('minimumTapHeight: 44');
     expect(cardListView).toContain('private let metrics = WatchCardRowLayoutMetrics.compact');
     expect(cardListView).toContain('.frame(minHeight: metrics.minimumTapHeight)');
-    expect(cardListView).toContain('LazyVStack(spacing: 6)');
 
-    const compactVisibleRows = visibleRows(
-      containerHeight,
-      compactRowHeight,
-      metrics.rowSpacing - 4
-    );
+    // The list's own gap, read from the source rather than derived from the row's internal
+    // `rowSpacing` — an unrelated metric this test once subtracted 4 from to land on 6.
+    const listGap = Number(cardListView.match(/LazyVStack\(spacing: (\d+)\)/)?.[1]);
+
+    expect(listGap).toBe(4);
+
+    const compactVisibleRows = visibleRows(containerHeight, compactRowHeight, listGap);
     const baselineVisibleRows = visibleRows(containerHeight, baselineRowHeight, baselineSpacing);
 
-    expect(compactRowHeight).toBeGreaterThanOrEqual(44);
+    expect(compactRowHeight).toBe(48);
     expect(compactVisibleRows).toBeGreaterThanOrEqual(baselineVisibleRows + 1);
+  });
+
+  it('applies the watch grammar to the row: the declared 48, radius 14, gap 4 (Story 23.2)', () => {
+    const cardListView = fs.readFileSync(cardListViewPath, 'utf8');
+    const layout = fs.readFileSync(layoutPath, 'utf8');
+    const metrics = parseCompactMetrics(layout);
+
+    // §5.4: the declared floor is the system's 48, and the old 44 is gone. It never bound —
+    // the content is already 30 + 2 × 9 = 48 — so the change states the intent and moves no
+    // pixel. Pinning the equality is what proves "no pixel moves": were the content ever
+    // shorter than the floor, the floor would start binding and the row would grow.
+    expect(layout).toContain('minimumTapHeight: 48');
+    expect(layout).not.toContain('minimumTapHeight: 44');
+    expect(metrics.minimumTapHeight).toBe(48);
+    expect(Math.max(metrics.accentHeight, metrics.avatarSize) + metrics.verticalPadding * 2).toBe(
+      metrics.minimumTapHeight
+    );
+
+    // §5.5: 14, not the phone's 16 — and the relationship worth keeping is half the accent bar.
+    expect(metrics.cornerRadius).toBe(14);
+    expect(metrics.cornerRadius).toBe(metrics.accentHeight / 2);
+
+    // And the card row draws that 14: its ink fill and its hairline both read the metric, and the
+    // only literal radius in the file is the accent bar's 3 (§5.5: "14 for rows, 3 for the accent
+    // bar … and nothing else"). A literal 16 on the row would pass every pin on the constant.
+    const cardListCode = withoutComments(cardListView);
+
+    expect(
+      cardListCode.split('RoundedRectangle(cornerRadius: metrics.cornerRadius)').length - 1
+    ).toBe(2);
+    expect(
+      [...cardListCode.matchAll(/RoundedRectangle\(cornerRadius: (\d+)\)/g)].map(
+        (match) => match[1]
+      )
+    ).toEqual(['3']);
+
+    // §5.3: gap 4, the tighter of the two shipped values; the old 6 is gone.
+    expect(cardListView).toContain('LazyVStack(spacing: 4)');
+    expect(cardListView).not.toContain('LazyVStack(spacing: 6)');
+
+    // The sort picker's rows take the same 48 floor and the same 14 radius, read from the one
+    // metric rather than restated — the old picker held its own `44` literal.
+    const pickerCode = withoutComments(
+      cardListView.slice(cardListView.indexOf('struct WatchSortPickerView: View {'))
+    );
+
+    expect(pickerCode).toContain(
+      '.frame(minHeight: WatchCardRowLayoutMetrics.compact.minimumTapHeight)'
+    );
+    expect(pickerCode).toContain(
+      'RoundedRectangle(cornerRadius: WatchCardRowLayoutMetrics.compact.cornerRadius)'
+    );
+    expect(pickerCode).not.toMatch(/minHeight: \d/);
   });
 
   it('exposes a selectable watch sort model with phone-mirrored variants (Story 9.5)', () => {

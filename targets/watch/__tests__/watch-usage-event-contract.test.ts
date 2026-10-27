@@ -84,8 +84,8 @@ describe('watch usage event contract (Story 9.6)', () => {
   it('records a usage event when the barcode view is displayed (AC1)', () => {
     const barcodeView = readSwift(barcodeViewPath);
 
-    // Emission rides the same per-appearance task that focuses the view and
-    // plays the haptic — one event per card open.
+    // Emission rides the same per-appearance task that plays the haptic — one
+    // event per card open.
     expect(barcodeView).toContain('recordCardUsed(cardId: card.id)');
     const appearanceTask = barcodeView.slice(
       barcodeView.indexOf('.task(id: card.id)'),

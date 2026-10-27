@@ -72,6 +72,22 @@ describe('watch card list brand-logo contract', () => {
     expect(source).toContain('.clipShape(Circle())');
   });
 
+  it('keeps the logo chip, and rings a dark chip with the Cardì hairline (Story 23.2)', () => {
+    const source = fs.readFileSync(cardListViewPath, 'utf8');
+
+    // The chip stays exactly as it was: a white plate for dark artwork, a black one for light
+    // artwork. It is the backing a brand's mark was drawn for, so it is not chrome and does not
+    // take cream or ink.
+    expect(source).toContain('prefersDarkBacking ? Color.black : Color.white');
+
+    // What changed is the ring around the dark chip, which keeps it apart from the ink row: the
+    // system's dark outline `#3A3A48` (watch grammar §4.1), not white at 15 %.
+    expect(source).toContain(
+      '.strokeBorder(prefersDarkBacking ? WatchColor.hairline : Color.clear, lineWidth: 1)'
+    );
+    expect(source).not.toContain('Color.white.opacity(0.15)');
+  });
+
   it('insets logo artwork to the circle inscribed square via a derived metric', () => {
     const source = fs.readFileSync(cardListViewPath, 'utf8');
     const layout = fs.readFileSync(layoutPath, 'utf8');

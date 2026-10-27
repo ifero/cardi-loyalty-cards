@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { CARD_COLORS } from '@/shared/theme/tokens.generated';
+import { DEFAULT_CARD_COLOR } from '@/core/schemas/card';
+
+import { CARD_COLORS, DARK_THEME_COLORS, IDENTITY_COLORS } from '@/shared/theme/tokens.generated';
 
 import { describeOnMac, runSwiftProgram, swiftDeclaration } from './swift-source-helpers';
 
@@ -28,11 +30,72 @@ import { describeOnMac, runSwiftProgram, swiftDeclaration } from './swift-source
  */
 
 const repoRoot = path.resolve(__dirname, '../../..');
-const colorHelpersPath = path.join(repoRoot, 'targets', 'watch', 'ColorHelpers.swift');
-const cardListViewPath = path.join(repoRoot, 'targets', 'watch', 'CardListView.swift');
+const watchDir = path.join(repoRoot, 'targets', 'watch');
+const colorHelpersPath = path.join(watchDir, 'ColorHelpers.swift');
+const cardListViewPath = path.join(watchDir, 'CardListView.swift');
+const contentViewPath = path.join(watchDir, 'ContentView.swift');
 const HELPERS = 'ColorHelpers.swift';
 
 const readSource = (filePath: string) => fs.readFileSync(filePath, 'utf8');
+
+/**
+ * `source` with its comments removed. Several comments in the watch target quote the values
+ * Story 23.2 retired, in order to explain them; an absence assertion has to read code only. A
+ * `//` straight after a `:` is kept, so a URL inside a string literal is not cut short.
+ */
+const codeOnly = (source: string) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+
+/** Every Swift file the watch app compiles — `Generated/` included — as code only, by name. */
+const watchSwiftCode = () =>
+  fs
+    .readdirSync(watchDir, { recursive: true, encoding: 'utf8' })
+    .filter((relative) => relative.endsWith('.swift') && !relative.includes('__tests__'))
+    .sort()
+    .map((relative) => ({
+      file: relative,
+      code: codeOnly(readSource(path.join(watchDir, relative)))
+    }));
+
+/**
+ * A system or semantic colour, or a colour not built through the shared palette: the system set
+ * (`.blue` … `.brown`), the semantic styles (`.primary`, `.secondary`, `.tertiary`), the accent
+ * colour, white/hue/colour-space initialisers, an asset-catalogue `Color("…")`, and `.tint(`.
+ */
+const SYSTEM_OR_UNSHARED_COLOUR = new RegExp(
+  [
+    String.raw`(?:\bColor)?\.(?:blue|red|green|orange|gray|grey|yellow|cyan|purple|pink|mint|teal|indigo|brown|primary|secondary|tertiary|accentColor)\b`,
+    String.raw`\bColor\(\s*(?:white:|hue:|\.sRGB\b|\.displayP3\b|")`,
+    String.raw`\.tint\(`
+  ].join('|'),
+  'g'
+);
+
+/** The argument of every `.foregroundColor(…)` / `.foregroundStyle(…)`, whitespace-collapsed. */
+const foregroundArguments = (code: string) =>
+  [...code.matchAll(/\.foreground(?:Color|Style)\(/g)].map((match) => {
+    const start = (match.index ?? 0) + match[0].length;
+    let depth = 1;
+    let end = start;
+
+    while (end < code.length && depth > 0) {
+      if (code[end] === '(') depth += 1;
+      if (code[end] === ')') depth -= 1;
+      end += 1;
+    }
+
+    return code
+      .slice(start, end - 1)
+      .replace(/\s+/g, ' ')
+      .trim();
+  });
+
+/** How many times `needle` occurs in the code of the whole watch target, case-insensitively. */
+const occurrencesInTarget = (needle: string) =>
+  watchSwiftCode().reduce(
+    (total, { code }) => total + (code.toUpperCase().split(needle.toUpperCase()).length - 1),
+    0
+  );
 
 /** A `CardListView` computed property or view function, sliced whole and whitespace-normalised. */
 const rowProperty = (source: string, signature: string) =>
@@ -63,18 +126,18 @@ const buildHarness = () => {
     ),
     swiftDeclaration(source, 'func isNearBlack(hex: String) -> Bool {', HELPERS),
     // The row's two decisions, reproduced from `CardListView`'s `needsNearBlackHairline` and
-    // `prefersWhiteInitials`. They cannot be lifted — they are properties of a view that owns a
+    // `prefersCreamInitials`. They cannot be lifted — they are properties of a view that owns a
     // `card` — so the `?? false` / `?? true` defaults are pinned separately, in the static test
     // below, and a flip there fails that test rather than silently passing this harness.
     'func hairline(_ raw: String?) -> Bool { resolvedCardHex(raw).map(isNearBlack(hex:)) ?? false }',
-    'func whiteInitials(_ raw: String?) -> Bool {',
+    'func creamInitials(_ raw: String?) -> Bool {',
     '    resolvedCardHex(raw).map(shouldUseWhiteText(onBackgroundHex:)) ?? true',
     '}',
     [
       'while let line = readLine() {',
       '    let raw = line == "<empty>" ? "" : (line == "<blank>" ? "   " : line)',
       '    let hex = resolvedCardHex(raw) ?? "nil"',
-      '    print("\\(line)~hex=\\(hex)~hairline=\\(hairline(raw))~white=\\(whiteInitials(raw))")',
+      '    print("\\(line)~hex=\\(hex)~hairline=\\(hairline(raw))~cream=\\(creamInitials(raw))")',
       '}'
     ].join('\n')
   ].join('\n\n');
@@ -165,7 +228,7 @@ describe('watch card colour contract (Story 16.41)', () => {
         cardListView,
         'private var needsNearBlackHairline: Bool {'
       ),
-      prefersWhiteInitials: rowProperty(cardListView, 'private var prefersWhiteInitials: Bool {')
+      prefersCreamInitials: rowProperty(cardListView, 'private var prefersCreamInitials: Bool {')
     }).toEqual({
       // The raw wire value, and the ONLY property allowed to hold one.
       rawColorValue:
@@ -173,12 +236,15 @@ describe('watch card colour contract (Story 16.41)', () => {
       // The single resolution. Everything below reads THIS, never `rawColorValue`.
       resolvedAccentHex:
         'private var resolvedAccentHex: String? { resolvedCardHex(rawColorValue) }',
+      // Story 23.2: an unresolvable colour takes the palette's azure default, no longer the
+      // system `.gray` — a system colour is not a value (watch grammar §4.2).
       accentColor:
-        'private var accentColor: Color { resolvedAccentHex.map(parseHexColor) ?? .gray }',
+        'private var accentColor: Color { resolvedAccentHex.map(parseHexColor) ?? defaultCardAccent }',
       needsNearBlackHairline:
         'private var needsNearBlackHairline: Bool { resolvedAccentHex.map(isNearBlack(hex:)) ?? false }',
-      prefersWhiteInitials:
-        'private var prefersWhiteInitials: Bool { resolvedAccentHex.map(shouldUseWhiteText(onBackgroundHex:)) ?? true }'
+      // Story 23.2: cream and ink, not white and black — renamed so the name says what it picks.
+      prefersCreamInitials:
+        'private var prefersCreamInitials: Bool { resolvedAccentHex.map(shouldUseWhiteText(onBackgroundHex:)) ?? true }'
     });
   });
 
@@ -198,21 +264,25 @@ describe('watch card colour contract (Story 16.41)', () => {
     const cardListView = readSource(cardListViewPath);
 
     // The accent bar and the hairline, in `body`. Counted, not merely present, so a second
-    // conflicting `fill`/`stroke` cannot be introduced alongside the pinned one.
+    // conflicting `fill`/`stroke` cannot be introduced alongside the pinned one. The hairline is
+    // the system's dark outline `#3A3A48` since Story 23.2, and the old white-at-15 % is gone.
     expect({
       accentBar: cardListView.split('.fill(accentColor)').length - 1,
       hairline:
         cardListView.split(
-          '.stroke(needsNearBlackHairline ? Color.white.opacity(0.15) : Color.clear, lineWidth: 1)'
-        ).length - 1
-    }).toEqual({ accentBar: 1, hairline: 1 });
+          '.stroke(needsNearBlackHairline ? WatchColor.hairline : Color.clear, lineWidth: 1)'
+        ).length - 1,
+      oldHairline: cardListView.split('Color.white.opacity(0.15)').length - 1
+    }).toEqual({ accentBar: 1, hairline: 1, oldHairline: 0 });
 
     // The avatar fill and its initials colour, pinned whole — both live in this one small function.
+    // Cream on a dark accent, ink on a light one: the watch frames' rule (Story 23.2), which
+    // replaced white and black.
     expect(
       rowProperty(cardListView, 'private func initialsAvatar(text: String) -> some View {')
     ).toBe(
       'private func initialsAvatar(text: String) -> some View { ZStack { accentColor Text(text) ' +
-        '.font(.system(size: 12, weight: .bold)) .foregroundColor(prefersWhiteInitials ? .white : .black) } }'
+        '.font(.system(size: 12, weight: .bold)) .foregroundColor(prefersCreamInitials ? WatchColor.cream : WatchColor.ink) } }'
     );
   });
 
@@ -225,23 +295,25 @@ describe('watch card colour contract (Story 16.41)', () => {
   describeOnMac('executed against the real Swift resolver', () => {
     it('scores each key on its RESOLVED hex rather than on the key text', () => {
       // The regression, stated as data: before the fix every one of these returned
-      // hairline=true AND white=true, because no key is six characters long so all six
+      // hairline=true AND light initials, because no key is six characters long so all six
       // scored luminance 0 — black. These are the adjudicated per-accent outcomes under the
       // Cardì palette (Story 21.2a), written out rather than recomputed from the thresholds,
-      // because recomputing them here would just re-implement the code under test.
+      // because recomputing them here would just re-implement the code under test. `cream` is
+      // the light side of the initials decision since Story 23.2 (it was white); `false` is ink.
       const expected = {
         // ⚠️ Deep blue is GENUINELY near-black — L=0.049758, `0.00024` under the 0.05 threshold —
         // so it keeps the hairline, and that is correct: at that luminance the avatar really does
         // recede into the near-black row. It is the only accent that does.
-        blue: { hairline: true, white: true },
-        red: { hairline: false, white: true },
-        green: { hairline: false, white: true },
+        blue: { hairline: true, cream: true },
+        red: { hairline: false, cream: true },
+        green: { hairline: false, cream: true },
         // ⚠️ `orange` is the beam YELLOW (the key is deliberately misnamed — see `namedCardHex`).
-        // White on it is 1.52:1; black is 13.78:1. This is the single most legible-or-not decision
-        // in the row, and the pre-fix code got it wrong in the unreadable direction.
-        orange: { hairline: false, white: false },
-        grey: { hairline: false, white: true },
-        gray: { hairline: false, white: true }
+        // A light letter on it is unreadable (white was 1.52:1); ink is the dark side. This is the
+        // single most legible-or-not decision in the row, and the pre-fix code got it wrong in the
+        // unreadable direction.
+        orange: { hairline: false, cream: false },
+        grey: { hairline: false, cream: true },
+        gray: { hairline: false, cream: true }
       } as const;
 
       const keys = Object.keys(expected) as (keyof typeof expected)[];
@@ -256,7 +328,7 @@ describe('watch card colour contract (Story 16.41)', () => {
           fields: [
             `hex=${hex.toUpperCase()}`,
             `hairline=${expected[key].hairline}`,
-            `white=${expected[key].white}`
+            `cream=${expected[key].cream}`
           ]
         });
       }
@@ -277,19 +349,30 @@ describe('watch card colour contract (Story 16.41)', () => {
       ]);
     });
 
-    it('defaults an unusable colour to no hairline and white initials', () => {
-      // Absent or malformed input must not fabricate a border. White initials on the `.gray`
-      // fallback fill matches the complication's `WidgetCardPalette.prefersWhiteForeground`,
-      // which also defaults to white for an unknown colour.
+    it('defaults an unusable colour to no hairline and cream initials', () => {
+      // Absent or malformed input must not fabricate a border. Light initials on the fallback
+      // fill match the complication's `WidgetCardPalette.prefersWhiteForeground`, which also
+      // defaults to light for an unknown colour.
       const values = ['<empty>', '<blank>', 'not-a-colour', '#badhex', '#FFF'] as const;
       const row = runHarness(values);
 
       for (const value of values) {
         expect({ value, fields: row(value) }).toEqual({
           value,
-          fields: ['hex=nil', 'hairline=false', 'white=true']
+          fields: ['hex=nil', 'hairline=false', 'cream=true']
         });
       }
+    });
+
+    it('defaults those two decisions to exactly what the azure fallback itself scores', () => {
+      // Story 23.2 made the fallback FILL azure (it was the system `.gray`). The two defaulted
+      // DECISIONS — `?? false` for the hairline, `?? true` for cream initials — are still taken
+      // without a hex, so they must agree with what azure would score were it resolved. If a
+      // later default accent were near black, or light, this is where the mismatch shows.
+      const azure = CARD_COLORS[DEFAULT_CARD_COLOR];
+      const row = runHarness([azure]);
+
+      expect(row(azure)).toEqual([`hex=${azure.toUpperCase()}`, 'hairline=false', 'cream=true']);
     });
 
     it('normalises a named key the way it normalises a hex', () => {
@@ -314,10 +397,189 @@ describe('watch card colour contract (Story 16.41)', () => {
       const row = runHarness(values);
 
       expect(values.map((value) => row(value).join(' '))).toEqual([
-        'hex=#1A73E8 hairline=false white=true',
-        'hex=#1A73E8 hairline=false white=true',
-        'hex=#F59E0B hairline=false white=false'
+        'hex=#1A73E8 hairline=false cream=true',
+        'hex=#1A73E8 hairline=false cream=true',
+        'hex=#F59E0B hairline=false cream=false'
       ]);
     });
+  });
+});
+
+describe('Cardì watch colours (Story 23.2, watch grammar §4)', () => {
+  it('defines each colour once, in ColorHelpers.swift, at the design-token value', () => {
+    // The grammar's chrome values, read from the tokens rather than retyped: ink, beam and cream
+    // are the identity colours, and the ground and the hairline are the dark theme's background
+    // and border. A drifted hex, a reordered member or a site-local copy all fail here.
+    expect(rowProperty(readSource(colorHelpersPath), 'enum WatchColor {')).toBe(
+      [
+        'enum WatchColor {',
+        `static let ground = parseHexColor("${DARK_THEME_COLORS.background}")`,
+        `static let ink = parseHexColor("${IDENTITY_COLORS.ink}")`,
+        `static let beam = parseHexColor("${IDENTITY_COLORS.beam}")`,
+        `static let cream = parseHexColor("${IDENTITY_COLORS.cream}")`,
+        'static let creamSecondary = cream.opacity(0.6)',
+        `static let hairline = parseHexColor("${DARK_THEME_COLORS.border}")`,
+        '}'
+      ].join(' ')
+    );
+
+    // ONCE: no view parses a colour literal of its own, and each value is spelled exactly once
+    // in the whole target. Beam's hex is also the `orange` card accent's in `namedCardHex` — two
+    // roles on one value — so it is counted as one chrome definition plus that one accent entry.
+    const parsedLiterals = watchSwiftCode().flatMap(({ file, code }) =>
+      [...code.matchAll(/parseHexColor\("#[0-9A-Fa-f]{6}"\)/g)].map(
+        (match) => `${file} ${match[0]}`
+      )
+    );
+
+    expect(parsedLiterals).toEqual([
+      `ColorHelpers.swift parseHexColor("${DARK_THEME_COLORS.background}")`,
+      `ColorHelpers.swift parseHexColor("${IDENTITY_COLORS.ink}")`,
+      `ColorHelpers.swift parseHexColor("${IDENTITY_COLORS.beam}")`,
+      `ColorHelpers.swift parseHexColor("${IDENTITY_COLORS.cream}")`,
+      `ColorHelpers.swift parseHexColor("${DARK_THEME_COLORS.border}")`
+    ]);
+    expect({
+      ink: occurrencesInTarget(IDENTITY_COLORS.ink.slice(1)),
+      cream: occurrencesInTarget(IDENTITY_COLORS.cream.slice(1)),
+      hairline: occurrencesInTarget(DARK_THEME_COLORS.border.slice(1)),
+      beam: occurrencesInTarget(IDENTITY_COLORS.beam.slice(1)),
+      beamAsTheOrangeAccent: occurrencesInTarget(`"orange": "${IDENTITY_COLORS.beam}"`)
+    }).toEqual({ ink: 1, cream: 1, hairline: 1, beam: 2, beamAsTheOrangeAccent: 1 });
+
+    // And no view builds a colour from components, which is how `#1C1C1F` used to be written.
+    expect(
+      watchSwiftCode()
+        .filter(({ code }) => /Color\(\s*red:/.test(code))
+        .map(({ file }) => file)
+    ).toEqual(['ColorHelpers.swift']);
+  });
+
+  it('keeps the five card accents, as hexes, and removes every pre-Cardì value', () => {
+    // The five Cardì accents stay where Story 21.2a put them; the grammar's compliance table
+    // asks for them present and for every value they replaced absent.
+    for (const hex of Object.values(CARD_COLORS)) {
+      expect(occurrencesInTarget(hex.slice(1))).toBeGreaterThan(0);
+    }
+
+    // `1C1C1F` the old row fill, `F59E0B` the banned orange, `FFCC00` the system yellow that is
+    // Esselunga's own — and the two retired greys. Absent from the code of the whole target.
+    for (const retired of ['1C1C1F', 'F59E0B', 'FFCC00', '9CA3AF', '64748B']) {
+      expect({ retired, occurrences: occurrencesInTarget(retired) }).toEqual({
+        retired,
+        occurrences: 0
+      });
+    }
+
+    // No system colour stands in for a card, a star or a fallback anywhere (`.yellow`, `.gray`,
+    // `Color.blue/.red/.green/.orange` and the rest of the system set, the semantic styles), no
+    // colour is built any other way (white or hue components, a colour space, an asset-catalogue
+    // lookup — `parseHexColor("` is word-joined, so `\bColor\(` does not match it), no view
+    // reads the accent colour, and nothing re-tints a subtree.
+    const systemColours = watchSwiftCode().flatMap(({ file, code }) =>
+      [...code.matchAll(SYSTEM_OR_UNSHARED_COLOUR)].map((match) => `${file} ${match[0]}`)
+    );
+
+    expect(systemColours).toEqual([]);
+  });
+
+  it('adds no custom typeface, press scale or shadow anywhere in the watch app', () => {
+    // The frozen block's other absences (grammar's Forbidden list): no custom typeface (§5.2), no
+    // hand-rolled 0.98 press scale (§3.1, the platform's own feedback stays) and no shadow. The
+    // barcode digits' `UIFont.monospacedDigitSystemFont` is the system face and does not match.
+    const forbiddenTreatments = watchSwiftCode().flatMap(({ file, code }) =>
+      [
+        ...code.matchAll(/\.shadow\(|\bscaleEffect\(|\bFont\.custom\(|\.custom\("|UIFont\(name:/g)
+      ].map((match) => `${file} ${match[0]}`)
+    );
+
+    expect(forbiddenTreatments).toEqual([]);
+  });
+
+  it('paints the row, the list, the empty state and the picker from those colours only', () => {
+    const cardListCode = codeOnly(readSource(cardListViewPath));
+
+    // Every foreground in the file, in order, pinned whole — argument read to its balanced
+    // closing paren, so a call wrapped across lines is caught too. A new label painted any other
+    // way — a bare `.white`, an opacity of white, a literal — adds an entry here and fails.
+    const foregrounds = foregroundArguments(cardListCode);
+
+    expect(foregrounds).toEqual([
+      'WatchColor.cream', // the card name
+      'WatchColor.beam', // the favourite star
+      'prefersCreamInitials ? WatchColor.cream : WatchColor.ink', // the initials
+      'WatchColor.creamSecondary', // the "unavailable" line
+      'WatchColor.cream.opacity(0.5)', // the empty-state glyph
+      'WatchColor.cream', // the empty-state title
+      'WatchColor.creamSecondary', // the empty-state subtitle
+      'isSelected ? WatchColor.beam : WatchColor.cream', // a sort option
+      'WatchColor.beam' // the sort checkmark
+    ]);
+
+    // Ink rows (the card row and the sort option) on the true-black ground (the list, the
+    // "unavailable" screen, the picker, and the app's root view).
+    expect(cardListCode.split('.fill(WatchColor.ink)').length - 1).toBe(2);
+    expect(cardListCode.split('.background(WatchColor.ground)').length - 1).toBe(3);
+    expect(codeOnly(readSource(contentViewPath))).toContain('.background(WatchColor.ground)');
+
+    // The only white or black left in the file is the logo chip's own backing, which the story
+    // keeps: it is the plate a brand's artwork was drawn for, not chrome.
+    const whiteOrBlack = cardListCode
+      .split('\n')
+      .filter((line) => /\.(?:white|black)\b/.test(line))
+      .map((line) => line.trim());
+
+    expect(whiteOrBlack).toEqual(['prefersDarkBacking ? Color.black : Color.white']);
+  });
+
+  it('draws the favourite star in beam, 13, trailing, with no plate behind it', () => {
+    // Pinned whole so a plate (a background, a circle, a ZStack) or a second colour cannot be
+    // added around the glyph without failing (grammar §4.4: "no plate on the watch").
+    expect(rowProperty(readSource(cardListViewPath), 'if card.isFavorite {')).toBe(
+      'if card.isFavorite { Image(systemName: "star.fill") .font(.system(size: 13)) ' +
+        '.foregroundColor(WatchColor.beam) .accessibilityHidden(true) }'
+    );
+
+    // Trailing: the row's `Spacer()` sits straight before the star and pushes it to the end.
+    expect(codeOnly(readSource(cardListViewPath))).toMatch(/Spacer\(\)\s*if card\.isFavorite \{/);
+  });
+
+  it('double-encodes the selected sort option: beam label, semibold, beam checkmark, a trait', () => {
+    const cardListCode = codeOnly(readSource(cardListViewPath));
+    const pickerCode = cardListCode.slice(
+      cardListCode.indexOf('struct WatchSortPickerView: View {')
+    );
+
+    expect(pickerCode).toContain('struct WatchSortPickerView: View {');
+
+    // Grammar §8.1: the colour changes, not the control — and the weight moves with it, so the
+    // selection is never carried by colour alone.
+    expect(pickerCode).toContain('.fontWeight(isSelected ? .semibold : .regular)');
+    expect(pickerCode).toContain(
+      '.foregroundStyle(isSelected ? WatchColor.beam : WatchColor.cream)'
+    );
+    expect(pickerCode).toContain('Image(systemName: "checkmark")');
+    expect(pickerCode).toContain('.accessibilityAddTraits(isSelected ? .isSelected : [])');
+    expect(pickerCode).not.toContain('Circle()');
+  });
+
+  it('falls back to azure, the palette default, never a system colour', () => {
+    const helpers = readSource(colorHelpersPath);
+    const rgb = /private let defaultCardAccentRGB: UInt64 = 0x([0-9A-Fa-f]{6})\b/.exec(
+      codeOnly(helpers)
+    )?.[1];
+
+    // The phone's named default (Story 21.2a, AC4) — the same accent Wear's `DEFAULT_CARD_ACCENT`
+    // mirrors — so all three surfaces draw an unreadable colour alike.
+    expect(`#${rgb}`.toUpperCase()).toBe(CARD_COLORS[DEFAULT_CARD_COLOR].toUpperCase());
+    expect(codeOnly(helpers)).toContain('let defaultCardAccent = rgbColor(defaultCardAccentRGB)');
+
+    // Both helpers' unparseable branches take it — and so does the row (pinned above).
+    expect(rowProperty(helpers, 'func parseHexColor(_ hex: String) -> Color {')).toContain(
+      'guard h.count == 6, let rgb = UInt64(h, radix: 16) else { return defaultCardAccent }'
+    );
+    expect(rowProperty(helpers, 'func mapColor(hex: String?) -> Color? {')).toContain(
+      'guard let resolved = resolvedCardHex(raw) else { return defaultCardAccent }'
+    );
   });
 });
