@@ -59,7 +59,7 @@ final class CardRowHelpersTests: XCTestCase {
   }
 
   func test_mapColor_invalidHex_returnsFallback() throws {
-    // Invalid hex should still return a fallback Color (non-nil via parseHexColor → .gray)
+    // Invalid hex should still return a fallback Color: the azure `defaultCardAccent` (Story 23.2)
     XCTAssertNotNil(mapColor(hex: "#badhex"))
     XCTAssertNotNil(mapColor(hex: "xyz"))
   }
@@ -67,7 +67,7 @@ final class CardRowHelpersTests: XCTestCase {
   // MARK: - parseHexColor(_:)
 
   func test_parseHexColor_validWithHash() throws {
-    // Should not return gray for valid hex
+    // Should not return the azure fallback for valid hex
     let color = parseHexColor("#FF0000")
     XCTAssertNotNil(color) // pure red
   }
@@ -77,14 +77,14 @@ final class CardRowHelpersTests: XCTestCase {
     XCTAssertNotNil(color) // pure green
   }
 
-  func test_parseHexColor_invalidReturnsGray() throws {
-    // Invalid input returns gray fallback
+  func test_parseHexColor_invalidReturnsFallback() throws {
+    // Invalid input returns the azure `defaultCardAccent` fallback (Story 23.2)
     let _ = parseHexColor("invalid")
     // Can't easily compare SwiftUI Color, but we verify it doesn't crash
   }
 
   func test_parseHexColor_tooShort() throws {
-    let _ = parseHexColor("#FFF") // 3-digit not supported → gray
+    let _ = parseHexColor("#FFF") // 3-digit not supported → azure fallback
   }
 
   func test_parseHexColor_black() throws {

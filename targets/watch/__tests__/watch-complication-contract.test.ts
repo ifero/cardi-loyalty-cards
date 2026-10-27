@@ -18,6 +18,7 @@ const watchWidgetItLprojPath = path.join(widgetDir, 'it.lproj', 'Localizable.str
 const watchInfoPath = path.join(repoRoot, 'targets', 'watch', 'Info.plist');
 const watchSessionPath = path.join(repoRoot, 'targets', 'watch', 'WatchSessionManager.swift');
 const cardListViewPath = path.join(repoRoot, 'targets', 'watch', 'CardListView.swift');
+const barcodePagerPath = path.join(repoRoot, 'targets', 'watch', 'BarcodePagerView.swift');
 const watchEnLprojPath = path.join(repoRoot, 'targets', 'watch', 'en.lproj', 'Localizable.strings');
 const watchItLprojPath = path.join(repoRoot, 'targets', 'watch', 'it.lproj', 'Localizable.strings');
 const watchAppPath = path.join(repoRoot, 'targets', 'watch', 'MyLoyaltyCardsWatchApp.swift');
@@ -155,11 +156,14 @@ describe('watch complication contract', () => {
   });
 
   it('localizes watch app deep-link unavailable text in English and Italian', () => {
-    const cardList = fs.readFileSync(cardListViewPath, 'utf8');
+    // The line is drawn by the barcode route's host, the pager, since Story 23.2: it moved there
+    // from the list's destination, where Story 23.2's first pass had already taken it from white at
+    // 70 % on black to cream at 60 % on ground.
+    const pager = fs.readFileSync(barcodePagerPath, 'utf8');
     const en = fs.readFileSync(watchEnLprojPath, 'utf8');
     const it = fs.readFileSync(watchItLprojPath, 'utf8');
 
-    expect(cardList).toContain('WatchL10n.string("watch.cards.unavailable")');
+    expect(pager).toContain('WatchL10n.string("watch.cards.unavailable")');
     expect(en).toContain('"watch.cards.unavailable" = "Card unavailable";');
     expect(it).toContain('"watch.cards.unavailable" = "Carta non disponibile";');
   });

@@ -338,8 +338,10 @@ struct CardRowView: View {
   /// through `resolvedCardHex` too — but two independent call sites of one resolver is the shape
   /// that produced this story's defect, and Wear's `presentationFor` resolves once for the same
   /// reason.
+  ///
+  /// An unresolvable color takes the palette's default, azure, never a system color (Story 23.2).
   private var accentColor: Color {
-    resolvedAccentHex.map(parseHexColor) ?? .gray
+    resolvedAccentHex.map(parseHexColor) ?? defaultCardAccent
   }
 
   /// A near-black accent all but vanishes against the row's near-black surface, so the row takes a
@@ -349,10 +351,12 @@ struct CardRowView: View {
     resolvedAccentHex.map(isNearBlack(hex:)) ?? false
   }
 
-  /// Whether the initials are drawn white rather than black, flipped on the SAME hex the circle is
-  /// filled with. Defaults to white for an unresolvable color, matching the complication's
-  /// `WidgetCardPalette.prefersWhiteForeground`.
-  private var prefersWhiteInitials: Bool {
+  /// Whether the initials are drawn cream rather than ink, flipped on the SAME hex the circle is
+  /// filled with: ink above luminance 0.4, cream otherwise (the watch frames' rule, Story 23.2).
+  /// Defaults to cream for an unresolvable color: azure, its fallback, falls on the light side of
+  /// the 0.4 rule, as the frames draw it on an azure accent, and the default matches the
+  /// complication's `WidgetCardPalette.prefersWhiteForeground`.
+  private var prefersCreamInitials: Bool {
     resolvedAccentHex.map(shouldUseWhiteText(onBackgroundHex:)) ?? true
   }
 
@@ -368,7 +372,7 @@ struct CardRowView: View {
 
       Text(card.name)
         .font(.system(size: 15, weight: .semibold))
-        .foregroundColor(.white)
+        .foregroundColor(WatchColor.cream)
         .lineLimit(1)
         .minimumScaleFactor(0.85)
         .truncationMode(.tail)
@@ -376,10 +380,12 @@ struct CardRowView: View {
 
       Spacer()
 
+      // Beam, trailing and centred, with no plate behind it: the star sits on an ink row, never
+      // on a brand fill, so the plate the phone needs has nothing to defeat (grammar §4.4).
       if card.isFavorite {
         Image(systemName: "star.fill")
           .font(.system(size: 13))
-          .foregroundColor(.yellow)
+          .foregroundColor(WatchColor.beam)
           .accessibilityHidden(true)
       }
     }
@@ -388,11 +394,11 @@ struct CardRowView: View {
     .frame(minHeight: metrics.minimumTapHeight)
     .background(
       RoundedRectangle(cornerRadius: metrics.cornerRadius)
-        .fill(Color(red: 28 / 255, green: 28 / 255, blue: 31 / 255)) // #1C1C1F
+        .fill(WatchColor.ink)
     )
     .overlay(
       RoundedRectangle(cornerRadius: metrics.cornerRadius)
-        .stroke(needsNearBlackHairline ? Color.white.opacity(0.15) : Color.clear, lineWidth: 1)
+        .stroke(needsNearBlackHairline ? WatchColor.hairline : Color.clear, lineWidth: 1)
     )
     .accessibilityElement(children: .combine)
     .accessibilityLabel(WatchL10n.format(cardRowAccessibilityKey(isFavorite: card.isFavorite), card.name))
@@ -436,7 +442,7 @@ struct CardRowView: View {
     }
     .overlay(
       Circle()
-        .strokeBorder(prefersDarkBacking ? Color.white.opacity(0.15) : Color.clear, lineWidth: 1)
+        .strokeBorder(prefersDarkBacking ? WatchColor.hairline : Color.clear, lineWidth: 1)
     )
   }
 
@@ -446,14 +452,15 @@ struct CardRowView: View {
   /// The text color is derived from `resolvedAccentHex`, the same value that fills the circle,
   /// rather than from a passed-in raw string. Both call sites used to pass a palette key, which
   /// scored luminance 0 and announced white initials on every accent — including the amber one,
-  /// where white lands at 2.15:1 and black at 9.78:1 (Story 16.41).
+  /// where white lands at 2.15:1 and black at 9.78:1 (Story 16.41). Cream and ink replaced white
+  /// and black in Story 23.2.
   @ViewBuilder
   private func initialsAvatar(text: String) -> some View {
     ZStack {
       accentColor
       Text(text)
         .font(.system(size: 12, weight: .bold))
-        .foregroundColor(prefersWhiteInitials ? .white : .black)
+        .foregroundColor(prefersCreamInitials ? WatchColor.cream : WatchColor.ink)
     }
   }
 }
@@ -489,9 +496,16 @@ struct CardListView: View {
   @StateObject private var store: CardStore
   @State private var navigationPath: [WatchCardRoute] = []
   @State private var pendingDeepLinkCardId: String?
+  /// Bumped by every complication deep link, and the barcode pager's identity: each link opens a
+  /// fresh barcode, as an open, whatever the pager was showing.
+  @State private var deepLinkGeneration = 0
   // Watch-local, persisted sort preference (default A-Z), independent of the phone (AC3, AC4).
   @AppStorage(WatchSortMode.storageKey) private var sortMode: WatchSortMode = WatchSortMode.defaultMode
   @State private var showSortSheet = false
+  // The list names itself the crown's owner here rather than leaving the crown to whichever
+  // container holds focus (watch grammar §8: "explicitly, not inherited"); the contract suite pins
+  // it. Focus only: no handler reads the crown, so it can never do anything but scroll.
+  @FocusState private var listHasCrown: Bool
 
   init(store: CardStore = CardStore()) {
     _store = StateObject(wrappedValue: store)
@@ -535,7 +549,9 @@ struct CardListView: View {
           emptyState
         } else {
           ScrollView {
-            LazyVStack(spacing: 6) {
+            // Gap 4: the rows separate themselves by their ink fill on black, and every point of
+            // gap costs a fraction of a row over a scroll (grammar §5.3).
+            LazyVStack(spacing: 4) {
               ForEach(displayCards) { card in
                 NavigationLink(value: WatchCardRoute(cardId: card.id)) {
                   CardRowView(card: card)
@@ -548,19 +564,18 @@ struct CardListView: View {
             .padding(.vertical, 2)
             .animation(.default, value: sortMode)
           }
+          .focused($listHasCrown)
+          .defaultFocus($listHasCrown, true)
         }
       }
       .navigationTitle(WatchL10n.string("watch.cards.title"))
       .navigationDestination(for: WatchCardRoute.self) { route in
-        if let card = displayCards.first(where: { $0.id == route.cardId }) {
-          BarcodeFlashView(card: card)
-        } else {
-          Text(WatchL10n.string("watch.cards.unavailable"))
-            .font(.footnote)
-            .foregroundColor(.white.opacity(0.7))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(Color.black)
-        }
+        // The barcode, and the crown paging through the cards from it (Story 23.2, decisions 2–5).
+        // The pager takes the live cards on every update and holds their order at opening itself.
+        // `.id` gives it a fresh identity on every deep link: a link to the card this route opened
+        // sets the SAME route value, which SwiftUI would keep as it is — paged on and all.
+        BarcodePagerView(openedCardId: route.cardId, liveCards: displayCards)
+          .id(deepLinkGeneration)
       }
       .toolbar {
         if !displayCards.isEmpty {
@@ -591,7 +606,7 @@ struct CardListView: View {
         WatchSortPickerView(selection: $sortMode)
       }
     }
-    .background(Color.black)
+    .background(WatchColor.ground)
     .scrollContentBackground(.hidden)
     .onAppear {
       // If SwiftData contains records we prefer them. Otherwise migrate from older UserDefaults payload.
@@ -624,26 +639,29 @@ struct CardListView: View {
     }
 
     pendingDeepLinkCardId = nil
+    deepLinkGeneration += 1
     navigationPath = [WatchCardRoute(cardId: cardId)]
   }
 
   private var emptyState: some View {
     VStack(spacing: 16) {
-      // Icon — creditcard SF Symbol, prominent per watchOS HIG empty state guidance
+      // Icon — creditcard SF Symbol, prominent per watchOS HIG empty state guidance. Cream like
+      // all watch body text: 50 % for the glyph, full for the title, 60 % for the subtitle
+      // (grammar §3.2).
       Image(systemName: "creditcard")
         .font(.system(size: 48, weight: .light))
-        .foregroundColor(.white.opacity(0.5))
+        .foregroundColor(WatchColor.cream.opacity(0.5))
         .accessibilityHidden(true)
 
       VStack(spacing: 8) {
         Text(WatchL10n.string("watch.cards.empty.title"))
           .font(.headline)
-          .foregroundColor(.white)
+          .foregroundColor(WatchColor.cream)
           .accessibilityIdentifier("empty-state-title")
 
         Text(WatchL10n.string("watch.cards.empty.subtitle"))
           .font(.footnote)
-          .foregroundColor(.white.opacity(0.6))
+          .foregroundColor(WatchColor.creamSecondary)
           .multilineTextAlignment(.center)
           .accessibilityIdentifier("empty-state-subtitle")
       }
@@ -680,13 +698,16 @@ struct CardListView: View {
 }
 
 /// Compact watch sort picker presented as a sheet from the card list toolbar (Story 9.5,
-/// UX spec §5). A Carbon-styled `List` of the three `WatchSortMode` rows; the active row is
-/// double-encoded — semibold tint label + trailing checkmark + a VoiceOver "selected" trait,
-/// never colour alone. Tapping a row sets the mode and dismisses immediately so the list
-/// re-orders (AC1, AC2, AC5).
+/// UX spec §5). A native `List` of the three `WatchSortMode` rows, ink on black; the active row is
+/// double-encoded — semibold beam label + trailing beam checkmark + a VoiceOver "selected" trait,
+/// never colour alone, and the platform's own checkmark rather than a drawn dot (watch grammar
+/// §8.1). Tapping a row sets the mode and dismisses immediately so the list re-orders (AC1, AC2,
+/// AC5).
 struct WatchSortPickerView: View {
   @Binding var selection: WatchSortMode
   @Environment(\.dismiss) private var dismiss
+  // The crown scrolls the options, explicitly, as it does the card list (grammar §8).
+  @FocusState private var optionsHaveCrown: Bool
 
   var body: some View {
     NavigationStack {
@@ -701,25 +722,30 @@ struct WatchSortPickerView: View {
               Text(WatchL10n.string(mode.localizationKey))
                 .font(.body)
                 .fontWeight(isSelected ? .semibold : .regular)
-                .foregroundStyle(isSelected ? Color.accentColor : Color.white)
+                .foregroundStyle(isSelected ? WatchColor.beam : WatchColor.cream)
                 .lineLimit(1)
               Spacer()
               if isSelected {
                 Image(systemName: "checkmark")
-                  .foregroundStyle(Color.accentColor)
+                  .foregroundStyle(WatchColor.beam)
                   .accessibilityHidden(true)
               }
             }
-            .frame(minHeight: 44)
+            .frame(minHeight: WatchCardRowLayoutMetrics.compact.minimumTapHeight)
             .contentShape(Rectangle())
           }
-          .listRowBackground(Color.black)
+          .listRowBackground(
+            RoundedRectangle(cornerRadius: WatchCardRowLayoutMetrics.compact.cornerRadius)
+              .fill(WatchColor.ink)
+          )
           .accessibilityAddTraits(isSelected ? .isSelected : [])
         }
       }
       .listStyle(.plain)
       .scrollContentBackground(.hidden)
-      .background(Color.black)
+      .focused($optionsHaveCrown)
+      .defaultFocus($optionsHaveCrown, true)
+      .background(WatchColor.ground)
       .navigationTitle(WatchL10n.string("watch.sort.title"))
     }
   }

@@ -149,6 +149,10 @@ paint `.white` / `Color.White` with opacity variants. **They take cream `#F0F0E8
 piece of watch body text**: full strength for the title, 60 % for the subtitle, 50 % for the glyph.
 The glyph stays large (40–48) because it is the only thing on the screen.
 
+✅ **APPLIED on watchOS (Story 23.2).** `CardListView`'s empty state paints `WatchColor.cream` at
+50 % for the 48 pt light glyph, full for the title and `WatchColor.creamSecondary` (60 %) for the
+subtitle; its spacing is unchanged. Wear OS is Story 23.3's.
+
 ---
 
 ## 4. Colour — every divergence resolved to one value
@@ -178,6 +182,23 @@ The system's reason stands unweakened on the watch: _"never pure white — it ke
 
 **On the secondary text.** One mechanism, not two. An opacity tracks the ground it sits on; a
 fixed grey (`#B0B3B8`) does not, and is a fourth grey in a repository that already had three.
+
+✅ **APPLIED on watchOS (Story 23.2).** The "watchOS shipped" column above is the state this
+document measured, before Stories 21.2a, 21.3 and 23.2; its line references no longer hold. Every
+decided value is now defined once in Swift, in `enum WatchColor` (`targets/watch/ColorHelpers.swift`)
+— `ground`, `ink`, `beam`, `cream`, `creamSecondary` (cream at 0.6) and `hairline` — parsed through
+`parseHexColor`, and every view reads it from there — except `BarcodeFlashView` itself, which reads
+only `WatchColor.cream`, for its title: its white field, true-black bars and black surround are §6's
+own values, not chrome. Its host, `BarcodePagerView`, adds `ground` under it and `creamSecondary`
+for the unavailable line. Beam alone has a second home, `AccentColor.colorset`, which tints the
+list's navigation title; both homes are pinned to the token
+(`test/watch-accent.test.ts`), and no view reads `Color.accentColor`. In the views: the card row's
+fill is ink, its name cream, its hairline `#3A3A48` (as is the dark logo chip's ring); the
+"unavailable" line is cream 60 %; the sort picker's rows are ink on black. The "Primary /
+interactive" row was already beam: Story 21.3 filled `AccentColor.colorset` (the "system blue"
+above was in fact a flat grey; `test/watch-accent.test.ts` records why), and the list's title still
+takes it from there. The sort picker's selection now reads `WatchColor.beam` rather than
+`Color.accentColor`.
 
 > ⚠️ **§4 as a whole is a BEHAVIOUR CHANGE, and it is the most visible one in this document.**
 > Every value in the tables above and below is currently something else on a shipped device. Owners:
@@ -213,6 +234,12 @@ today, because the watchOS app uses **system colours** while the Wear app and th
 3. **There is no grey card.** The five accents contain no neutral, so both `#9CA3AF` and `#64748B`
    simply go. Story 21.2a's AC4 already requires a **named** default in place of the grey
    fallback; the watch takes that same named default, whatever it is.
+
+✅ **APPLIED on watchOS.** Story 21.2a replaced the watchOS column above — the four system colours
+and `#9CA3AF` — with the five Cardì hexes in `namedCardHex`. Story 23.2 removed the last system
+colour, the fallback: a value that cannot be resolved (in `parseHexColor`, in `mapColor` and in the
+card row) now takes **azure `#0C84CC`**, the phone's `DEFAULT_CARD_COLOR` and Wear's
+`DEFAULT_CARD_ACCENT`, where it took SwiftUI's `.gray`.
 
 ### 4.3 `orange` goes — the value, not the key
 
@@ -261,6 +288,9 @@ value the phone already decided.
   corner" is retired with the rest of it; in a 48 pt row there is no meaningful "top corner", and
   optical centring is what the row's other elements already do.
 
+✅ **APPLIED on watchOS (Story 23.2):** `star.fill`, 13 pt, `WatchColor.beam`, trailing and centred,
+no plate. `#FFCC00` (`.yellow`) is gone from the target.
+
 ### 4.5 The accent colour — decided here, consumed by 21.3
 
 **The watch accent colour is beam `#FCCC0C`.**
@@ -289,6 +319,16 @@ only thing left."_ A watch runs on black permanently. Beam on black is **13.8:1*
 > nothing in it is tinted at all. Verified against Apple's documentation rather than assumed;
 > **23.2 must confirm it on device**, because a beam-tinted title on the hero screen is a defect
 > no test would catch.
+
+✅ **APPLIED (Story 21.3), re-sourced (Story 23.2).** The override is
+`.toolbarForegroundStyle(WatchColor.cream, for: .navigationBar)`: the cream is now the watch's one
+shared definition, not a second literal in `BarcodeFlashView.swift`, and `test/watch-accent.test.ts`
+asserts that the file reads no other shared colour, no ink, no beam and no accent colour. Measured on
+the watchOS 26.5 simulator at 40 mm, before and after the change: the title's glyphs are exactly
+`#F0F0E8`, and the white field below the strip is pixel-identical.
+
+**Device result (real Apple Watch): _pending — ifero's check (Story 23.2 AC4, before merge)._**
+Record here whether the title renders cream, never beam, on hardware.
 
 ---
 
@@ -375,6 +415,10 @@ reason the grid does not transfer: at 192 dp every 2 dp of gap costs a fraction 
 scroll, and the rows already separate themselves by their own ink fill against a true-black ground.
 It is also the tighter of the two shipped values, so nothing has to grow.
 
+✅ **APPLIED on watchOS (Story 23.2):** `LazyVStack(spacing: 4)`. The row itself is unchanged —
+radius 14, the 30 pt avatar and logo chip, the derived inset — and its initials are now ink on an
+accent above luminance 0.4 and cream otherwise (the frames' rule), where they were black and white.
+
 On Wear, **outer margins are expressed as a percentage of the screen**, per Google's round-screen
 guidance, pinned so that nothing moves at 192 dp today.
 
@@ -391,6 +435,12 @@ would change the layout for no reason:
 **Decided: change the declared constant from 44 to 48 (Story 23.2). No pixel moves.** The value is
 wrong only as a statement of intent, and a constant that contradicts the system while having no
 effect is the kind that gets "fixed" in the harmful direction by the next reader.
+
+✅ **APPLIED (Story 23.2):** `WatchCardRowLayoutMetrics.compact` declares `minimumTapHeight: 48`,
+and `watch-layout-contract.test.ts` pins that it equals the content height, so on the card row the
+floor still never binds and no row pixel moved. The sort picker's rows, which held their own `44`,
+now read the same constant — and there the floor **does** bind: their content is shorter, so they
+grew from 44 to 48 pt (measured on the 40 mm simulator).
 
 #### And there is a fourth site, in TypeScript, still carrying the retired 32
 
@@ -495,6 +545,11 @@ systems, not two rules.**
 > correct. **Story 23.2: measure it on device before accepting the strip as permanent.** Do not
 > change it on reasoning alone — the present arrangement is measured and the alternative is not.
 
+**Story 23.2 kept the strip unchanged**, as this section requires: the measurement can reopen it,
+and only a later story may act on the result. **Device measurement (real Apple Watch): _pending —
+ifero's check (Story 23.2 AC4, before merge)._** Record here whether the clock draws a scrim or
+gradient behind its glyphs over a white ground, and so whether the strip stays or is reopened.
+
 **(b) watchOS has no brightness API, so "maximum brightness" is aspirational there.** Wear raises
 the backlight with `BRIGHTNESS_OVERRIDE_FULL` plus `FLAG_KEEP_SCREEN_ON` and restores it on
 dispose (`BarcodeScreen.kt:328-341`). watchOS has neither, and Story 16.26 shipped the closest
@@ -563,11 +618,11 @@ which it does is not discoverable.
 
 > **The crown and the rotary scroll. They never act.**
 
-| surface           | crown / rotary                                                          |
-| ----------------- | ----------------------------------------------------------------------- |
-| **Card list**     | **scrolls** — and explicitly, not inherited                             |
-| **Sort picker**   | **scrolls** — and explicitly, not inherited                             |
-| **Barcode flash** | **nothing.** The screen does not scroll, and the crown does not dismiss |
+| surface           | crown / rotary                                                           |
+| ----------------- | ------------------------------------------------------------------------ |
+| **Card list**     | **scrolls** — and explicitly, not inherited                              |
+| **Sort picker**   | **scrolls** — and explicitly, not inherited                              |
+| **Barcode flash** | **scrolls through the cards**, one card per detent — and never dismisses |
 
 **Why the crown must stop dismissing the barcode.** It binds a **continuous** input to a
 **discrete, irreversible** action, at the one moment the product exists for. The latch fires on
@@ -575,6 +630,26 @@ which it does is not discoverable.
 sleeve, or the other hand steadying the watch. Losing the barcode mid-scan at a till is the
 failure this whole app is built to prevent, and no other screen teaches the user that the crown
 can destroy anything.
+
+**Why the crown scrolls through the cards there (ifero, 2026-10-27, amending this section's first
+ruling of "nothing").** Someone at a till who opened one card and needs the card beside it should
+not have to go back to the list for it. So on the barcode screen the crown moves through the cards
+the way it moves through the list's rows: the turn that scrolls the list onward shows the next card,
+one card per detent, in the order the list showed when the barcode opened, held for the visit so a
+sync or a usage re-sort cannot reshuffle it mid-scan. That is still scrolling, not acting: it is
+reversible (turn back and the card returns), it stops at the first and the last card rather than
+wrapping, and it never closes the barcode. What it admits that "nothing" did not is that a stray
+detent mid-scan now shows a different card. Everything else in the rule answers that: whole detents
+at low sensitivity, never continuous; the card's name in the title, a slide from the direction of
+the turn and the crown's own detent haptic all mark the change; and only the crown pages: a tap or
+a swipe still does nothing (Story 23.2's decision 1). A card the crown pages to counts as used only
+after it has stayed on screen for 1 s, so skimming past cards does not inflate "Frequently used";
+the card that was opened counts at once, as before. VoiceOver's adjust gesture pages the same way,
+for those who do not use the crown.
+
+**Wear OS pages the same way**, on its rotary input (crown or bezel), on `BarcodeScreen`. Story 23.3
+builds it; its spec, refined on 2026-10-25, still says rotary does nothing on the barcode and has to
+be amended to this before it is built.
 
 ⚠️ **This removes a shipped affordance, deliberately.** It is a behaviour change for Story 23.2,
 and it is not a regression: the screen keeps **two** dismissals on each platform.
@@ -589,6 +664,46 @@ happens to wire it — there is **no `rotaryScrollable` or `onRotaryScrollEvent`
 source**, and no crown handler in `CardListView.swift`. Behaviour that works by inheritance is
 behaviour nobody decided, and it silently disappears when a container is swapped. 23.2 and 23.3
 make it explicit; the implementation names are theirs to choose.
+
+✅ **APPLIED on watchOS (Story 23.2).** The card list's `ScrollView` and the sort picker's `List`
+each name themselves the crown's owner — `.focused($listHasCrown)` / `.focused($optionsHaveCrown)`
+with `.defaultFocus(…, true)` — and neither reads the crown's value. Both scrolled by the crown
+before this story too, by inheritance; what changed is that the owner is now declared, and
+`watch-layout-contract.test.ts` pins the declaration (measured on the pre-23.2 build at 40 mm: the
+list's first row moved from y 49 to −74, and the picker's options from y 47 to 38, under the
+crown). The barcode screen lost its `.digitalCrownRotation` latch, and its crown now pages instead.
+**`BarcodePagerView` hosts the barcode route and is the one crown reader in the target**: a
+`.digitalCrownRotation(detent:)` over the reachable cards — `by: 1`, `sensitivity: .low`,
+`isContinuous: false`, the detent haptic on — attached only while two or more cards are reachable.
+It holds the list's order at opening (`@State`, initialised once) and skips a card gone since; it
+stops at the first and the last card; each card slides in from the way the crown turned, clipped
+below the title strip, with a crossfade under Reduce Motion; and VoiceOver's adjust gesture pages
+through the same detent. Two platform defaults had to be turned off to keep the field clean, both
+found on film: the crown's position capsule, which watchOS draws over the field's top-right corner
+after every turn (`.scrollIndicators(.hidden)` hides it; `.digitalCrownAccessory(.hidden)` does
+not), and a symbol drawn mid-slide that stayed at its card's final position while the card moved
+(`.geometryGroup()` moves the card as one). `BarcodeFlashView` still draws one card and reads no
+crown or focus: a card the crown pages to plays no open haptic and sends its `CARD_USED` only once
+it has stayed 1 s, while the opened card counts at once, as before. Its view outlives the crown's
+move by its exit slide and the close by the pop, so cancellation alone came late (measured); the
+usage task also reads which card the pager shows now, moved on with the crown and cleared as the
+screen starts to close. The arithmetic — the held order, the clamp at
+both ends, when the crown pages at all, the two delays — is `WatchBarcodePaging`, pure Swift that
+the contract suite lifts into `xcrun swift` and runs. **And, by ifero's decision of 2026-10-25, a
+tap no longer dismisses the barcode either**: the three `.onTapGesture { dismiss() }` (the image
+and both placeholders) went, so a stray touch while the code is held to a scanner cannot close it,
+and no tap or swipe handler changes the card. The watchOS ways back are the two in the table above
+— the swipe from the left and the back chevron. Driven on the watchOS 26.5 simulator at 40, 46 and
+49 mm with XCUITest's `rotateDigitalCrown`: the list and the picker scroll, the barcode stays under
+a tap on the code (the pre-23.2 build returned to the list on a crown rotation), and the back
+chevron and a swipe from the left edge both return to the list. With the pager, at 40, 46 and
+49 mm: a 0.2 rotation pages one card onward or back (0.1 none, at 40 mm) and a turn past either
+end changes nothing; one card takes no crown; taps and swipes on the code change nothing; the crown
+scrolls the list again after the barcode pops; and the barcode screen at rest is pixel-identical,
+from the strip down, to the screen before the pager. VoiceOver's adjust gesture and the Reduce
+Motion crossfade are pinned in the contract suites only: the simulator runs no VoiceOver. **Device
+result (real Apple Watch): _pending — ifero's check (Story 23.2 AC4, before merge)._** Record here
+the crown's detent feel on hardware, and whether a stray click of the crown pages a card at a till.
 
 ### 8.1 The sort picker keeps each platform's native selected control
 
@@ -607,6 +722,10 @@ already a beam role ("active and selected states"). What must survive is the **d
 the control's own state _and_ the label's weight both move, so selection is never carried by colour
 alone. Swapping a checkmark or a radio for a drawn dot would be a visual-affordance change nobody
 asked for, and it would cost the platform's own accessibility semantics.
+
+✅ **APPLIED on watchOS (Story 23.2):** the native `List` and `checkmark` stay; the rows are ink
+(radius 14) on black and at least 48 tall; unselected labels are cream, the selected one semibold
+beam with a beam checkmark, and the `.isSelected` trait stays.
 
 ---
 
@@ -711,13 +830,29 @@ ones worth guarding, because each is a single literal whose drift is silent:
 A test that asserts an **absence** is the valuable half here: the shipped colours are all literals,
 so "the old value is gone" is the only thing that catches a half-done migration.
 
+✅ **watchOS (Story 23.2)** carries its rows of this table in the existing suites under
+`targets/watch/__tests__/`, plus `test/watch-accent.test.ts` for the barcode tint:
+`watch-card-colour-contract.test.ts` (each colour defined once at its token value; the five accents
+present; `1C1C1F`, `F59E0B`, `FFCC00` and every system colour absent; every foreground in the list
+pinned; the beam star with no plate; the azure fallback; the barcode pager's ground, its
+unavailable line and the absence of beam and ink there), `watch-layout-contract.test.ts` (48, 14,
+gap 4; the crown's focus on the list and the picker; the barcode pager as the one crown reader in
+the target, its detent crown pinned whole and attached only with two or more reachable cards, its
+paging policy run in the Swift harness; no gesture handler and no `dismiss()` on the barcode
+screen), `watch-usage-event-contract.test.ts` (the open haptic and an at-once `CARD_USED` for the
+opened card only, the 1 s delay for a paged one and the on-screen check after it),
+`watch-display-luminance-contract.test.ts` (no tap dismissal; no crown or focus in
+`BarcodeFlashView`) and `watch-brand-logo-contract.test.ts` (the chip's `#3A3A48` ring). The orange
+row is moot on watchOS since Story 21.2a, and `FavoriteStarTint` is Wear's (23.3).
+
 ---
 
 ## Forbidden on the watch
 
 Everything in the phone system's `## Forbidden` still applies, plus:
 
-**A crown or rotary gesture bound to any action other than scrolling** · **a beam drawn on either
+**A crown or rotary gesture bound to any action other than scrolling** (moving through the cards
+on the barcode screen is scrolling, §8; dismissing it is not) · **a beam drawn on either
 barcode screen** (neither watch is ever the scanner) · **a system colour standing in for a brand
 or accent value** · **orange as a colour, on any of the three surfaces, including as a favourite
 tint** · **`#FFCC00` as the favourite star** (it is Esselunga's exact yellow) · **a plate behind

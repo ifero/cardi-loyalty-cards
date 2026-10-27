@@ -2,19 +2,76 @@ import SwiftUI
 
 // MARK: - Hex Color Parsing
 
+/// Azure `#0C84CC`: what a card colour that cannot be resolved is drawn in.
+///
+/// It is the palette's own default, not a new choice. The phone falls back to
+/// `DEFAULT_CARD_COLOR` (`'grey'`, `core/schemas/card.ts`), which resolves to this azure, and
+/// Wear OS mirrors it as `DEFAULT_CARD_ACCENT` (`CardVisuals.kt`), so all three surfaces draw an
+/// unreadable colour the same way. It replaced SwiftUI's `.gray` (Story 23.2, watch grammar §4.2):
+/// a system colour is not a value, and grey is not in the palette.
+///
+/// Held as an integer rather than a hex string so `parseHexColor` can fall back to it without
+/// calling itself.
+private let defaultCardAccentRGB: UInt64 = 0x0C84CC
+
+/// The default accent as a `Color` — the fallback of `parseHexColor`, `mapColor` and the card row.
+let defaultCardAccent = rgbColor(defaultCardAccentRGB)
+
 /// Parses an arbitrary 6-digit hex string (with or without `#` prefix) into a SwiftUI `Color`.
-/// Returns `.gray` for invalid / unparseable input.
+/// Returns `defaultCardAccent` (azure) for invalid / unparseable input — never a system colour.
 func parseHexColor(_ hex: String) -> Color {
     var h = hex.trimmingCharacters(in: .whitespacesAndNewlines)
     if h.hasPrefix("#") { h.removeFirst() }
     guard h.count == 6, let rgb = UInt64(h, radix: 16) else {
-        return .gray
+        return defaultCardAccent
     }
-    return Color(
+    return rgbColor(rgb)
+}
+
+private func rgbColor(_ rgb: UInt64) -> Color {
+    Color(
         red: Double((rgb >> 16) & 0xFF) / 255.0,
         green: Double((rgb >> 8) & 0xFF) / 255.0,
         blue: Double(rgb & 0xFF) / 255.0
     )
+}
+
+// MARK: - Cardì Watch Colours
+
+/// The Cardì colours of the watch app's own chrome, defined ONCE for the target (Story 23.2,
+/// `docs/design/cardi/cardi-watch-grammar.md` §4.1, §4.4, §4.5). Every view reads them from here;
+/// none holds a colour literal of its own.
+///
+/// They are chrome, and a card's accent is not: the accents stay in `namedCardHex` below, keyed
+/// by what the phone sends. Beam and the `orange` key share a hex, and that is two roles meeting
+/// on one value, not a second definition of either.
+///
+/// `BarcodeFlashView` itself takes ONLY `cream`, for its title. Its white field, true-black bars
+/// and black surround are the barcode rule's values (grammar §6), not chrome, and beam never
+/// appears there. Its host, `BarcodePagerView`, adds `ground` under it and `creamSecondary` for
+/// the unavailable line.
+enum WatchColor {
+    /// True black, the OLED ground under every screen.
+    static let ground = parseHexColor("#000000")
+
+    /// Ink: card rows and sheet rows. It replaced `#1C1C1F`, which it is 1.03:1 against, so the
+    /// change moves no pixel anyone can see and puts the fill in the system.
+    static let ink = parseHexColor("#181824")
+
+    /// Beam: the favourite star and the selected sort option (11.5:1 on ink, 13.8:1 on black).
+    /// It also tints the list's navigation title, through `AccentColor.colorset` (Story 21.3).
+    static let beam = parseHexColor("#FCCC0C")
+
+    /// Cream: body text on dark, ≈15.3:1 on ink. Never pure white — it keeps the warmth.
+    static let cream = parseHexColor("#F0F0E8")
+
+    /// Secondary text: cream at 60 %. An opacity tracks the ground it sits on; a fixed grey would
+    /// be one more grey.
+    static let creamSecondary = cream.opacity(0.6)
+
+    /// The system's dark outline: the border of a row whose accent is near black, and the ring of
+    /// a dark logo chip.
+    static let hairline = parseHexColor("#3A3A48")
 }
 
 // MARK: - Card Palette Resolution
@@ -78,7 +135,8 @@ func resolvedCardHex(_ raw: String?) -> String? {
 }
 
 /// Resolves a named palette key or an arbitrary hex string to a `Color`.
-/// Returns `nil` only when input is nil/empty, and `.gray` when it is present but unparseable.
+/// Returns `nil` only when input is nil/empty, and `defaultCardAccent` (azure) when it is present
+/// but unparseable.
 ///
 /// Named keys resolve through `namedCardHex` — the exact palette hex the user picked on the phone.
 /// They previously mapped to SwiftUI *system* colors, which made the same card render one color in
@@ -95,7 +153,7 @@ func mapColor(hex: String?) -> Color? {
         return nil
     }
     guard let resolved = resolvedCardHex(raw) else {
-        return .gray
+        return defaultCardAccent
     }
     return parseHexColor(resolved)
 }
@@ -122,8 +180,10 @@ func relativeLuminance(hex: String) -> Double {
     return 0.2126 * rLin + 0.7152 * gLin + 0.0722 * bLin
 }
 
-/// Returns `true` when text on a background of `hex` color should be white.
-/// Uses luminance threshold: dark backgrounds → white text, light → black text.
+/// Returns `true` when text on a background of `hex` color should take the LIGHT side, `false`
+/// for the dark side. Uses a luminance threshold: dark backgrounds (below 0.4) → light text,
+/// light → dark text. The card row's light side is cream and its dark side ink (Story 23.2); the
+/// name is kept because `WidgetCardPalette` and `CardRowHelpersTests` refer to it.
 func shouldUseWhiteText(onBackgroundHex hex: String) -> Bool {
     return relativeLuminance(hex: hex) < 0.4
 }

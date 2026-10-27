@@ -231,14 +231,19 @@ describe('watch display luminance contract (Story 16.26)', () => {
 
     // AC1 ruled out `WKExtendedRuntimeSession` three times over: it keeps the app alive
     // rather than the display, Apple says to pick a session type by intended use and not
-    // by its side-effects, and a frontmost session dies on the very crown press that
-    // dismisses this screen. The determination is only durable if the artifact stays
-    // clean — an entitlement added later would ship the App Review risk for none of the
-    // benefit.
+    // by its side-effects, and Apple invalidates a frontmost session when the user PRESSES
+    // the Digital Crown (Story 16.26 counted that press as this screen's dismissal; the
+    // crown's rotation, which also dismissed it, went in Story 23.2). The determination is
+    // only durable if the artifact stays clean — an entitlement added later would ship the
+    // App Review risk for none of the benefit.
     expect(infoPlist).not.toContain('WKBackgroundModes');
     expect(targetConfig).not.toContain('WKBackgroundModes');
 
-    for (const source of [readSwift(barcodeViewPath), readSwift(layoutPath)]) {
+    for (const source of [
+      readSwift(barcodeViewPath),
+      readSwift(path.join(watchDir, 'BarcodePagerView.swift')),
+      readSwift(layoutPath)
+    ]) {
       expect(withoutComments(source)).not.toContain('WKExtendedRuntimeSession');
     }
   });
@@ -358,20 +363,40 @@ describe('watch display luminance contract (Story 16.26)', () => {
     }
   });
 
-  it('keeps both dismissal gestures and the single-shot crown latch intact (AC4)', () => {
+  it('leaves the screen only by the system ways back: no tap and no crown dismisses it', () => {
     const code = withoutComments(readSwift(barcodeViewPath));
+    const pagerCode = withoutComments(readSwift(path.join(watchDir, 'BarcodePagerView.swift')));
 
-    // The luminance work rides the existing view; it must not have cost the screen its
-    // way out. Tap dismisses from all three barcode presentations (image, value
-    // placeholder, symbol placeholder) and one crown movement dismisses exactly once.
-    expect([...code.matchAll(/\.onTapGesture \{ dismiss\(\) \}/g)]).toHaveLength(3);
-    expect(code).toContain('guard !crownTriggered else { return }');
-    expect(code).toContain('crownTriggered = true');
+    // INVERTED by Story 23.2. This used to pin the opposite: a tap dismissing from all three
+    // barcode presentations and a single-shot crown latch. Decision 1 (ifero, 2026-10-25)
+    // removed the three taps — the image and both placeholders — so a stray touch while the
+    // code is held to a scanner cannot close it; the watch grammar (§8) removed the crown's
+    // dismissal, which fired on a single detent. The swipe from the left and the back chevron
+    // remain, and both are the system's, not code here — nor in the pager that hosts this view.
+    for (const source of [code, pagerCode]) {
+      expect([...source.matchAll(/\.onTapGesture/g)]).toHaveLength(0);
+      expect([...source.matchAll(/dismiss\(\)/g)]).toHaveLength(0);
+      expect(source).not.toContain('crownTriggered');
+    }
 
-    // The Story 9.6 usage event and the focus reset are the two lifecycle behaviours
-    // sharing these hooks — neither is this story's to disturb.
+    // The crown now scrolls through the cards (decisions 2–4), and it is read one level up, by
+    // `BarcodePagerView` — the target's one crown reader (pinned in the layout suite). This view
+    // draws one card and reads no crown.
+    expect(code).not.toContain('crownRotation');
+    expect(code).not.toContain('digitalCrownRotation');
+    expect(pagerCode).toContain('.digitalCrownRotation(');
+
+    // The three presentations are still there and still DECLARE `barcode-image` — only their
+    // tap went. (At runtime the screen's outer `barcode-view` identifier currently masks those
+    // three, a pre-existing quirk `CardListUITests.swift` works around.)
+    expect([...code.matchAll(/\.accessibilityIdentifier\("barcode-image"\)/g)]).toHaveLength(3);
+
+    // No crown, so no focus here: the pager's crown reader holds it.
+    expect(code).not.toContain('isFocused');
+    expect(code).not.toContain('@FocusState');
+
+    // The Story 9.6 usage event shares the appear hook, and is not this story's to disturb.
     expect(code).toContain('recordCardUsed(cardId: card.id)');
-    expect(code).toContain('isFocused = false');
   });
 
   it('adds no locale keys — the scope decision was a rendering change, not a message', () => {

@@ -16,6 +16,68 @@ enum WatchBarcodePresentation {
   }
 }
 
+/// How a card reached the barcode screen (Story 23.2, decisions 2–3).
+///
+/// `opened` is the card the list or a complication opened: it plays the open haptic and counts as
+/// used at once, as every barcode did before the crown paged. `paged` is a card the crown — or
+/// VoiceOver's adjust gesture, standing in for it — moved to: the crown's own detent haptic marks
+/// it, and it counts as used only once it has stayed on screen for `usageDelay(for:)`. A return to
+/// the opened card by the crown is `paged` too.
+enum WatchBarcodeArrival: Equatable {
+  case opened
+  case paged
+}
+
+/// The barcode screen's crown paging, as pure policy (watch grammar §8; Story 23.2, decisions 2–4).
+///
+/// `BarcodePagerView` holds the state and reads the crown; this holds the arithmetic. No SwiftUI,
+/// so `watch-layout-contract.test.ts` lifts it into `xcrun swift` and RUNS it — the same standard
+/// the barcode geometry beside it is held to.
+enum WatchBarcodePaging {
+  /// The cards the crown can reach: the order the list showed when the barcode opened, held for
+  /// the visit, minus any card that has gone since — in the HELD order, never the live one, so a
+  /// sync or a usage re-sort under "Frequently used" cannot reshuffle the cards mid-scan.
+  static func reachableIds(heldOrder: [String], liveIds: [String]) -> [String] {
+    let live = Set(liveIds)
+
+    return heldOrder.filter { live.contains($0) }
+  }
+
+  /// `detent` clamped to the first and the last reachable card: the crown stops at both ends and
+  /// never wraps (decision 4). Zero when nothing is reachable.
+  static func clampedDetent(_ detent: Int, count: Int) -> Int {
+    guard count > 0 else { return 0 }
+
+    return min(max(detent, 0), count - 1)
+  }
+
+  /// The card at `detent`, clamped as above — `nil` only when nothing is reachable.
+  static func id(atDetent detent: Int, in reachable: [String]) -> String? {
+    guard !reachable.isEmpty else { return nil }
+
+    return reachable[clampedDetent(detent, count: reachable.count)]
+  }
+
+  /// Whether the crown pages at all: two or more reachable cards, the one on screen among them.
+  /// With one card there is nowhere to go; with the shown card gone the screen shows the
+  /// unavailable line, and the crown does nothing there either.
+  static func pages(currentId: String, reachable: [String]) -> Bool {
+    reachable.count >= 2 && reachable.contains(currentId)
+  }
+
+  /// How long a card has to stay on screen before it counts as used (decision 3): at once for the
+  /// opened card, as before the crown paged; one second for a card the crown paged to, so skimming
+  /// past cards sends nothing and cannot inflate "Frequently used".
+  static func usageDelay(for arrival: WatchBarcodeArrival) -> Duration {
+    switch arrival {
+    case .opened:
+      return .zero
+    case .paged:
+      return .seconds(1)
+    }
+  }
+}
+
 struct WatchCardRowLayoutMetrics {
   let rowSpacing: CGFloat
   let horizontalPadding: CGFloat
@@ -38,6 +100,11 @@ struct WatchCardRowLayoutMetrics {
     (avatarSize * (1 - (1 / 2.0.squareRoot()))) / 2
   }
 
+  /// The card row, derived from its content (watch grammar §5.3): `max(28, 30) + 2 × 9 = 48`,
+  /// which is also the system's touch target. On the card row `minimumTapHeight` therefore never
+  /// binds — it was 44 until Story 23.2 and moving it to 48 moved no row pixel; it states the
+  /// intent, so nobody "fixes" it downwards. The sort picker's rows take the same floor, and
+  /// there it DOES bind: their content is shorter, so they grew from 44 to 48 (measured at 40 mm).
   static let compact = WatchCardRowLayoutMetrics(
     rowSpacing: 10,
     horizontalPadding: 10,
@@ -46,7 +113,7 @@ struct WatchCardRowLayoutMetrics {
     accentHeight: 28,
     avatarSize: 30,
     cornerRadius: 14,
-    minimumTapHeight: 44
+    minimumTapHeight: 48
   )
 }
 
