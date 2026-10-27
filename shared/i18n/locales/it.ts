@@ -66,7 +66,6 @@ export const it = {
     },
     modeSelection: {
       screenAnnouncement: 'Schermata di selezione modalità',
-      backAccessibilityLabel: 'Torna indietro',
       title: 'Inizia',
       heading: "Come vuoi\nusare l'app?",
       subtitle: 'Puoi sempre cambiarlo più tardi nelle Impostazioni.',
@@ -87,11 +86,13 @@ export const it = {
       accessibilityHint: 'Tocca due volte per selezionare questa opzione di archiviazione'
     },
     infoTooltip: {
-      openedAnnouncement: 'Informazioni sulle opzioni di archiviazione aperte',
-      accessibilityLabel: 'Informazioni sulle opzioni di archiviazione',
-      closeAccessibilityLabel: 'Chiudi informazioni',
+      accessibilityLabel: "Pannello informativo sull'archiviazione",
       heading: 'Qual è la differenza?',
-      body: 'Conserva le carte su questo dispositivo salva le tue carte fedeltà solo su questo telefono. È veloce, privata e funziona offline. Sincronizza su tutti i dispositivi crea un account gratuito così le tue carte vengono salvate e sono disponibili su qualsiasi dispositivo su cui accedi. Puoi cambiare in qualsiasi momento dalle Impostazioni.',
+      bodyLocal:
+        'Conserva le carte su questo dispositivo salva le tue carte fedeltà solo su questo telefono. È veloce, privata e funziona offline.',
+      bodyCloud:
+        'Sincronizza su tutti i dispositivi crea un account gratuito così le tue carte vengono salvate e sono disponibili su qualsiasi dispositivo su cui accedi.',
+      bodySwitch: 'Puoi cambiare in qualsiasi momento dalle Impostazioni.',
       button: 'Capito'
     },
     highlights: {
@@ -99,6 +100,7 @@ export const it = {
       skipAccessibilityLabel: "Salta i punti salienti dell'app",
       skip: 'Salta',
       swipeAccessibilityHint: "Scorri a sinistra o a destra per vedere i punti salienti dell'app",
+      paginationAccessibilityLabel: 'Pagina {{current}} di {{total}}',
       next: 'Avanti',
       letsGo: 'Andiamo!',
       allCardsTitle: 'Tutte le tue carte in un unico posto',

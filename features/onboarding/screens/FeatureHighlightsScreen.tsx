@@ -1,11 +1,12 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import type { AnimationObject } from 'lottie-react-native';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
   FlatList,
   Pressable,
+  StyleSheet,
   Text,
   View,
   useWindowDimensions,
@@ -15,12 +16,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { completeFirstLaunch, isFirstLaunch } from '@/core/settings/settings-repository';
 
-import { Button } from '@/shared/components/ui';
+import { Button, PrimaryActionFooter } from '@/shared/components/ui';
 import { useTheme } from '@/shared/theme';
-import { TOUCH_TARGET } from '@/shared/theme/spacing';
+import { LAYOUT, SPACING, TOUCH_TARGET } from '@/shared/theme/spacing';
 import { TYPOGRAPHY } from '@/shared/theme/typography';
 
+import allCardsDark from '@/assets/animations/onboarding/onboarding-all-your-cards-dark.json';
+import allCardsLight from '@/assets/animations/onboarding/onboarding-all-your-cards-light.json';
+import scanOrTypeDark from '@/assets/animations/onboarding/onboarding-scan-or-type-dark.json';
+import scanOrTypeLight from '@/assets/animations/onboarding/onboarding-scan-or-type-light.json';
+import yourDataDark from '@/assets/animations/onboarding/onboarding-your-data-dark.json';
+import yourDataLight from '@/assets/animations/onboarding/onboarding-your-data-light.json';
+
 import { HighlightSlide } from '../components/HighlightSlide';
+import { OnboardingAnimation } from '../components/OnboardingAnimation';
 import { PaginationDots } from '../components/PaginationDots';
 import { useHighlightPagination } from '../hooks/useHighlightPagination';
 
@@ -28,8 +37,20 @@ type Slide = {
   id: string;
   title: string;
   description: string;
+  light: AnimationObject;
+  dark: AnimationObject;
 };
 
+/**
+ * The feature highlights — frames D–F, as `cardi-design-system.md` § _Onboarding_ rules them (Story
+ * 22.10).
+ *
+ * No header: Skip at the top right. A paging carousel of three pages, each scrolling on its own
+ * under large text, over the primary-action footer holding the dots and Next / "Let's go!". Each
+ * page's drawing plays the first time its page is shown — on mount for the first; for the others at
+ * once on Next, as the page slides in rather than once it settles, or when a swipe settles on it —
+ * and rests from then on, so a swipe back finds it still (decision 1).
+ */
 const FeatureHighlightsScreen = () => {
   const { theme } = useTheme();
   const { t } = useTranslation();
@@ -44,17 +65,23 @@ const FeatureHighlightsScreen = () => {
       {
         id: 'all-cards',
         title: t('onboarding.highlights.allCardsTitle'),
-        description: t('onboarding.highlights.allCardsDescription')
+        description: t('onboarding.highlights.allCardsDescription'),
+        light: allCardsLight,
+        dark: allCardsDark
       },
       {
         id: 'scan-or-manual',
         title: t('onboarding.highlights.scanOrManualTitle'),
-        description: t('onboarding.highlights.scanOrManualDescription')
+        description: t('onboarding.highlights.scanOrManualDescription'),
+        light: scanOrTypeLight,
+        dark: scanOrTypeDark
       },
       {
         id: 'your-data',
         title: t('onboarding.highlights.yourDataTitle'),
-        description: t('onboarding.highlights.yourDataDescription')
+        description: t('onboarding.highlights.yourDataDescription'),
+        light: yourDataLight,
+        dark: yourDataDark
       }
     ],
     [t]
@@ -86,145 +113,48 @@ const FeatureHighlightsScreen = () => {
     flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });
   };
 
-  /**
-   * These slide illustrations follow the design system's illustration rule —
-   * "flat, two-tone (ink line-work on cream) with beam yellow as the single
-   * accent" — which maps onto exactly two tokens:
-   *
-   * - **shapes and tonal discs take `textPrimary`**: ink in light, cream in dark.
-   * - **accents take `primary` at its true value**: the barcode bars, the shield.
-   *
-   * `primary` must NOT carry the shapes, and the reason is arithmetic rather
-   * than taste. In dark it is beam, and beam under alpha over a dark ground
-   * composites to olive and mustard — at the 50 %, 65 % and 70 % these shapes
-   * used, `#7E6606`, `#A48508` and `#B18F08`, which the design system forbids by
-   * name and now bans explicitly above 10 % alpha. In light the two tokens are
-   * both ink, so this distinction is invisible there, which is precisely how it
-   * went unnoticed: a light-mode screenshot shows nothing wrong.
-   */
-  const renderIllustration = (id: Slide['id']) => {
-    if (id === 'all-cards') {
-      return (
-        <View
-          style={{
-            width: 160,
-            height: 160,
-            borderRadius: 80,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: `${theme.textPrimary}1A`
-          }}
-        >
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: 88, gap: 8 }}>
-            {Array.from({ length: 4 }).map((_, itemIndex) => (
-              <View
-                key={`card-${itemIndex}`}
-                style={{
-                  width: 40,
-                  height: 34,
-                  borderRadius: 6,
-                  backgroundColor: `${theme.textPrimary}${itemIndex < 2 ? '80' : 'A6'}`
-                }}
-              />
-            ))}
-          </View>
-        </View>
-      );
-    }
-
-    if (id === 'scan-or-manual') {
-      return (
-        <View
-          style={{
-            width: 160,
-            height: 160,
-            borderRadius: 80,
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: `${theme.textPrimary}1A`
-          }}
-        >
-          <View
-            style={{
-              width: 72,
-              height: 50,
-              borderRadius: 10,
-              backgroundColor: `${theme.textPrimary}B3`
-            }}
-          />
-          <View style={{ marginTop: 10, flexDirection: 'row', gap: 3 }}>
-            {Array.from({ length: 7 }).map((_, barIndex) => (
-              <View
-                key={`barcode-${barIndex}`}
-                style={{
-                  width: barIndex % 2 === 0 ? 3 : 2,
-                  height: 16,
-                  borderRadius: 1,
-                  backgroundColor: theme.primary
-                }}
-              />
-            ))}
-          </View>
-        </View>
-      );
-    }
-
-    return (
-      <View
-        style={{
-          width: 160,
-          height: 160,
-          borderRadius: 80,
-          alignItems: 'center',
-          justifyContent: 'center',
-          backgroundColor: `${theme.textPrimary}1A`
-        }}
-      >
-        <MaterialIcons name="verified-user" size={60} color={theme.primary} />
-      </View>
-    );
-  };
-
   const renderSlide = ({ item, index }: ListRenderItemInfo<Slide>) => (
     <View testID={`highlight-slide-${index}`} style={{ width: slideWidth, flex: 1 }}>
       <HighlightSlide
         title={item.title}
         description={item.description}
-        illustration={renderIllustration(item.id)}
+        illustration={
+          <OnboardingAnimation
+            testID={`highlight-illustration-${index}`}
+            light={item.light}
+            dark={item.dark}
+            active={index === currentIndex}
+          />
+        }
         testID={`highlight-content-${index}`}
       />
     </View>
   );
 
   return (
-    <View testID="feature-highlights-screen" style={{ flex: 1, backgroundColor: theme.background }}>
+    <View
+      testID="feature-highlights-screen"
+      style={[styles.root, { backgroundColor: theme.background }]}
+    >
       <View
-        style={{
-          paddingTop: insets.top + 8,
-          paddingHorizontal: 24,
-          alignItems: 'flex-end'
-        }}
+        testID="highlights-skip-row"
+        style={[styles.skipRow, { paddingTop: insets.top + SPACING.sm }]}
       >
         <Pressable
           testID="highlights-skip"
           accessibilityRole="button"
           accessibilityLabel={t('onboarding.highlights.skipAccessibilityLabel')}
           onPress={finishOnboarding}
-          style={{
-            minHeight: TOUCH_TARGET.min,
-            minWidth: TOUCH_TARGET.min,
-            justifyContent: 'center',
-            paddingHorizontal: 2
-          }}
+          style={styles.skip}
         >
-          <Text style={{ ...TYPOGRAPHY.bodyMdStrong, color: theme.link }}>
+          <Text style={[styles.skipLabel, { color: theme.link }]}>
             {t('onboarding.highlights.skip')}
           </Text>
         </Pressable>
       </View>
 
       <View
-        style={{ flex: 1 }}
+        style={styles.carousel}
         accessibilityRole="adjustable"
         accessibilityHint={t('onboarding.highlights.swipeAccessibilityHint')}
       >
@@ -234,6 +164,8 @@ const FeatureHighlightsScreen = () => {
           horizontal
           pagingEnabled
           data={slides}
+          // Each page's drawing follows the shown page, which `renderItem` reads.
+          extraData={currentIndex}
           keyExtractor={(item) => item.id}
           renderItem={renderSlide}
           showsHorizontalScrollIndicator={false}
@@ -249,16 +181,48 @@ const FeatureHighlightsScreen = () => {
         />
       </View>
 
-      <View style={{ paddingBottom: insets.bottom + 24, marginTop: 4, paddingHorizontal: 24 }}>
-        <PaginationDots total={total} current={currentIndex} testID="pagination-dots" />
-        <View style={{ marginTop: 20 }}>
-          <Button variant="primary" onPress={handleNext} testID="highlight-next-button">
+      <PrimaryActionFooter testID="highlights-footer">
+        <View testID="highlights-footer-actions" style={styles.footerStack}>
+          <PaginationDots total={total} current={currentIndex} testID="pagination-dots" />
+          <Button
+            variant="primary"
+            size="large"
+            onPress={handleNext}
+            testID="highlight-next-button"
+          >
             {isLast ? t('onboarding.highlights.letsGo') : t('onboarding.highlights.next')}
           </Button>
         </View>
-      </View>
+      </PrimaryActionFooter>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1
+  },
+  skipRow: {
+    paddingHorizontal: LAYOUT.screenHorizontalMargin,
+    alignItems: 'flex-end'
+  },
+  // Its label ends on the margin.
+  skip: {
+    minHeight: TOUCH_TARGET.min,
+    minWidth: TOUCH_TARGET.min,
+    alignItems: 'flex-end',
+    justifyContent: 'center'
+  },
+  skipLabel: {
+    ...TYPOGRAPHY.bodyMdStrong
+  },
+  carousel: {
+    flex: 1
+  },
+  // The dots sit 24 above the action.
+  footerStack: {
+    gap: SPACING.lg
+  }
+});
 
 export default FeatureHighlightsScreen;

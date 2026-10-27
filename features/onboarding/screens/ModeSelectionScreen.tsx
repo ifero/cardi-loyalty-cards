@@ -1,28 +1,35 @@
-import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import CloudUpload from 'lucide-react-native/icons/cloud-upload';
+import Smartphone from 'lucide-react-native/icons/smartphone';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { AccessibilityInfo, Pressable, ScrollView, Text, View } from 'react-native';
+import { AccessibilityInfo, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { isFirstLaunch } from '@/core/settings/settings-repository';
 
+import { BottomSheet, Button, ScreenHeader } from '@/shared/components/ui';
 import { useTheme } from '@/shared/theme';
-import { TOUCH_TARGET } from '@/shared/theme/spacing';
+import { LAYOUT, SPACING, TOUCH_TARGET } from '@/shared/theme/spacing';
 import { TYPOGRAPHY } from '@/shared/theme/typography';
 
-import { InfoTooltipModal } from '../components/InfoTooltipModal';
 import { ModeOptionCard } from '../components/ModeOptionCard';
 import { useModeSelection } from '../hooks/useModeSelection';
 
+/**
+ * Mode selection — frame B, and the difference on the shared sheet (frame C), as
+ * `cardi-design-system.md` § _Onboarding_ rules them (Story 22.10).
+ *
+ * `ScreenHeader` over a body that scrolls, without bouncing, once it outgrows the screen under
+ * large text (Story 21.6). There is no primary action, so no footer: each card is the choice.
+ */
 const ModeSelectionScreen = () => {
   const { theme } = useTheme();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { selectLocalMode, selectCloudMode } = useModeSelection();
-  const [modalVisible, setModalVisible] = React.useState(false);
-  const whatsDifferenceRef = React.useRef<React.ElementRef<typeof Pressable>>(null);
+  const [isDifferenceVisible, setIsDifferenceVisible] = React.useState(false);
 
   React.useEffect(() => {
     if (!isFirstLaunch()) {
@@ -34,84 +41,38 @@ const ModeSelectionScreen = () => {
     AccessibilityInfo.announceForAccessibility?.(t('onboarding.modeSelection.screenAnnouncement'));
   }, [t]);
 
-  return (
-    <View testID="mode-selection-screen" style={{ flex: 1, backgroundColor: theme.background }}>
-      <View
-        style={{
-          paddingTop: insets.top,
-          borderBottomWidth: 1,
-          borderBottomColor: theme.border,
-          paddingHorizontal: 12,
-          minHeight: 56 + insets.top,
-          flexDirection: 'row',
-          alignItems: 'center'
-        }}
-      >
-        <Pressable
-          testID="mode-selection-back"
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel={t('onboarding.modeSelection.backAccessibilityLabel')}
-          style={{
-            width: TOUCH_TARGET.min,
-            height: TOUCH_TARGET.min,
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
-        >
-          <MaterialIcons name="chevron-left" size={28} color={theme.primary} />
-        </Pressable>
-        <Text
-          style={{
-            flex: 1,
-            // Mirrors the back button, so the title stays centred on the screen.
-            marginRight: TOUCH_TARGET.min,
-            textAlign: 'center',
-            color: theme.textPrimary,
-            ...TYPOGRAPHY.bodyLgStrong
-          }}
-        >
-          {t('onboarding.modeSelection.title')}
-        </Text>
-      </View>
+  const closeDifference = () => setIsDifferenceVisible(false);
 
-      {/* The body scrolls (the header stays put) only when its content outgrows the screen — at
-          the largest Dynamic Type sizes, where it would otherwise clip the options (Story 21.6). */}
+  return (
+    <View
+      testID="mode-selection-screen"
+      style={[styles.root, { backgroundColor: theme.background, paddingTop: insets.top }]}
+    >
+      <ScreenHeader
+        title={t('onboarding.modeSelection.title')}
+        onBack={() => router.back()}
+        testID="mode-selection-header"
+        backTestID="mode-selection-back"
+      />
+
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: 24,
-          paddingTop: 30,
-          paddingBottom: insets.bottom + 24
-        }}
+        testID="mode-selection-scroll"
+        style={styles.scroll}
+        contentContainerStyle={[styles.body, { paddingBottom: insets.bottom + SPACING.lg }]}
         alwaysBounceVertical={false}
       >
-        <Text
-          accessibilityRole="header"
-          style={{
-            color: theme.textPrimary,
-            textAlign: 'center',
-            ...TYPOGRAPHY.headlineMd
-          }}
-        >
+        <Text accessibilityRole="header" style={[styles.heading, { color: theme.textPrimary }]}>
           {t('onboarding.modeSelection.heading')}
         </Text>
 
-        <Text
-          style={{
-            marginTop: 8,
-            textAlign: 'center',
-            color: theme.textSecondary,
-            ...TYPOGRAPHY.bodyMd
-          }}
-        >
+        <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
           {t('onboarding.modeSelection.subtitle')}
         </Text>
 
-        <View style={{ marginTop: 28, gap: 16 }}>
+        <View style={styles.cards}>
           <ModeOptionCard
             testID="mode-option-local"
-            icon="smartphone"
+            icon={Smartphone}
             title={t('onboarding.modeSelection.localTitle')}
             subtitle={t('onboarding.modeSelection.localSubtitle')}
             eyebrow={t('onboarding.modeSelection.localEyebrow')}
@@ -121,7 +82,7 @@ const ModeSelectionScreen = () => {
 
           <ModeOptionCard
             testID="mode-option-cloud"
-            icon="cloud-upload"
+            icon={CloudUpload}
             title={t('onboarding.modeSelection.cloudTitle')}
             subtitle={t('onboarding.modeSelection.cloudSubtitle')}
             eyebrow={t('onboarding.modeSelection.cloudEyebrow')}
@@ -129,50 +90,102 @@ const ModeSelectionScreen = () => {
           />
         </View>
 
-        <Text
-          style={{
-            marginTop: 34,
-            color: theme.textSecondary,
-            textAlign: 'center',
-            ...TYPOGRAPHY.bodyMd
-          }}
-        >
+        <Text style={[styles.footer, { color: theme.textSecondary }]}>
           {t('onboarding.modeSelection.footer')}
         </Text>
 
         <Pressable
-          ref={whatsDifferenceRef}
           testID="mode-selection-whats-difference"
-          onPress={() => setModalVisible(true)}
+          onPress={() => setIsDifferenceVisible(true)}
           accessibilityRole="button"
           accessibilityLabel={t('onboarding.modeSelection.whatsDifferenceAccessibilityLabel')}
-          style={{
-            marginTop: 4,
-            minHeight: TOUCH_TARGET.min,
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}
+          style={styles.link}
         >
-          <Text
-            style={{
-              color: theme.link,
-              textDecorationLine: 'underline',
-              ...TYPOGRAPHY.bodyMdStrong
-            }}
-          >
+          <Text style={[styles.linkLabel, { color: theme.link }]}>
             {t('onboarding.modeSelection.whatsDifference')}
           </Text>
         </Pressable>
       </ScrollView>
 
-      <InfoTooltipModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        triggerRef={whatsDifferenceRef}
+      <BottomSheet
+        visible={isDifferenceVisible}
+        onClose={closeDifference}
+        title={t('onboarding.infoTooltip.heading')}
+        accessibilityLabel={t('onboarding.infoTooltip.accessibilityLabel')}
         testID="info-tooltip-modal"
-      />
+        actions={
+          <Button
+            variant="primary"
+            size="large"
+            onPress={closeDifference}
+            testID="info-tooltip-got-it"
+          >
+            {t('onboarding.infoTooltip.button')}
+          </Button>
+        }
+      >
+        <View testID="info-tooltip-paragraphs" style={styles.paragraphs}>
+          <Text style={[styles.paragraph, { color: theme.textPrimary }]}>
+            {t('onboarding.infoTooltip.bodyLocal')}
+          </Text>
+          <Text style={[styles.paragraph, { color: theme.textPrimary }]}>
+            {t('onboarding.infoTooltip.bodyCloud')}
+          </Text>
+          <Text style={[styles.paragraph, { color: theme.textPrimary }]}>
+            {t('onboarding.infoTooltip.bodySwitch')}
+          </Text>
+        </View>
+      </BottomSheet>
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1
+  },
+  scroll: {
+    flex: 1
+  },
+  body: {
+    paddingHorizontal: LAYOUT.screenHorizontalMargin,
+    paddingTop: SPACING.lg
+  },
+  heading: {
+    ...TYPOGRAPHY.headlineMd,
+    textAlign: 'center'
+  },
+  subtitle: {
+    ...TYPOGRAPHY.bodyMd,
+    marginTop: SPACING.sm,
+    textAlign: 'center'
+  },
+  cards: {
+    marginTop: SPACING.lg,
+    gap: SPACING.md
+  },
+  footer: {
+    ...TYPOGRAPHY.bodyMd,
+    marginTop: SPACING.xl,
+    textAlign: 'center'
+  },
+  link: {
+    marginTop: SPACING.sm,
+    minHeight: TOUCH_TARGET.min,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  linkLabel: {
+    ...TYPOGRAPHY.bodyMdStrong,
+    textAlign: 'center',
+    textDecorationLine: 'underline'
+  },
+  paragraphs: {
+    gap: SPACING.md
+  },
+  paragraph: {
+    ...TYPOGRAPHY.bodyMd
+  }
+});
 
 export default ModeSelectionScreen;

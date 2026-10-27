@@ -66,7 +66,6 @@ export const en = {
     },
     modeSelection: {
       screenAnnouncement: 'Mode selection screen',
-      backAccessibilityLabel: 'Go back',
       title: 'Get Started',
       heading: 'How would you like\nto use the app?',
       subtitle: 'You can always change this later in Settings.',
@@ -86,11 +85,13 @@ export const en = {
       accessibilityHint: 'Double tap to select this storage option'
     },
     infoTooltip: {
-      openedAnnouncement: 'Storage options info opened',
       accessibilityLabel: 'Storage options information',
-      closeAccessibilityLabel: 'Close information',
       heading: "What's the difference?",
-      body: "Keep cards on this device stores your loyalty cards only on this phone. It's fast, private, and works offline. Sync across all devices creates a free account so your cards are backed up and available on any device you sign in to. You can switch anytime from Settings.",
+      bodyLocal:
+        "Keep cards on this device stores your loyalty cards only on this phone. It's fast, private, and works offline.",
+      bodyCloud:
+        'Sync across all devices creates a free account so your cards are backed up and available on any device you sign in to.',
+      bodySwitch: 'You can switch anytime from Settings.',
       button: 'Got it'
     },
     highlights: {
@@ -98,6 +99,7 @@ export const en = {
       skipAccessibilityLabel: 'Skip feature highlights',
       skip: 'Skip',
       swipeAccessibilityHint: 'Swipe left or right to move through feature highlights',
+      paginationAccessibilityLabel: 'Page {{current}} of {{total}}',
       next: 'Next',
       letsGo: "Let's go!",
       allCardsTitle: 'All your cards in one place',

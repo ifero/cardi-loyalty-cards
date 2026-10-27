@@ -1,38 +1,61 @@
 import React from 'react';
-import { View } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { StyleSheet, View } from 'react-native';
 
 import { useTheme } from '@/shared/theme';
+import { SPACING } from '@/shared/theme/spacing';
 
 type PaginationDotsProps = {
   total: number;
+  /** The shown page, from 0. */
   current: number;
   testID?: string;
 };
 
+const DOT_SIZE = 8;
+
+/**
+ * The highlights' page dots (Story 22.10): 8 across and 8 apart, the shown page's in `primary` and
+ * the rest in `border`. One element for assistive technology, named by page.
+ */
 export const PaginationDots = ({ total, current, testID }: PaginationDotsProps) => {
   const { theme } = useTheme();
+  const { t } = useTranslation();
 
   return (
     <View
       testID={testID}
-      style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}
-      accessibilityLabel={`Page ${current + 1} of ${total}`}
-    >
-      {Array.from({ length: total }).map((_, index) => {
-        const active = index === current;
-        return (
-          <View
-            key={`dot-${index}`}
-            testID={`pagination-dot-${index}`}
-            style={{
-              width: active ? 10 : 8,
-              height: active ? 10 : 8,
-              borderRadius: active ? 5 : 4,
-              backgroundColor: active ? theme.primary : theme.borderStrong
-            }}
-          />
-        );
+      accessible
+      accessibilityLabel={t('onboarding.highlights.paginationAccessibilityLabel', {
+        current: current + 1,
+        total
       })}
+      style={styles.row}
+    >
+      {Array.from({ length: total }).map((_, index) => (
+        <View
+          key={`dot-${index}`}
+          testID={`pagination-dot-${index}`}
+          style={[
+            styles.dot,
+            { backgroundColor: index === current ? theme.primary : theme.border }
+          ]}
+        />
+      ))}
     </View>
   );
 };
+
+const styles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: SPACING.sm
+  },
+  dot: {
+    width: DOT_SIZE,
+    height: DOT_SIZE,
+    borderRadius: DOT_SIZE / 2
+  }
+});
