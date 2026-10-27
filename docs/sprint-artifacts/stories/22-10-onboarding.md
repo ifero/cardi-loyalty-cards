@@ -2,7 +2,7 @@
 title: 'Story 22.10: Onboarding — the four screens on the Cardì frames, with the adopted illustrations'
 type: 'feature'
 created: '2026-10-24'
-status: 'in-review'
+status: 'done'
 baseline_commit: '0c6ae9535df715b6f415bf366a0347511a66b09d'
 route: 'dispatch'
 review_loop_iteration: 1
