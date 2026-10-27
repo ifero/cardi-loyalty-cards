@@ -2,7 +2,7 @@
 title: 'Story 23.2: watchOS implementation — the list, the barcode and the sort picker on the watch grammar'
 type: 'feature'
 created: '2026-10-25'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: '1ad92b2a4366da8e6b7b67beef19937ed20e1f43'
