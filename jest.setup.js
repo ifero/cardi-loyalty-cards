@@ -157,7 +157,9 @@ jest.mock('expo-router', () => {
       addListener: jest.fn(() => jest.fn()),
       dispatch: jest.fn()
     }),
-    useFocusEffect: jest.fn((callback) => callback())
+    useFocusEffect: jest.fn((callback) => callback()),
+    // A rendered screen is the focused one unless a test says otherwise (Story 22.10: Welcome).
+    useIsFocused: jest.fn(() => true)
   };
 });
 
@@ -188,6 +190,33 @@ jest.mock('@react-native-picker/picker', () => {
 
   return {
     Picker: MockPicker
+  };
+});
+
+// Mock lottie-react-native (Story 22.10): a native view, and the package ships no Jest mock. A View
+// that takes every prop the player is given — `source`, `progress`, `loop`, the callbacks — so a
+// test reads them off what it queried and calls `onAnimationFinish` or `onAnimationFailure` itself.
+// Each player gets its own commands, handed to its ref as the real ones are and also set on the
+// view as `commands`, so a test can see which player was told to play.
+jest.mock('lottie-react-native', () => {
+  const mockReact = require('react');
+  const mockRN = require('react-native');
+
+  const MockLottieView = mockReact.forwardRef((props, ref) => {
+    const [commands] = mockReact.useState(() => ({
+      play: jest.fn(),
+      reset: jest.fn(),
+      pause: jest.fn(),
+      resume: jest.fn()
+    }));
+    mockReact.useImperativeHandle(ref, () => commands, [commands]);
+    return mockReact.createElement(mockRN.View, { ...props, commands });
+  });
+  MockLottieView.displayName = 'LottieView';
+
+  return {
+    __esModule: true,
+    default: MockLottieView
   };
 });
 

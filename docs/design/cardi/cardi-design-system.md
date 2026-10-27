@@ -1684,6 +1684,108 @@ failed request; another sign-in method.
 **Unverified.** Android, for which this host has no phone emulator — and with it the keyboard and the
 focused field's scroll there; VoiceOver and TalkBack; one-time-code autofill from a real e-mail.
 
+### Onboarding
+
+**RULED 2026-10-26 (Story 22.10)**, from `frames/cardi-onboarding-frames.html` — frames A (welcome),
+B (mode selection), C (the difference) and D–F (the three highlights) — and the canvas the
+illustration set was adopted on (_Illustrations_). This document is canonical, the adopted canvas
+places the drawings, and the frames give the rest; where they differ, the ruling is recorded here.
+The flow is unchanged — the first-launch gate, each screen's guard, welcome → mode selection →
+highlights or create account, sign in from welcome, and the highlights' end completing the first
+launch and replacing to Home. The copy is kept but for three changes: the difference's body is
+split into its three paragraphs; the dots' name, hardcoded English until now, is in both
+languages; and the difference announces as every sheet does (below). The test IDs are kept but for
+two: `info-tooltip-close` went with the modal's ×, which frame C does not draw, and `welcome-screen`
+now names Welcome's root view, which holds the scroll (`welcome-scroll`) and the footer, where it
+named the scroll; new parts take new IDs. `BrandedIcon`, the `FannedCardIllustration` placeholder
+and the centred `InfoTooltipModal` are gone.
+
+**Welcome** (frame A, the canvas). A body that scrolls without bouncing, padded 24, holds the mark's
+intro (`cardi-mark-intro.json`, 100 × 100) 64px below the top inset, with the mark at the app icon's
+proportion: its box takes 58.6 of the field, as it takes 600.06 of 1024 in `cardi-mark.svg`
+(**decided 2026-10-26, ifero**), where the adopted intro fitted it into a 34 box. "Cardì" sits 32px
+below it in `display-lg` `on-surface`; the subtitle 8px below in `body-lg` muted; and the welcome
+drawing (280 × 190) 40px below that. Both animations start together once Welcome's entrance has
+ended (_Motion_, below), so the drawing's fan opens as the accent settles. The primary-action footer
+holds "Get Started", the 52px primary, and 16px below it "I already have an account": `body-md`
+semibold in `link`, 48px tall, with no underline. Overruled: frame A's in-flow button, as capture's
+footer ruling overruled frame C's (_Capture_), its 230 × 110 band, and its hand-built ì, which is a
+stand-in for the mark.
+
+**Mode selection** (frame B). `ScreenHeader` titled "Get Started", whose back goes back. The body
+scrolls without bouncing, padded 24: the heading in `headline-md`, centred, 24px below the header;
+the subtitle 8px below in `body-md` muted. The cards come 24px below the subtitle, 16px apart.
+
+- **The cards.** `surface`, radius 16, padded 20, and no wash: the recommended (local) card takes a
+  2px `primary` outline, the other a 1px `outline-variant` one. The recommended card carries the
+  beam "Recommended" pill on its top edge, at top −11 and right 16: `label-bold` in ink on beam,
+  padded 4 / 12, fully round. It is beam with ink in both schemes — the brand's own pair, as the
+  favourite badge's plate is — because no theme role is beam in light: the one value on these
+  screens that is not a role (**decided 2026-10-26, ifero**). Under large text the pill grows, and
+  the card's top padding grows with it, so the pill never sits on the title.
+- **Inside.** A 48px disc, the ground inside a 1px hairline, holding Lucide `smartphone` or
+  `cloud-upload` at 24 / 1.5 in `on-surface`; 16px on, the title in `body-lg` semibold, the subtitle
+  4px below in `body-md` muted, and the eyebrow 8px below in `label-bold` — `on-surface` on the
+  recommended card, muted on the other.
+- **Below.** The footer sentence 32px below the cards in `body-md` muted, centred, and 8px below it
+  "What's the difference?" in `body-md` semibold `link`, underlined, on a 48px row. The screen still
+  announces itself on mount.
+
+**The difference** (frame C) is the shared sheet (_Sheets_), titled "What's the difference?". It
+holds the explanation as three paragraphs in `body-md` `on-surface`, 16px apart, and one action, "Got
+it", the 52px primary. "Got it", the scrim, Android back and the VoiceOver escape close it; the
+grabber stays decoration, as on every sheet (**decided 2026-10-26, ifero**). It announces as every
+sheet does, by its name: "Storage options information opened" and "… closed", and in Italian
+"Pannello informativo sull'archiviazione aperto" and "… chiuso" — a masculine singular name, so
+the shared participle agrees. That replaces the modal's own "Storage options info opened", and its
+close, which said nothing (**decided 2026-10-26, ifero**). Overruled: the frame's flat black scrim,
+its 12px grabber offset, its 24 / 32 title and its fixed 400px height.
+
+**Highlights** (frames D–F, the canvas). No header: Skip at the top right, `body-md` semibold in
+`link`, on a 48px row whose label ends on the margin. Each page scrolls on its own, without
+bouncing: its drawing (280 × 190) 96px below the Skip row, the title 48px below in `headline-md`,
+centred, and the body 12px below in `body-md` muted, centred and at most 310px wide. The
+primary-action footer holds the dots — 8px across and 8px apart, the shown page's `primary` and the
+rest `outline-variant`, one element named "Page 2 of 3" in the active language — 24px above Next or
+"Let's go!", the 52px primary. Overruled: the frames' 160px cream discs and the drawings in them.
+
+**Motion.** Every drawing plays once, never looping, and rests on its last frame, which is the
+static drawing (_Illustrations_). The welcome pair starts together once Welcome's entrance has ended
+— on the stack's first `transitionEnd` that is not closing — so brand moment D never plays under the
+entrance's fade (**decided 2026-10-26, ifero**). Leaving Welcome before then, or mid-play — Get
+Started before the drawing ends — rests both on their last frames, so coming back replays nothing.
+The first highlight's drawing plays on mount. A highlight's drawing plays the first time its page is
+shown — at once on Next, as the page slides in rather than once it settles, or when a swipe settles
+on it — and a page shown again rests on its last frame, so going back is quiet (**decided
+2026-10-25, ifero**, worded 2026-10-26). A page swiped away mid-play settles on its last frame too,
+so it is still when it comes back. Under Reduce Motion — which Reanimated reads once, at launch —
+each shows its last frame at once and nothing plays; lottie-ios would otherwise play in full. A
+scheme change shows the new scheme's file, at its last frame if the drawing had started. The player
+lives in `features/onboarding/`, never `shared/components/ui/`: Storybook loads its stories from
+that directory and cannot bundle the player, because lottie-react-native's web entry imports the
+optional peer `@lottiefiles/dotlottie-react`, which is not installed.
+
+- **Decorative.** The mark and the drawings are hidden from assistive technology; the titles carry
+  the meaning.
+- **A file that fails to load** leaves its box empty, at its size, and throws and announces nothing.
+
+**Dark.** Every value but the pill's is a role: the black ground, ink cards and sheet, cream text,
+muted `#B5B5AB`, `#3A3A48` hairlines and dots; beam for the links, the recommended card's outline,
+the shown page's dot and the primary, with its ink label; and the `-dark` file of each drawing. The
+pill stays beam with its ink label, as in light (**decided 2026-10-26, ifero**), and the mark keeps
+its own ink field in both schemes, so one file serves both.
+
+**Icons.** Onboarding left MaterialIcons here: mode selection's hand-rolled `chevron-left`, for
+`ScreenHeader`'s Lucide one; its cards' `smartphone` and `cloud-upload`, now Lucide's at 24 / 1.5;
+the difference modal's `close` and `info-outline`, which went with it; and the third highlight's
+`verified-user`, which its drawing replaces. Onboarding draws no other icon.
+
+**Unverified.** Android, for which this host has no phone emulator, and with it the drawings and
+their motion there; VoiceOver and TalkBack — what they speak of the difference's announcements, in
+either language, and where focus lands when the sheet closes: the modal returned it to "What's the
+difference?", and the shared sheet moves it nowhere; and a release build, with how these screens
+draw in a binary that lacks the player's native module.
+
 ### Input fields
 
 1px outline, 12px radius, label **always visible above** the field (never floating), 48px

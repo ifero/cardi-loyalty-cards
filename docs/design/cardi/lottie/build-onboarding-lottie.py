@@ -23,6 +23,8 @@ WHERE EACH INPUT COMES FROM
   - The mark: assets/images/cardi-mark-inline.svg, which `yarn icons:build` writes from
     the one geometry the app icon and the launch screen share. It is READ, never
     transcribed, so the intro cannot drift from the mark the app ships.
+  - The mark's size in its field: the app icon's, assets/images/cardi-mark.svg, written
+    from that same geometry and READ the same way.
 
 THE RULES THE SET WAS ADOPTED WITH
 
@@ -48,6 +50,7 @@ HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[3]
 SOURCE = HERE / "onboarding-illustrations.source.html"
 MARK = REPO / "assets" / "images" / "cardi-mark-inline.svg"
+ICON = REPO / "assets" / "images" / "cardi-mark.svg"
 OUT = REPO / "assets" / "animations" / "onboarding"
 
 FPS = 60
@@ -78,11 +81,12 @@ ILLUSTRATIONS = [
     ("h3", "onboarding-your-data", 37),
 ]
 
-# WelcomeScreen draws the mark as <BrandedIcon size={100} iconSize={34} />: an ink
-# field 100 across with the mark fitted into a 34 box at its centre. The intro is a
-# drop-in for that view.
+# The intro is an ink field 100 across with the mark centred in it at the app icon's
+# proportion (Story 22.10, decision 6): the mark's box takes the share of the field
+# that it takes of the icon's, 600.06 of 1024, so 58.6 here. `icon_share()` reads it
+# from the icon. (The adopted intro copied the old <BrandedIcon iconSize={34} />, where
+# the bars were a stub in their disc.)
 MARK_FIELD = 100
-MARK_ICON_SIZE = 34
 MARK_END = 14
 
 
@@ -450,7 +454,31 @@ def read_mark(path):
     return (vb_w, vb_h), bars, beams[0]
 
 
-def mark_intro(path):
+def mark_box(bars, beam):
+    """The mark's bounding box, (width, height), in its own units.
+
+    The bars, and the corners of the beam's rectangle turned about its centre: the
+    extents build-brand-icons.mjs crops the inline mark's viewBox to.
+    """
+    xs = [x for b in bars for x in (b["x"], b["x"] + b["w"])]
+    ys = [y for b in bars for y in (b["y"], b["y"] + b["h"])]
+    a = math.radians(beam["angle"])
+    px, py = beam["pivot"]
+    for cx in (beam["x"], beam["x"] + beam["w"]):
+        for cy in (beam["y"], beam["y"] + beam["h"]):
+            dx, dy = cx - px, cy - py
+            xs.append(px + dx * math.cos(a) - dy * math.sin(a))
+            ys.append(py + dx * math.sin(a) + dy * math.cos(a))
+    return max(xs) - min(xs), max(ys) - min(ys)
+
+
+def icon_share(path):
+    """The share of the app icon's field the mark's box takes along its longer side."""
+    (vb_w, vb_h), bars, beam = read_mark(path)
+    return max(mark_box(bars, beam)) / max(vb_w, vb_h)
+
+
+def mark_intro(path, icon):
     """Brand moment D, "scan, then settle", drawn on the real mark.
 
     The mark opens as a dotless ı of bars. The beam cuts on, full width, just above
@@ -460,7 +488,8 @@ def mark_intro(path):
     nothing hands over. The last frame is the static mark.
     """
     (vb_w, vb_h), bars, beam = read_mark(path)
-    k = MARK_ICON_SIZE / max(vb_w, vb_h)
+    # The inline mark's viewBox is its box, so the box fills the icon's share of the field.
+    k = icon_share(icon) * MARK_FIELD / max(vb_w, vb_h)
     offset = ((MARK_FIELD - vb_w * k) / 2, (MARK_FIELD - vb_h * k) / 2)
 
     px, py = beam["pivot"]
@@ -504,7 +533,7 @@ def build():
         for theme in THEMES:
             name = f"{stem}-{theme}"
             files[f"{name}.json"] = dump(illustration(name, drawings[tid], theme, end))
-    files["cardi-mark-intro.json"] = dump(mark_intro(MARK))
+    files["cardi-mark-intro.json"] = dump(mark_intro(MARK, ICON))
     return files
 
 

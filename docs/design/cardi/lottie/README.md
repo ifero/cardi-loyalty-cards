@@ -23,7 +23,7 @@ It is not in [`../tools/`](../tools/) on purpose: `verify.py` runs every script 
 
 Each one plays **once** and its last frame is the static drawing. Under Reduce Motion, show the last frame and nothing is lost. Do not loop them.
 
-`cardi-mark-intro.json` is brand moment D, "scan, then settle", and replaces `<BrandedIcon size={100} iconSize={34} />` on Welcome: the same ink field and the same mark, at the same size. It serves both schemes, because the mark always brings its own ink ground. The Welcome illustration holds its fan closed for the first 0.9 s, so start both files together and the sequence lines up.
+`cardi-mark-intro.json` is brand moment D, "scan, then settle", and replaces `<BrandedIcon size={100} iconSize={34} />` on Welcome: the same ink field and the same mark, at the app icon's proportion, so the mark's box takes 58.6 of the 100 field as it takes 600.06 of 1024 in `assets/images/cardi-mark.svg` (Story 22.10, decision 6). It serves both schemes, because the mark always brings its own ink ground. The Welcome illustration holds its fan closed for the first 0.9 s, so start both files together and the sequence lines up.
 
 ## Where the inputs come from
 
