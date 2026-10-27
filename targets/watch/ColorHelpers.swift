@@ -46,9 +46,10 @@ private func rgbColor(_ rgb: UInt64) -> Color {
 /// by what the phone sends. Beam and the `orange` key share a hex, and that is two roles meeting
 /// on one value, not a second definition of either.
 ///
-/// The barcode screen takes ONLY `cream`, for its title. Its white field, true-black bars and
-/// black surround are the barcode rule's values (grammar §6), not chrome, and beam never appears
-/// there.
+/// `BarcodeFlashView` itself takes ONLY `cream`, for its title. Its white field, true-black bars
+/// and black surround are the barcode rule's values (grammar §6), not chrome, and beam never
+/// appears there. Its host, `BarcodePagerView`, adds `ground` under it and `creamSecondary` for
+/// the unavailable line.
 enum WatchColor {
     /// True black, the OLED ground under every screen.
     static let ground = parseHexColor("#000000")

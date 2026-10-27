@@ -496,6 +496,9 @@ struct CardListView: View {
   @StateObject private var store: CardStore
   @State private var navigationPath: [WatchCardRoute] = []
   @State private var pendingDeepLinkCardId: String?
+  /// Bumped by every complication deep link, and the barcode pager's identity: each link opens a
+  /// fresh barcode, as an open, whatever the pager was showing.
+  @State private var deepLinkGeneration = 0
   // Watch-local, persisted sort preference (default A-Z), independent of the phone (AC3, AC4).
   @AppStorage(WatchSortMode.storageKey) private var sortMode: WatchSortMode = WatchSortMode.defaultMode
   @State private var showSortSheet = false
@@ -567,15 +570,12 @@ struct CardListView: View {
       }
       .navigationTitle(WatchL10n.string("watch.cards.title"))
       .navigationDestination(for: WatchCardRoute.self) { route in
-        if let card = displayCards.first(where: { $0.id == route.cardId }) {
-          BarcodeFlashView(card: card)
-        } else {
-          Text(WatchL10n.string("watch.cards.unavailable"))
-            .font(.footnote)
-            .foregroundColor(WatchColor.creamSecondary)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .background(WatchColor.ground)
-        }
+        // The barcode, and the crown paging through the cards from it (Story 23.2, decisions 2–5).
+        // The pager takes the live cards on every update and holds their order at opening itself.
+        // `.id` gives it a fresh identity on every deep link: a link to the card this route opened
+        // sets the SAME route value, which SwiftUI would keep as it is — paged on and all.
+        BarcodePagerView(openedCardId: route.cardId, liveCards: displayCards)
+          .id(deepLinkGeneration)
       }
       .toolbar {
         if !displayCards.isEmpty {
@@ -639,6 +639,7 @@ struct CardListView: View {
     }
 
     pendingDeepLinkCardId = nil
+    deepLinkGeneration += 1
     navigationPath = [WatchCardRoute(cardId: cardId)]
   }
 

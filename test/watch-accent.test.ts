@@ -1,8 +1,9 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { DEFAULT_CARD_COLOR } from '@/core/schemas/card';
+
 import appJson from '../app.json';
-import { DEFAULT_CARD_COLOR } from '../core/schemas/card';
 import { CARD_COLORS, DARK_THEME_COLORS, IDENTITY_COLORS } from '../shared/theme/tokens.generated';
 
 /**

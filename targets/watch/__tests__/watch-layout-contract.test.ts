@@ -5,12 +5,15 @@ import { describeOnMac, runSwiftProgram, swiftDeclaration } from './swift-source
 
 const repoRoot = path.resolve(__dirname, '../../..');
 const barcodeViewPath = path.join(repoRoot, 'targets', 'watch', 'BarcodeFlashView.swift');
+const barcodePagerPath = path.join(repoRoot, 'targets', 'watch', 'BarcodePagerView.swift');
 const cardListViewPath = path.join(repoRoot, 'targets', 'watch', 'CardListView.swift');
 const barcodeGeneratorPath = path.join(repoRoot, 'targets', 'watch', 'BarcodeGenerator.swift');
 const layoutPath = path.join(repoRoot, 'targets', 'watch', 'WatchPresentationLayout.swift');
 
 const LAYOUT = 'WatchPresentationLayout.swift';
 const GENERATOR = 'BarcodeGenerator.swift';
+const PAGER = 'BarcodePagerView.swift';
+const CARD_LIST = 'CardListView.swift';
 
 /**
  * Every Apple Watch that runs watchOS 10, measured — not derived.
@@ -185,6 +188,20 @@ const withoutComments = (source: string) =>
  */
 const HIDES_THE_NAVIGATION_BAR =
   /\.toolbar\(\s*\.hidden\b|\.toolbarVisibility\(\s*\.hidden\b|\.navigationBarHidden\(|\.navigationBarBackButtonHidden\b/;
+
+/**
+ * The ways SwiftUI offers to act on a touch: the tap and long-press shorthands, the gesture
+ * attachment modifiers and the gesture types themselves, and the controls and modifiers that carry
+ * a touch action of their own (a button, a link, a drag source, swipe actions, a context menu). On
+ * the barcode screen none may exist — a stray touch must neither close it (decision 1) nor change
+ * the card (decision 2).
+ */
+const ANY_GESTURE_HANDLER =
+  /\.onTapGesture\b|\.onLongPressGesture\b|\.(?:simultaneous|highPriority)?[gG]esture\(|\b(?:Tap|LongPress|Drag|Magnify|Magnification|Rotate|Rotation|Spatial(?:Tap)?)Gesture\b|\bButton\b|\bNavigationLink\b|\.onDrag\b|\.swipeActions\b|\.contextMenu\b/;
+
+/** A `BarcodePagerView.swift` declaration, brace-matched and whitespace-normalised. */
+const pagerDeclaration = (code: string, signature: string) =>
+  swiftDeclaration(code, signature, 'BarcodePagerView.swift').replace(/\s+/g, ' ').trim();
 
 /**
  * The modifier chain applied to the container that opens at `signature`: the lines straight
@@ -450,32 +467,259 @@ describe('watch layout contract', () => {
 
   it('keeps the list → barcode flow, and leaves the barcode only by the system ways back', () => {
     const barcodeCode = withoutComments(fs.readFileSync(barcodeViewPath, 'utf8'));
+    const pagerCode = withoutComments(fs.readFileSync(barcodePagerPath, 'utf8'));
     const cardListView = fs.readFileSync(cardListViewPath, 'utf8');
 
     expect(cardListView).toContain('NavigationLink(value: WatchCardRoute(cardId: card.id))');
     expect(cardListView).toContain('.navigationDestination(for: WatchCardRoute.self) { route in');
-    expect(cardListView).toContain('BarcodeFlashView(card: card)');
+
+    // The route's destination is the pager (Story 23.2, decisions 2–5), handed the route's card
+    // and the LIVE list — it holds the order at opening itself — and it shows each card as its own
+    // `BarcodeFlashView`, keyed by the card so each one gets its own render and `.task`.
+    expect(
+      swiftDeclaration(
+        withoutComments(cardListView),
+        '.navigationDestination(for: WatchCardRoute.self) {',
+        CARD_LIST
+      )
+        .replace(/\s+/g, ' ')
+        .trim()
+    ).toBe(
+      '.navigationDestination(for: WatchCardRoute.self) { route in ' +
+        'BarcodePagerView(openedCardId: route.cardId, liveCards: displayCards) ' +
+        '.id(deepLinkGeneration) }'
+    );
+    expect(withoutComments(cardListView)).not.toContain('BarcodeFlashView(');
+    expect(pagerCode).toContain('adjustable(BarcodeFlashView(card: card, arrival: arrival))');
+    expect(pagerCode).toMatch(
+      /adjustable\(BarcodeFlashView\(card: card, arrival: arrival\)\)\s*\.geometryGroup\(\)\s*\.id\(card\.id\)/
+    );
 
     // Story 23.2 INVERTED what this test used to pin. The barcode screen dismissed on a tap
     // (decision 1, ifero 2026-10-25) and on any crown movement (watch grammar §8); both are
     // gone, so a stray touch or a single detent while the code is held to a scanner cannot
     // close it. What is left is the system's swipe from the left and the navigation bar's
-    // back chevron — neither of which is code in this file, which is the point: the screen
-    // calls `dismiss()` nowhere, and does not even read the action.
-    expect(barcodeCode).not.toContain('.onTapGesture');
+    // back chevron — neither of which is code in either file, which is the point: neither the
+    // barcode nor its pager calls `dismiss()`, and neither even reads the action.
+    for (const code of [barcodeCode, pagerCode]) {
+      expect(code).not.toContain('.onTapGesture');
+      expect(code).not.toContain('crownTriggered');
+      expect(code).not.toContain('dismiss()');
+      expect(code).not.toContain('@Environment(\\.dismiss)');
+      // The navigation bar — which carries the back chevron — is still drawn, by any spelling.
+      expect(code).not.toMatch(HIDES_THE_NAVIGATION_BAR);
+    }
     expect(barcodeCode).not.toContain('.digitalCrownRotation(');
-    expect(barcodeCode).not.toContain('crownTriggered');
-    expect(barcodeCode).not.toContain('dismiss()');
-    expect(barcodeCode).not.toContain('@Environment(\\.dismiss)');
-    // The navigation bar — which carries the back chevron — is still drawn, by any spelling.
-    expect(barcodeCode).not.toMatch(HIDES_THE_NAVIGATION_BAR);
+
+    // And nothing but the crown — and VoiceOver's adjust standing in for it — changes the card:
+    // no tap, swipe, drag or press handler of any kind on the barcode screen (decisions 1–2).
+    for (const code of [barcodeCode, pagerCode]) {
+      expect(code).not.toMatch(ANY_GESTURE_HANDLER);
+    }
   });
 
-  it('gives the crown to the list and the picker, explicitly, and to no handler at all', () => {
+  it('opens a fresh barcode pager on every complication deep link', () => {
+    // A complication tap for the card this route opened sets the SAME route value, which SwiftUI
+    // keeps as it is — so without a new identity the link would land on whatever card the crown
+    // had paged to. The generation is bumped on every link and is the pager's `.id`.
+    const cardListCode = withoutComments(fs.readFileSync(cardListViewPath, 'utf8'));
+    const openRoute = swiftDeclaration(
+      cardListCode,
+      'private func openCardRouteIfAvailable(_ cardId: String) {',
+      CARD_LIST
+    );
+
+    expect(cardListCode).toContain('@State private var deepLinkGeneration = 0');
+    expect(openRoute).toMatch(
+      /deepLinkGeneration \+= 1\s*navigationPath = \[WatchCardRoute\(cardId: cardId\)\]/
+    );
+    expect(cardListCode.split('deepLinkGeneration += 1').length - 1).toBe(1);
+    expect(cardListCode).toContain('.id(deepLinkGeneration)');
+  });
+
+  it('makes the barcode pager the one crown reader, and only scrolling through the cards', () => {
+    // Watch grammar §8, amended 2026-10-27 (decisions 2–4): on the barcode screen the crown
+    // scrolls through the cards, one per detent — whole detents at low sensitivity, never
+    // continuous, the detent haptic on — and nothing else. Pinned whole, so a continuous crown, a
+    // high sensitivity, a silent detent or a second reader each fail here.
+    const pagerCode = withoutComments(fs.readFileSync(barcodePagerPath, 'utf8'));
+    const crownCalls = [...pagerCode.matchAll(/\.digitalCrownRotation\(/g)];
+
+    expect(crownCalls).toHaveLength(1);
+
+    const reader = swiftDeclaration(pagerCode, 'private var crownReader: some View {', PAGER)
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    // `.scrollIndicators(.hidden)` included: without it watchOS draws its crown indicator over the
+    // top-right corner of the white field after every turn (filmed on a 40 mm), and nothing may
+    // overlay the barcode field (grammar §6). `.digitalCrownAccessory(.hidden)` did not hide it.
+    expect(reader).toBe(
+      'private var crownReader: some View { Color.clear .focusable() .focused($pagerHasCrown) ' +
+        '.defaultFocus($pagerHasCrown, true) .digitalCrownRotation( detent: $detent, from: 0, ' +
+        'through: reachable.count - 1, by: 1, sensitivity: .low, isContinuous: false, ' +
+        'isHapticFeedbackEnabled: true ) .scrollIndicators(.hidden) ' +
+        '.accessibilityHidden(true) .onAppear { pagerHasCrown = true } }'
+    );
+    expect(pagerCode).toContain('@FocusState private var pagerHasCrown: Bool');
+
+    // The focus and the crown are the reader's alone: none of them appears anywhere else in the
+    // pager, so none can drift onto the barcode, where attaching or removing it would re-create
+    // the card on screen.
+    for (const modifier of [
+      '.focusable(',
+      '.focused(',
+      '.defaultFocus(',
+      '.digitalCrownRotation('
+    ]) {
+      expect({ modifier, count: pagerCode.split(modifier).length - 1 }).toEqual({
+        modifier,
+        count: 1
+      });
+    }
+
+    // ATTACHED ONLY WITH TWO OR MORE REACHABLE CARDS: the reader exists only under `pages`, which
+    // is the pure policy's answer (run in the Swift harness below: two or more, the shown card
+    // among them). With one card the screen takes no crown at all.
+    expect(pagerCode).toMatch(/if pages \{\s*crownReader\s*\}/);
+    expect(pagerCode.split('crownReader').length - 1).toBe(2);
+    expect(
+      swiftDeclaration(pagerCode, 'private var pages: Bool {', PAGER).replace(/\s+/g, ' ').trim()
+    ).toBe(
+      'private var pages: Bool { WatchBarcodePaging.pages(currentId: currentId, reachable: reachable) }'
+    );
+    expect(
+      swiftDeclaration(pagerCode, 'private var reachable: [String] {', PAGER)
+        .replace(/\s+/g, ' ')
+        .trim()
+    ).toBe(
+      'private var reachable: [String] { WatchBarcodePaging.reachableIds(heldOrder: heldOrder, liveIds: liveCards.map(\\.id)) }'
+    );
+
+    // The held order is the list's at opening, held in `@State` — initialised once, so a list
+    // re-sorting or syncing under the barcode cannot reach it.
+    expect(pagerCode).toContain('@State private var heldOrder: [String]');
+    expect(pagerCode).toContain('_heldOrder = State(initialValue: heldOrder)');
+    expect(pagerCode).toContain('let heldOrder = liveCards.map(\\.id)');
+    // Nothing else writes it: no assignment but the two in `init` — plain, compound or through a
+    // subscript — and no mutating method.
+    expect([
+      ...pagerCode.matchAll(/(?<!let |_)\bheldOrder\s*(?:\[[^\]]*\]\s*)?[-+*/]?=(?!=)/g)
+    ]).toHaveLength(0);
+    expect(pagerCode).not.toMatch(
+      /heldOrder\.(?:append|insert|remove|sort|reverse|swap|shuffle|move|replace|pop)/
+    );
+
+    // The visit starts on the opened card, its detent at that card's place in the held order, so
+    // the first turn moves from it; and the card shown is looked up among the live cards alone, so
+    // a card gone since shows the unavailable line, never a stand-in.
+    expect(pagerCode).toContain('_currentId = State(initialValue: openedCardId)');
+    // And after `init` one writer only, the crown's move in `showCardAtDetent` (pinned whole
+    // below): no other handler can change the card shown.
+    expect([...pagerCode.matchAll(/(?<!_)\bcurrentId\s*=(?!=)/g)]).toHaveLength(1);
+    expect(pagerCode).toContain(
+      '_detent = State(initialValue: heldOrder.firstIndex(of: openedCardId) ?? 0)'
+    );
+    expect(pagerDeclaration(pagerCode, 'private var currentCard: WatchCard? {')).toBe(
+      'private var currentCard: WatchCard? { liveCards.first { $0.id == currentId } }'
+    );
+    expect(pagerCode).toMatch(
+      /if let card = currentCard \{\s*page\(card\)\s*\} else \{\s*Text\(WatchL10n\.string\("watch\.cards\.unavailable"\)\)/
+    );
+
+    // The visit starts on the opened card as an OPEN; only a page makes it `.paged`.
+    expect(pagerCode).toContain('@State private var arrival: WatchBarcodeArrival = .opened');
+
+    // A detent makes the card at it current, through the policy and so clamped to the ends. The
+    // move is pinned whole: a page that skips a card already on screen, reverses in two updates,
+    // tells the leaving card first, and marks every card after the first as `.paged`.
+    expect(pagerCode).toMatch(
+      /\.onChange\(of: detent\) \{ previous, next in\s*follow\(onward: next > previous\)\s*\}/
+    );
+    expect(pagerDeclaration(pagerCode, 'private func follow(onward: Bool) {')).toBe(
+      'private func follow(onward: Bool) { guard pages, WatchBarcodePaging.id(atDetent: detent, ' +
+        'in: reachable) != currentId else { return } if pagesOnward != onward { pagesOnward = ' +
+        'onward if !reduceMotion { Task { @MainActor in showCardAtDetent() } return } } ' +
+        'showCardAtDetent() }'
+    );
+    expect(pagerDeclaration(pagerCode, 'private func showCardAtDetent() {')).toBe(
+      'private func showCardAtDetent() { guard pages, let target = WatchBarcodePaging.id(' +
+        'atDetent: detent, in: reachable), target != currentId else { return } ' +
+        'onScreen.cardId = target withAnimation(.easeInOut(duration: 0.25)) { ' +
+        'currentId = target arrival = .paged } }'
+    );
+
+    // A card dropping out of the held order re-syncs the detent to the card on screen.
+    expect(pagerDeclaration(pagerCode, '.onChange(of: reachable) {')).toBe(
+      '.onChange(of: reachable) { _, reachable in if let position = reachable.firstIndex(' +
+        'of: currentId), position != detent { detent = position } }'
+    );
+
+    // VoiceOver's adjust pages through the same detent, clamped the same way: increment onward,
+    // decrement back, offered when the visit opened on two or more cards.
+    expect(
+      pagerDeclaration(
+        pagerCode,
+        'private func adjustable(_ barcode: BarcodeFlashView) -> some View {'
+      )
+    ).toBe(
+      'private func adjustable(_ barcode: BarcodeFlashView) -> some View { if heldOrder.count ' +
+        '>= 2 { barcode.accessibilityAdjustableAction { direction in switch direction { case ' +
+        '.increment: step(by: 1) case .decrement: step(by: -1) @unknown default: break } } } ' +
+        'else { barcode } }'
+    );
+    expect(
+      swiftDeclaration(pagerCode, 'private func step(by offset: Int) {', PAGER)
+        .replace(/\s+/g, ' ')
+        .trim()
+    ).toBe(
+      'private func step(by offset: Int) { guard pages else { return } detent = ' +
+        'WatchBarcodePaging.clampedDetent(detent + offset, count: reachable.count) }'
+    );
+  });
+
+  it('slides each card in from the way the crown turned, and crossfades under Reduce Motion', () => {
+    const pagerCode = withoutComments(fs.readFileSync(barcodePagerPath, 'utf8'));
+
+    expect(
+      swiftDeclaration(pagerCode, 'private var pageTransition: AnyTransition {', PAGER)
+        .replace(/\s+/g, ' ')
+        .trim()
+    ).toBe(
+      'private var pageTransition: AnyTransition { if reduceMotion { return .opacity } ' +
+        'return pagesOnward ? .asymmetric(insertion: .move(edge: .bottom), removal: .move(edge: .top)) ' +
+        ': .asymmetric(insertion: .move(edge: .top), removal: .move(edge: .bottom)) }'
+    );
+    expect(pagerCode).toContain(
+      '@Environment(\\.accessibilityReduceMotion) private var reduceMotion'
+    );
+    expect(pagerCode).toContain('withAnimation(.easeInOut(duration: 0.25)) {');
+
+    // The slide is clipped at the top of the safe area, inside the same reclaimed edges the
+    // barcode draws into. The ORDER is load-bearing: `.clipped()` after `.ignoresSafeArea` clips to
+    // the safe area, which on a 40 mm cut 2 pt off each side of the white field and its bottom
+    // 19 pt, digits included (measured). Inside it, the clip cuts only at the top. And each card
+    // slides as one `.geometryGroup()`: without it the symbol, drawn ~120 ms into the slide, sat
+    // at the card's final position while the rest of the card moved (filmed, slide slowed to 4 s).
+    expect(
+      swiftDeclaration(pagerCode, 'private func page(_ card: WatchCard) -> some View {', PAGER)
+        .replace(/\s+/g, ' ')
+        .trim()
+    ).toBe(
+      'private func page(_ card: WatchCard) -> some View { ZStack { adjustable(BarcodeFlashView(' +
+        'card: card, arrival: arrival)) .geometryGroup() .id(card.id) .transition(pageTransition) } ' +
+        '.frame(maxWidth: .infinity, maxHeight: .infinity) .clipped() ' +
+        '.ignoresSafeArea(edges: [.horizontal, .bottom]) .environment(\\.barcodeOnScreen, onScreen) }'
+    );
+    expect(pagerCode.split('.clipped()').length - 1).toBe(1);
+  });
+
+  it('gives the crown to the list and the picker, explicitly, and reads it only in the pager', () => {
     // Watch grammar §8: "The crown and the rotary scroll. They never act." The list and the
     // picker scroll by the crown because each takes its focus by name — behaviour that only
     // works by inheritance silently disappears when a container is swapped. The barcode
-    // screen takes nothing: it does not scroll, and no crown handler exists to act.
+    // screen's crown scrolls through the cards, and only its pager reads it (Story 23.2,
+    // decisions 2–4).
     const cardListCode = withoutComments(fs.readFileSync(cardListViewPath, 'utf8'));
     const barcodeCode = withoutComments(fs.readFileSync(barcodeViewPath, 'utf8'));
 
@@ -510,10 +754,10 @@ describe('watch layout contract', () => {
       expect(picker.body).not.toContain(modifier);
     }
 
-    // No surface reads the crown's value, so none can act on it — and in particular nothing
-    // dismisses on it, which is what the barcode screen used to do.
-    // Across the whole watch app, not just these two screens: the frozen "no crown action but
-    // scrolling" is target-wide, and WatchKit's crown delegate and sequencer are readers too.
+    // Exactly one file in the whole watch app reads the crown's value: the barcode pager, whose
+    // one reader is pinned above to scrolling through the cards. Across the whole target, not just
+    // these screens: the frozen "no crown action but scrolling" is target-wide, and WatchKit's
+    // crown delegate and sequencer are readers too.
     const watchDir = path.join(repoRoot, 'targets', 'watch');
     const crownReaders = fs
       .readdirSync(watchDir, { recursive: true, encoding: 'utf8' })
@@ -524,9 +768,10 @@ describe('watch layout contract', () => {
         )
       );
 
-    expect(crownReaders).toEqual([]);
+    expect(crownReaders).toEqual(['BarcodePagerView.swift']);
 
-    // The barcode screen holds no focus of its own any more: its only reason was the crown.
+    // The barcode itself still holds no focus and reads no crown: it draws one card, and the
+    // pager one level up pages them.
     expect(barcodeCode).not.toContain('@FocusState');
     expect(barcodeCode).not.toContain('.focusable(');
   });
@@ -873,7 +1118,151 @@ describe('watch layout contract', () => {
       expect(itStrings).toContain(`"${key}" =`);
     }
   });
-  // Everything above reads the Swift source. Everything below RUNS it: the barcode
+
+  // The crown paging policy (Story 23.2, decisions 2–4), RUN rather than read: lifted out of
+  // `WatchPresentationLayout.swift` with the arrival it keys on, and asked every question the
+  // pager asks of it.
+  describeOnMac('executed against the real Swift paging policy', () => {
+    const buildPagingHarness = () => {
+      const layout = fs.readFileSync(layoutPath, 'utf8');
+
+      return [
+        'import Foundation',
+        swiftDeclaration(layout, 'enum WatchBarcodeArrival: Equatable {', LAYOUT),
+        swiftDeclaration(layout, 'enum WatchBarcodePaging {', LAYOUT),
+        `func ids(_ field: String) -> [String] { field.split(separator: ",").map(String.init) }
+
+while let line = readLine(strippingNewline: true) {
+  let f = line.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+  guard f.count == 3 else { continue }
+  var answer = ""
+
+  switch f[0] {
+  case "reach":
+    answer = WatchBarcodePaging.reachableIds(heldOrder: ids(f[1]), liveIds: ids(f[2]))
+      .joined(separator: ",")
+  case "clamp":
+    guard let detent = Int(f[1]), let count = Int(f[2]) else { continue }
+    answer = "\\(WatchBarcodePaging.clampedDetent(detent, count: count))"
+  case "at":
+    guard let detent = Int(f[1]) else { continue }
+    answer = WatchBarcodePaging.id(atDetent: detent, in: ids(f[2])) ?? "nil"
+  case "pages":
+    answer = "\\(WatchBarcodePaging.pages(currentId: f[1], reachable: ids(f[2])))"
+  case "delay":
+    let arrival: WatchBarcodeArrival = f[1] == "opened" ? .opened : .paged
+    let parts = WatchBarcodePaging.usageDelay(for: arrival).components
+    answer = "\\(parts.seconds)s+\\(parts.attoseconds)as"
+  default:
+    continue
+  }
+
+  print(line + "~" + answer)
+}`
+      ].join('\n\n');
+    };
+
+    let ask: (question: string) => string;
+
+    beforeAll(() => {
+      const questions = [
+        'reach|a,b,c,d,e|e,d,c,b,a',
+        'reach|a,b,c,d,e|e,c,a,x',
+        'reach|a,b,c|',
+        'reach||a,b',
+        ...[-3, -1, 0, 1, 4, 5, 9].map((detent) => `clamp|${detent}|5`),
+        'clamp|3|1',
+        'clamp|3|0',
+        ...[-1, 0, 2, 4, 5, 40].map((detent) => `at|${detent}|a,b,c,d,e`),
+        'at|0|',
+        'at|3|a',
+        'pages|a|a',
+        'pages|a|a,b',
+        'pages|x|a,b',
+        'pages|a|',
+        'delay|opened|',
+        'delay|paged|'
+      ];
+      const stdout = runSwiftProgram({
+        program: buildPagingHarness(),
+        input: questions.join('\n'),
+        label: LAYOUT,
+        hint:
+          'This policy decides which card the crown shows on the barcode screen and when a card ' +
+          'counts as used. A failure means the crown can wrap, reorder the cards mid-scan, or ' +
+          'send CARD_USED for cards skimmed past.'
+      });
+      const answers = new Map(
+        stdout
+          .split('\n')
+          .filter(Boolean)
+          .map((line) => line.split('~') as [string, string])
+      );
+
+      ask = (question) => {
+        const answer = answers.get(question);
+
+        if (answer === undefined) {
+          throw new Error(`The paging harness returned no answer for "${question}"`);
+        }
+
+        return answer;
+      };
+    });
+
+    it('holds the order the list had at opening, and skips a card gone since', () => {
+      // The live order is the REVERSE of the held one here, as after a re-sort under "Frequently
+      // used": the crown keeps the order it opened with (decision 2).
+      expect(ask('reach|a,b,c,d,e|e,d,c,b,a')).toBe('a,b,c,d,e');
+      // b and d are gone, x is new since the barcode opened: the gone are skipped, the new is not
+      // reachable, and what remains keeps its held order.
+      expect(ask('reach|a,b,c,d,e|e,c,a,x')).toBe('a,c,e');
+      expect(ask('reach|a,b,c|')).toBe('');
+      expect(ask('reach||a,b')).toBe('');
+    });
+
+    it('stops at the first and the last card — never wraps', () => {
+      // Decision 4. A wrap would answer 4 for -1 and 0 for 5.
+      expect([-3, -1, 0, 1, 4, 5, 9].map((detent) => ask(`clamp|${detent}|5`))).toEqual([
+        '0',
+        '0',
+        '0',
+        '1',
+        '4',
+        '4',
+        '4'
+      ]);
+      expect(ask('clamp|3|1')).toBe('0');
+      expect(ask('clamp|3|0')).toBe('0');
+
+      expect([-1, 0, 2, 4, 5, 40].map((detent) => ask(`at|${detent}|a,b,c,d,e`))).toEqual([
+        'a',
+        'a',
+        'c',
+        'e',
+        'e',
+        'e'
+      ]);
+      expect(ask('at|0|')).toBe('nil');
+      expect(ask('at|3|a')).toBe('a');
+    });
+
+    it('pages only with two or more reachable cards, the one on screen among them', () => {
+      // One card: nowhere to go, so no crown at all. The shown card gone: the unavailable line,
+      // and no crown there either.
+      expect(ask('pages|a|a')).toBe('false');
+      expect(ask('pages|a|a,b')).toBe('true');
+      expect(ask('pages|x|a,b')).toBe('false');
+      expect(ask('pages|a|')).toBe('false');
+    });
+
+    it('counts the opened card at once and a paged card after one second (decision 3)', () => {
+      expect(ask('delay|opened|')).toBe('0s+0as');
+      expect(ask('delay|paged|')).toBe('1s+0as');
+    });
+  });
+
+  // Everything above, the paging policy aside, reads the Swift source. Everything below RUNS it: the barcode
   // geometry is pure integer arithmetic, so the shipped solver is lifted out of
   // `WatchPresentationLayout.swift` and executed against the device table. CI has no
   // test action for `watch-ios/Tests/`, so without this a change that kept the names

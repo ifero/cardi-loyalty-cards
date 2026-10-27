@@ -26,6 +26,8 @@ final class CardListUITests: XCTestCase {
     let json = String(data: jsonData, encoding: .utf8)!
 
     app.launchEnvironment["UITEST_CARDS"] = json
+    // The order above is A-Z's, and the sort mode persists in the simulator's defaults: pin it.
+    app.launchArguments = ["-watch.sortMode", "az"]
     app.launch()
 
     // Verify first card visible (by text and accessibility identifier)
@@ -100,52 +102,140 @@ final class CardListUITests: XCTestCase {
     XCTAssertTrue(barcodeImage.waitForExistence(timeout: 1))
   }
 
-  /// Opens card 1's barcode and returns the screen's back chevron.
+  /// One crown detent on the barcode screen, which pages at low sensitivity: a rotation of 0.2
+  /// moves one card and 0.1 none (measured on a 40 mm watchOS 26.5 simulator, Story 23.2).
+  private let oneDetent: CGFloat = 0.2
+
+  /// Three cards that sort A, B, C under A-Z, each with a barcode every encoder accepts.
+  private let threeCards: [[String: Any]] = ["A", "B", "C"].enumerated().map { index, letter in
+    [
+      "id": "\(index + 1)", "name": "Card \(letter)", "brandId": NSNull(), "colorHex": "green",
+      "barcodeValue": "5901234123457", "barcodeFormat": "EAN13",
+    ]
+  }
+
+  /// Opens card `id`'s barcode and returns its row and the screen's back chevron.
   ///
   /// The chevron, not `barcode-image`, is what proves the barcode screen is up: the screen's
   /// own `.accessibilityIdentifier("barcode-view")` propagates to its children and replaces
   /// their identifiers, so no element carries `barcode-image` (measured on a 40 mm watchOS 26.5
   /// simulator, before and after Story 23.2).
-  private func openBarcode() throws -> (row: XCUIElement, back: XCUIElement) {
-    let cards = [
-      ["id": "1", "name": "Esselunga", "brandId": NSNull(), "colorHex": "#1e90ff", "barcodeValue": "5901234123457", "barcodeFormat": "EAN13"]
-    ]
+  private func openBarcode(
+    cards: [[String: Any]]? = nil, id: String = "1"
+  ) throws -> (row: XCUIElement, back: XCUIElement) {
+    let cards =
+      cards ?? [
+        ["id": "1", "name": "Esselunga", "brandId": NSNull(), "colorHex": "#1e90ff", "barcodeValue": "5901234123457", "barcodeFormat": "EAN13"]
+      ]
     let jsonData = try JSONSerialization.data(withJSONObject: cards, options: [])
     let json = String(data: jsonData, encoding: .utf8)!
 
     app.launchEnvironment["UITEST_CARDS"] = json
+    // The crown pages in the list's order, and the sort mode persists in the simulator's
+    // defaults between runs: pin A-Z.
+    app.launchArguments = ["-watch.sortMode", "az"]
     app.launch()
 
-    let firstRow = app.buttons["card-row-1"]
-    XCTAssertTrue(firstRow.waitForExistence(timeout: 2))
-    firstRow.tap()
+    let row = app.buttons["card-row-\(id)"]
+    XCTAssertTrue(row.waitForExistence(timeout: 2))
+    row.tap()
 
     let back = app.navigationBars.buttons["BackButton"]
     XCTAssertTrue(back.waitForExistence(timeout: 2), "The barcode screen should open")
-    return (firstRow, back)
+    return (row, back)
+  }
+
+  /// Asserts the barcode screen shows `name`: the card's name is the navigation bar's title, and
+  /// the only one (no second card's title left over from the slide).
+  private func assertShows(
+    _ name: String, _ message: String, file: StaticString = #filePath, line: UInt = #line
+  ) {
+    XCTAssertTrue(
+      app.navigationBars.staticTexts[name].waitForExistence(timeout: 2), message, file: file,
+      line: line)
+    XCTAssertEqual(
+      app.navigationBars.staticTexts.allElementsBoundByIndex.map(\.label), [name], message,
+      file: file, line: line)
   }
 
   func test_tapBarcode_keepsBarcode() throws {
-    let (firstRow, back) = try openBarcode()
+    let (firstRow, back) = try openBarcode(cards: threeCards, id: "2")
 
     // A tap no longer leaves the barcode (Story 23.2, decision 1): a stray touch while the
-    // code is held to a scanner must not close it. Tapped in the middle of the white field.
+    // code is held to a scanner must not close it — nor, with other cards to page to, change
+    // the card (decision 2). Tapped in the middle of the white field.
     app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)).tap()
 
     XCTAssertFalse(back.waitForNonExistence(timeout: 1), "A tap must not dismiss the barcode")
     XCTAssertFalse(firstRow.exists && firstRow.isHittable)
+    assertShows("Card B", "A tap must not change the card")
+
+    // Nor does a swipe up or down across the code: only the crown pages.
+    let low = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.8))
+    let high = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3))
+    low.press(forDuration: 0.01, thenDragTo: high)
+    high.press(forDuration: 0.01, thenDragTo: low)
+
+    XCTAssertFalse(back.waitForNonExistence(timeout: 1), "A swipe must not dismiss the barcode")
+    assertShows("Card B", "A swipe must not change the card")
+
+    // Nor a fast swipe left or right that starts inside the screen: only the one from the very
+    // left edge is the system's way back.
+    let left = app.coordinate(withNormalizedOffset: CGVector(dx: 0.25, dy: 0.6))
+    let right = app.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.6))
+    left.press(forDuration: 0.01, thenDragTo: right, withVelocity: .fast, thenHoldForDuration: 0)
+    right.press(forDuration: 0.01, thenDragTo: left, withVelocity: .fast, thenHoldForDuration: 0)
+
+    XCTAssertFalse(
+      back.waitForNonExistence(timeout: 1), "A sideways swipe must not dismiss the barcode")
+    assertShows("Card B", "A sideways swipe must not change the card")
   }
 
-  func test_crownRotation_keepsBarcode() throws {
-    let (firstRow, back) = try openBarcode()
+  func test_crown_pagesOnwardAndBack() throws {
+    let (_, back) = try openBarcode(cards: threeCards, id: "2")
+    assertShows("Card B", "The opened card's barcode should show")
 
-    // The crown does nothing on the barcode screen (Story 23.2, watch grammar §8): it used to
-    // dismiss on a single detent. Turn it both ways; the barcode stays.
+    // The crown scrolls through the cards on the barcode screen, one per detent, in the list's
+    // order (Story 23.2, decisions 2–4). It used to dismiss on a single detent.
+    XCUIDevice.shared.rotateDigitalCrown(delta: oneDetent)
+    assertShows("Card C", "One detent onward should show the next card")
+
+    XCUIDevice.shared.rotateDigitalCrown(delta: -oneDetent)
+    assertShows("Card B", "One detent back should show the previous card")
+
+    XCUIDevice.shared.rotateDigitalCrown(delta: -oneDetent)
+    assertShows("Card A", "One more detent back should show the first card")
+
+    XCTAssertFalse(back.waitForNonExistence(timeout: 1), "The crown must not dismiss the barcode")
+  }
+
+  func test_crown_stopsAtTheLastCard() throws {
+    let (_, back) = try openBarcode(cards: threeCards, id: "3")
+    assertShows("Card C", "The last card's barcode should show")
+
+    // Decision 4: no wrap past either end. A turn past the last card changes nothing.
+    XCUIDevice.shared.rotateDigitalCrown(delta: oneDetent)
+    XCUIDevice.shared.rotateDigitalCrown(delta: oneDetent)
+    assertShows("Card C", "The crown must stop at the last card")
+    XCTAssertFalse(back.waitForNonExistence(timeout: 1), "The crown must not dismiss the barcode")
+
+    // And turned back, it still pages: the stop is an end, not a lock.
+    XCUIDevice.shared.rotateDigitalCrown(delta: -oneDetent)
+    assertShows("Card B", "One detent back from the last card should show the one before it")
+  }
+
+  func test_crown_withOneCard_changesNothing() throws {
+    let (firstRow, back) = try openBarcode()
+    assertShows("Esselunga", "The card's barcode should show")
+
+    // With one reachable card the screen takes no crown at all: turned both ways, by much more
+    // than a detent, the same barcode stays.
     XCUIDevice.shared.rotateDigitalCrown(delta: 1.0)
     XCUIDevice.shared.rotateDigitalCrown(delta: -1.0)
 
     XCTAssertFalse(
       back.waitForNonExistence(timeout: 1), "The crown must not dismiss the barcode")
+    assertShows("Esselunga", "The crown must not change the only card")
     XCTAssertFalse(firstRow.exists && firstRow.isHittable)
   }
 

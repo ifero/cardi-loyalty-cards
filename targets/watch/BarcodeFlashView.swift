@@ -22,10 +22,19 @@ import WatchKit
 // Crown used to dismiss it on any movement, and a tap on the code used to as well. Both bound
 // an accidental input — a single detent, a sleeve, the other hand steadying the watch, a stray
 // touch while the wrist is held to a scanner — to losing the barcode mid-scan, which is the
-// failure this app exists to prevent. The crown now does nothing here: the screen does not
-// scroll, and no crown handler is attached.
+// failure this app exists to prevent.
+//
+// This view draws ONE card and reads no crown: no crown handler, no focus. The crown scrolls
+// through the cards one level up, in `BarcodePagerView`, which shows each card by giving it its
+// own instance of this view (decisions 2–5).
 struct BarcodeFlashView: View {
   let card: WatchCard
+  /// How the card got here: opened from the list or a complication, or paged to by the crown.
+  /// It decides the haptic and when the card counts as used — see the `.task(id: card.id)` below.
+  let arrival: WatchBarcodeArrival
+
+  /// The card its pager has on screen now, read live by the usage task (`nil` outside a pager).
+  @Environment(\.barcodeOnScreen) private var onScreen
 
   // The dimmed Always-On state, which is as close as watchOS lets an app get to the
   // display's luminance: there is no brightness API to call and no keep-awake API to
@@ -59,6 +68,12 @@ struct BarcodeFlashView: View {
 
   private var titleText: String {
     WatchBarcodePresentation.title(for: card)
+  }
+
+  /// Whether the pager still shows this card. Read through the shared reference, so it is current
+  /// even while this view is frozen for its exit slide.
+  private var isStillOnScreen: Bool {
+    onScreen.map { $0.cardId == card.id } ?? true
   }
 
   /// The symbol's width in module units, quiet zones EXCLUDED — `nil` for QR and for
@@ -257,9 +272,10 @@ struct BarcodeFlashView: View {
     // same breath.
     //
     // The cream is the shared `WatchColor.cream` (Story 23.2), not a second literal: it
-    // is the same body-text cream the list paints, and the only `WatchColor` this screen
-    // reads. `test/watch-accent.test.ts` asserts this line, and that no ink and no beam
-    // appear anywhere in this file.
+    // is the same body-text cream the list paints, and the only `WatchColor` this view
+    // itself reads. Its host, `BarcodePagerView`, adds the ground under it and the
+    // unavailable line's `creamSecondary`. `test/watch-accent.test.ts` asserts this line,
+    // and that no ink and no beam appear anywhere in this file.
     //
     // ⚠️ `.tint()` DOES NOT WORK HERE, and it fails silently. It was the first attempt
     // and it changed nothing on a 46 mm simulator: this view is a `navigationDestination`
@@ -271,9 +287,27 @@ struct BarcodeFlashView: View {
     .toolbarForegroundStyle(WatchColor.cream, for: .navigationBar)
     .accessibilityIdentifier("barcode-view")
     .task(id: card.id) {
-      WKInterfaceDevice.current().play(.success)
+      // The open haptic belongs to an OPEN. A card the crown paged to is marked by the crown's
+      // own detent haptic instead, so it plays nothing here (Story 23.2, decision 3).
+      if arrival == .opened {
+        WKInterfaceDevice.current().play(.success)
+      }
+
       // Story 9.6 (ADR-2026-06-09-001): a displayed barcode is a card "open" —
       // emit the usage event so the phone counts it toward shared sorting.
+      //
+      // The opened card counts at once, as it always has. A paged card counts only once it has
+      // stayed on screen for the policy's delay, so skimming past cards sends nothing for them.
+      // `try?` swallows the sleep's cancellation, so the check after it is what keeps a card the
+      // crown moved on from — or a screen closed within the delay — from counting. Both checks,
+      // because cancellation comes late: this view outlives the crown's move by its exit slide,
+      // and the screen's close by the pop, and only the pager's `onScreen` moves on at once (see
+      // `WatchBarcodeOnScreen` for the measurement).
+      let usageDelay = WatchBarcodePaging.usageDelay(for: arrival)
+      if usageDelay > .zero {
+        try? await Task.sleep(for: usageDelay)
+        if Task.isCancelled || !isStillOnScreen { return }
+      }
       WatchSessionManager.shared.recordCardUsed(cardId: card.id)
     }
 
@@ -430,7 +464,8 @@ struct BarcodeFlashView_Previews: PreviewProvider {
       BarcodeFlashView(
         card: WatchCard(
           id: "1", name: "Esselunga", brandId: "brand-special", colorHex: "#ff4d4d",
-          barcodeValue: "5901234123457", barcodeFormat: "EAN13")
+          barcodeValue: "5901234123457", barcodeFormat: "EAN13"),
+        arrival: .opened
       )
       .previewDisplayName("Barcode 41mm")
       .previewDevice(PreviewDevice(rawValue: "Apple Watch Series 9 - 41mm"))
@@ -438,7 +473,8 @@ struct BarcodeFlashView_Previews: PreviewProvider {
       BarcodeFlashView(
         card: WatchCard(
           id: "2", name: "Supermarket Loyalty Plus Rewards", brandId: nil, colorHex: "#ffb24d",
-          barcodeValue: "041234567890", barcodeFormat: "CODE128")
+          barcodeValue: "041234567890", barcodeFormat: "CODE128"),
+        arrival: .opened
       )
       .previewDisplayName("Barcode 45mm - Long Name")
       .previewDevice(PreviewDevice(rawValue: "Apple Watch Series 9 - 45mm"))

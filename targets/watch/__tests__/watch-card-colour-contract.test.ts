@@ -34,6 +34,7 @@ const watchDir = path.join(repoRoot, 'targets', 'watch');
 const colorHelpersPath = path.join(watchDir, 'ColorHelpers.swift');
 const cardListViewPath = path.join(watchDir, 'CardListView.swift');
 const contentViewPath = path.join(watchDir, 'ContentView.swift');
+const barcodePagerPath = path.join(watchDir, 'BarcodePagerView.swift');
 const HELPERS = 'ColorHelpers.swift';
 
 const readSource = (filePath: string) => fs.readFileSync(filePath, 'utf8');
@@ -60,12 +61,16 @@ const watchSwiftCode = () =>
 /**
  * A system or semantic colour, or a colour not built through the shared palette: the system set
  * (`.blue` … `.brown`), the semantic styles (`.primary`, `.secondary`, `.tertiary`), the accent
- * colour, white/hue/colour-space initialisers, an asset-catalogue `Color("…")`, and `.tint(`.
+ * colour, white/hue/colour-space initialisers, a UIKit or Core Graphics bridge (`Color(uiColor:`,
+ * `Color(cgColor:`), any `UIColor` but the barcode renderer's own `UIColor.white`/`.black`, the
+ * UIKit system colours (`.systemGray…` and kin), an asset-catalogue `Color("…")`, and `.tint(`.
  */
 const SYSTEM_OR_UNSHARED_COLOUR = new RegExp(
   [
     String.raw`(?:\bColor)?\.(?:blue|red|green|orange|gray|grey|yellow|cyan|purple|pink|mint|teal|indigo|brown|primary|secondary|tertiary|accentColor)\b`,
-    String.raw`\bColor\(\s*(?:white:|hue:|\.sRGB\b|\.displayP3\b|")`,
+    String.raw`\bColor\(\s*(?:white:|hue:|uiColor:|cgColor:|\.sRGB\b|\.displayP3\b|")`,
+    String.raw`\bUIColor\s*\(|\bUIColor\.(?!white\b|black\b)\w+`,
+    String.raw`\.system(?:Gray|Red|Blue|Green|Orange|Yellow|Pink|Purple|Teal|Indigo|Mint|Cyan|Brown|Background|SecondaryBackground|TertiaryBackground|Fill)\w*`,
     String.raw`\.tint\(`
   ].join('|'),
   'g'
@@ -402,6 +407,20 @@ describe('watch card colour contract (Story 16.41)', () => {
         'hex=#F59E0B hairline=false cream=false'
       ]);
     });
+
+    it('turns the initials from cream to ink at luminance 0.4, the watch frames rule (Story 23.2)', () => {
+      // The two adjacent 8-bit greys that straddle the cut-over: `#A9A9A9` scores L=0.39676 and
+      // keeps cream, `#AAAAAA` scores L=0.40198 and takes ink. Every accent above sits far from
+      // 0.4 (cream tops out at 0.216, ink starts at 0.439), so without this pair the threshold
+      // could drift anywhere between them and every other test would stay green.
+      const values = ['#A9A9A9', '#AAAAAA'] as const;
+      const row = runHarness(values);
+
+      expect(values.map((value) => `${value} ${row(value)[2]}`)).toEqual([
+        '#A9A9A9 cream=true',
+        '#AAAAAA cream=false'
+      ]);
+    });
   });
 });
 
@@ -508,7 +527,6 @@ describe('Cardì watch colours (Story 23.2, watch grammar §4)', () => {
       'WatchColor.cream', // the card name
       'WatchColor.beam', // the favourite star
       'prefersCreamInitials ? WatchColor.cream : WatchColor.ink', // the initials
-      'WatchColor.creamSecondary', // the "unavailable" line
       'WatchColor.cream.opacity(0.5)', // the empty-state glyph
       'WatchColor.cream', // the empty-state title
       'WatchColor.creamSecondary', // the empty-state subtitle
@@ -517,9 +535,9 @@ describe('Cardì watch colours (Story 23.2, watch grammar §4)', () => {
     ]);
 
     // Ink rows (the card row and the sort option) on the true-black ground (the list, the
-    // "unavailable" screen, the picker, and the app's root view).
+    // picker, and the app's root view; the "unavailable" line moved to the barcode pager).
     expect(cardListCode.split('.fill(WatchColor.ink)').length - 1).toBe(2);
-    expect(cardListCode.split('.background(WatchColor.ground)').length - 1).toBe(3);
+    expect(cardListCode.split('.background(WatchColor.ground)').length - 1).toBe(2);
     expect(codeOnly(readSource(contentViewPath))).toContain('.background(WatchColor.ground)');
 
     // The only white or black left in the file is the logo chip's own backing, which the story
@@ -530,6 +548,45 @@ describe('Cardì watch colours (Story 23.2, watch grammar §4)', () => {
       .map((line) => line.trim());
 
     expect(whiteOrBlack).toEqual(['prefersDarkBacking ? Color.black : Color.white']);
+  });
+
+  it('keeps the barcode pager to the ground and the unavailable line, with no beam and no ink', () => {
+    // The pager hosts the barcode screen (Story 23.2, decisions 2–5), so the barcode rule reaches
+    // it: no beam on the barcode screen, and no colour of its own beyond the true-black ground. The
+    // "unavailable" line moved here from the list's destination, where Story 23.2's first pass had
+    // already taken it from white at 70 % on black to cream at 60 % on ground.
+    const pagerCode = codeOnly(readSource(barcodePagerPath));
+
+    expect(foregroundArguments(pagerCode)).toEqual(['WatchColor.creamSecondary']);
+    expect(pagerCode).toMatch(
+      /Text\(WatchL10n\.string\("watch\.cards\.unavailable"\)\)\s*\.font\(\.footnote\)\s*\.foregroundColor\(WatchColor\.creamSecondary\)\s*\.frame\(maxWidth: \.infinity, maxHeight: \.infinity\)\s*\.background\(WatchColor\.ground\)/
+    );
+    expect([...pagerCode.matchAll(/WatchColor\.\w+/g)].map((match) => match[0])).toEqual([
+      'WatchColor.ground',
+      'WatchColor.creamSecondary',
+      'WatchColor.ground'
+    ]);
+
+    // No colour literal of any kind, and neither beam nor ink by name or by value.
+    expect(pagerCode).not.toMatch(
+      /parseHexColor\(|Color\(\s*red:|#[0-9A-Fa-f]{6}\b|0x[0-9A-Fa-f]{6}\b/
+    );
+    // Nor white or black by name: the barcode's own white field and black surround belong to
+    // `BarcodeFlashView`, and the pager's ground is the shared one.
+    expect(pagerCode).not.toMatch(/\.(?:white|black)\b/);
+
+    for (const banned of [
+      'WatchColor.beam',
+      'WatchColor.ink',
+      IDENTITY_COLORS.beam.slice(1),
+      IDENTITY_COLORS.ink.slice(1),
+      'accentColor'
+    ]) {
+      expect({ banned, found: pagerCode.toUpperCase().includes(banned.toUpperCase()) }).toEqual({
+        banned,
+        found: false
+      });
+    }
   });
 
   it('draws the favourite star in beam, 13, trailing, with no plate behind it', () => {
