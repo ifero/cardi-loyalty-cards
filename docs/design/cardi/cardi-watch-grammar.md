@@ -46,7 +46,7 @@ Four reasons, in order of weight:
    watch colour is a literal at its call site.
 3. **It is already not implemented.** Its own favourite-badge spec asks for _"a subtle contrasting
    plate/stroke behind the star"_ at the _"top-trailing corner"_ of the row. The shipped Wear row
-   has **no plate** and puts the star **inline, mid-row** (`CardRow.kt:127-130`). "The watch code
+   has **no plate** and puts the star **inline, mid-row** (`CardRow.kt:129-136`). "The watch code
    implements Carbon" was true of its spirit and not of its letter.
 4. **Its one hard number is contradicted by both watch codebases and by this system.** It sets a
    watch touch target of **32 pt**. watchOS declares 44, Wear declares 48, and Cardì adjudicated
@@ -60,6 +60,10 @@ seconds. Those ideas were right. They are now §3 and §6 of this document.
 > **Two pointers must move when this lands.** `docs/ux-design-specification.md` carries a
 > superseded notice (this story). `CarbonTheme.kt`'s file comment still cites `§Carbon` and must
 > be repointed **here** — that is a Kotlin edit and therefore **Story 23.3's**, not this story's.
+
+✅ **APPLIED (Story 23.3).** `CarbonTheme.kt`'s KDoc now cites this document (§4.1, §4.4) and no
+longer names Carbon Utility or the `EdgeButton` nothing used. The file keeps its name; its
+constants and scheme take the Cardì names. `test/wear-cardi-palette.test.ts` pins both halves.
 
 ---
 
@@ -151,7 +155,11 @@ The glyph stays large (40–48) because it is the only thing on the screen.
 
 ✅ **APPLIED on watchOS (Story 23.2).** `CardListView`'s empty state paints `WatchColor.cream` at
 50 % for the 48 pt light glyph, full for the title and `WatchColor.creamSecondary` (60 %) for the
-subtitle; its spacing is unchanged. Wear OS is Story 23.3's.
+subtitle; its spacing is unchanged.
+
+✅ **APPLIED on Wear OS (Story 23.3).** `CardListScreen`'s empty state paints `Cream` at 50 % for
+the 40 dp glyph, `Cream` for the title and `CreamSecondary` (60 %) for the subtitle; its layout is
+unchanged. Measured on the round and square AVDs: `#787874`, `#F0F0E8` and `#90908B` on black.
 
 ---
 
@@ -167,8 +175,8 @@ from source, not summarised.
 | Screen ground         | `Color.black`                                      | `Color.Black`                                 | **true black `#000000`** — unchanged      |
 | Row / sheet fill      | `#1C1C1F` (`CardListView.swift:359`)               | `CarbonSurface #1C1C1F` (`CarbonTheme.kt:16`) | **ink `#181824`**                         |
 | Body text             | `Color.white`                                      | `Color.White`                                 | **cream `#F0F0E8`**                       |
-| Secondary text        | `.white.opacity(0.5–0.7)`                          | `#B0B3B8` (`CarbonTheme.kt:29`)               | **cream at 60 % opacity**                 |
-| Primary / interactive | `Color.accentColor` → **system blue** (empty stub) | `#4DA3FF` (`CarbonTheme.kt:22`)               | **beam `#FCCC0C`** with ink text — §4.4   |
+| Secondary text        | `.white.opacity(0.5–0.7)`                          | `#B0B3B8` (`CarbonTheme.kt:42`)               | **cream at 60 % opacity**                 |
+| Primary / interactive | `Color.accentColor` → **system blue** (empty stub) | `#4DA3FF` (`CarbonTheme.kt:35`)               | **beam `#FCCC0C`** with ink text — §4.4   |
 | Hairline              | `.white.opacity(0.15)`                             | `Color.White.copy(alpha = 0.15f)`             | **`#3A3A48`** — the system's dark outline |
 
 **On `#1C1C1F` → ink `#181824`.** The two are visually identical — the contrast between them is
@@ -199,6 +207,20 @@ interactive" row was already beam: Story 21.3 filled `AccentColor.colorset` (the
 above was in fact a flat grey; `test/watch-accent.test.ts` records why), and the list's title still
 takes it from there. The sort picker's selection now reads `WatchColor.beam` rather than
 `Color.accentColor`.
+
+✅ **APPLIED on Wear OS (Story 23.3).** The "Wear shipped" column above is the state before this
+story, and its line references point into that source (`d59cf49`); none of them holds now. Every
+decided value is defined once, in `presentation/theme/CarbonTheme.kt` — `Ink`, `Beam`, `Cream`,
+`CreamSecondary` (cream at 0.6), `Hairline` and `FavoriteStarTint` (beam) — and the Material 3
+scheme is built on them: `background` black, `onBackground` and `onSurface` cream,
+`surfaceContainer` ink, `onSurfaceVariant` cream 60 %, `primary` beam with `onPrimary` ink, and
+`primaryContainer` ink with `onPrimaryContainer` beam, so no M3 default can land a baseline colour
+on a picker row. In the screens: the card row is ink with a cream name and, on a near-black accent
+only, the `#3A3A48` hairline; the list header is cream through the scheme; the sort control is
+beam with an ink label and glyph; the sort picker's rows are ink. `BarcodeScreen` reads none of
+them (§6). `#4DA3FF`, `#1C1C1F`, `#B0B3B8` and `#F59E0B` are in no file under
+`watch-android/app/src`, which `test/wear-cardi-palette.test.ts` asserts. Measured on the round
+AVD (API 30 and 34) and the square one: rows `#181824`, names `#F0F0E8`, the hairline `#3A3A48`.
 
 > ⚠️ **§4 as a whole is a BEHAVIOUR CHANGE, and it is the most visible one in this document.**
 > Every value in the tables above and below is currently something else on a shipped device. Owners:
@@ -235,6 +257,11 @@ today, because the watchOS app uses **system colours** while the Wear app and th
    simply go. Story 21.2a's AC4 already requires a **named** default in place of the grey
    fallback; the watch takes that same named default, whatever it is.
 
+✅ **APPLIED on Wear OS (Story 21.2a).** The Wear column above is the palette before that story
+(`CardVisuals.kt:29-34` then). `NAMED_CARD_COLORS` now resolves the five keys to the five Cardì
+hexes, and an unresolvable colour takes `DEFAULT_CARD_ACCENT`, azure `#0C84CC`;
+`core/wear-sync-contract.test.ts` pins both to the tokens. Story 23.3 left them as they were.
+
 ✅ **APPLIED on watchOS.** Story 21.2a replaced the watchOS column above — the four system colours
 and `#9CA3AF` — with the five Cardì hexes in `namedCardHex`. Story 23.2 removed the last system
 colour, the fallback: a value that cannot be resolved (in `parseHexColor`, in `mapColor` and in the
@@ -251,10 +278,14 @@ entirely."_ It ships on all three watch surfaces, and in **two different colours
 is 21.2a's AC1 to freeze or migrate, and on the freeze branch a key named `orange` legitimately
 renders a Cardì accent. What must not survive is an orange **colour**.
 
-⚠️ **`#F59E0B` has a second job on Wear and it must go too.** `CarbonTheme.kt:19` defines
+⚠️ **`#F59E0B` has a second job on Wear and it must go too.** `CarbonTheme.kt:30` defines
 `FavoriteStarTint = #F59E0B` — **bit-identical to the `orange` card key** — and `CardRow.kt:129`
 paints the favourite star with it. Removing orange from the palette does not remove it from the
 star. Both sites move.
+
+✅ **APPLIED on Wear OS (Story 23.3).** (Both references above are to the source before it.)
+`FavoriteStarTint` is beam, and `#F59E0B` is in no Wear source file; Story 21.2a had already moved
+the palette's `orange` key to the beam yellow.
 
 ### 4.4 The favourite star — one value, three treatments today
 
@@ -290,6 +321,10 @@ value the phone already decided.
 
 ✅ **APPLIED on watchOS (Story 23.2):** `star.fill`, 13 pt, `WatchColor.beam`, trailing and centred,
 no plate. `#FFCC00` (`.yellow`) is gone from the target.
+
+✅ **APPLIED on Wear OS (Story 23.3):** `ic_star_filled`, 14 dp, `FavoriteStarTint` (beam), trailing
+and centred, no plate (the table's Wear row is the state before it). Measured `#FCCC0C` on the ink
+row.
 
 ### 4.5 The accent colour — decided here, consumed by 21.3
 
@@ -337,7 +372,7 @@ Record here whether the title renders cream, never beam, on hardware.
 ### 5.1 The 15 px body floor holds — and it is already met
 
 The system mandates a 15 px minimum body size. Both card-name labels are **15**
-(`CardListView.swift:338`, `CardRow.kt:118`). The floor is not in trouble; two values sit under it
+(`CardListView.swift:338`, `CardRow.kt:122`). The floor is not in trouble; two values sit under it
 and **neither is body text**:
 
 | value  | where                                | verdict                                            |
@@ -365,7 +400,7 @@ goes below it.
 this epic; this is the answer.
 
 Neither watch loads one today, and neither does so by omission: Wear passes **no `typography`
-argument** to `MaterialTheme` (`CarbonTheme.kt:37`), and watchOS uses `.system(...)` throughout.
+argument** to `MaterialTheme` (`CarbonTheme.kt:60`), and watchOS uses `.system(...)` throughout.
 Three reasons to keep it that way:
 
 1. **A font file is a boot-path asset**, and the watch's stated budget is a sub-two-second launch.
@@ -410,7 +445,7 @@ happen to relate (`cornerRadius 14` is half `accentHeight 28`). Treat that relat
 intent and keep it; do not mistake it for something the code computes.
 
 **The inter-row gap is 4.** The two lists disagree here as well — `6` on watchOS
-(`CardListView.swift:502`) against `4` on Wear (`CardListScreen.kt:78`) — and 4 wins for the same
+(`CardListView.swift:502`) against `4` on Wear (`CardListScreen.kt:86`) — and 4 wins for the same
 reason the grid does not transfer: at 192 dp every 2 dp of gap costs a fraction of a row over a
 scroll, and the rows already separate themselves by their own ink fill against a true-black ground.
 It is also the tighter of the two shipped values, so nothing has to grow.
@@ -418,6 +453,11 @@ It is also the tighter of the two shipped values, so nothing has to grow.
 ✅ **APPLIED on watchOS (Story 23.2):** `LazyVStack(spacing: 4)`. The row itself is unchanged —
 radius 14, the 30 pt avatar and logo chip, the derived inset — and its initials are now ink on an
 accent above luminance 0.4 and cream otherwise (the frames' rule), where they were black and white.
+
+✅ **APPLIED on Wear OS (Story 23.3):** the gap stays `spacedBy(4.dp)` and the row stays 48 dp
+(`CardRowMetrics.minimumTapHeight`) with radius 14, now asserted; measured at 96 px rows 8 px apart
+(xhdpi) on both shapes. The initials take the same rule as watchOS — ink above luminance 0.4, cream
+below — where they were black and white. The percentage outer margins below are not part of it.
 
 On Wear, **outer margins are expressed as a percentage of the screen**, per Google's round-screen
 guidance, pinned so that nothing moves at 192 dp today.
@@ -487,7 +527,7 @@ stay **fully round** — which the phone rule already allows for virtual-logo ti
 
 **Icons: 14–18 on the watch, not 24.** The system says _"outline style, 1.5px stroke, 24px on a
 48px target"_. The watch ships 13–14 for the favourite star and 18 for the sort glyph
-(`CardListView.swift:349`, `CardRow.kt:130`, `CardListScreen.kt:118`). **Excepted**, and the ratio
+(`CardListView.swift:349`, `CardRow.kt:134`, `CardListScreen.kt:134`). **Excepted**, and the ratio
 is the reason: 24-on-48 is a **50 %** fill, which works when the 48 pt target is otherwise empty.
 On a watch row the same 48 pt already carries a 30 pt avatar, a 5 pt accent bar and a 15 pt name,
 so a 24 pt glyph beside them is a quarter of the row spent on a marker. **The rule that carries is
@@ -552,7 +592,7 @@ gradient behind its glyphs over a white ground, and so whether the strip stays o
 
 **(b) watchOS has no brightness API, so "maximum brightness" is aspirational there.** Wear raises
 the backlight with `BRIGHTNESS_OVERRIDE_FULL` plus `FLAG_KEEP_SCREEN_ON` and restores it on
-dispose (`BarcodeScreen.kt:328-341`). watchOS has neither, and Story 16.26 shipped the closest
+dispose (`KeepScreenAwakeAndBright` and its `DisposableEffect`, `BarcodeScreen.kt:525-539`). watchOS has neither, and Story 16.26 shipped the closest
 achievable behaviour. **The rule is therefore "the brightest field the platform will give you",
 and on watchOS that is a full-white field and nothing else.** It is not a defect to be fixed later.
 
@@ -603,16 +643,18 @@ that is already at its exception floor, to solve a clipping problem it cannot ha
 
 ## 8. Input — the crown and the rotary scroll. They never act
 
-### What ships today, and why it is incoherent
+### What shipped before Stories 23.2 and 23.3, and why it was incoherent
 
-| surface       | watchOS                                                                                           | Wear OS                                                             |
-| ------------- | ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Card list     | no crown handler; inherits the default scroll                                                     | no rotary modifier anywhere; inherits `ScreenScaffold(scrollState)` |
-| Barcode flash | **crown dismisses** — single-shot latch on any movement > 0.01 (`BarcodeFlashView.swift:239-253`) | rotary does nothing (Open Decision 3)                               |
-| Sort picker   | inherits the default scroll                                                                       | inherits the default scroll                                         |
+The table is the state this section was written against; 23.2 and 23.3 changed every row (below).
 
-The same physical gesture scrolls on one screen and **irreversibly dismisses** on another, and
-which it does is not discoverable.
+| surface       | watchOS                                                                                           | Wear OS                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Card list     | no crown handler; inherits the default scroll                                                     | no rotary modifier anywhere; inherits `TransformingLazyColumn`'s default `rotaryScrollableBehavior` |
+| Barcode flash | **crown dismisses** — single-shot latch on any movement > 0.01 (`BarcodeFlashView.swift:239-253`) | rotary does nothing (Open Decision 3)                                                               |
+| Sort picker   | inherits the default scroll                                                                       | inherits `TransformingLazyColumn`'s default `rotaryScrollableBehavior`                              |
+
+The same physical gesture scrolled on one screen and **irreversibly dismissed** on another, and
+which it did was not discoverable.
 
 ### The model
 
@@ -648,20 +690,64 @@ the card that was opened counts at once, as before. VoiceOver's adjust gesture p
 for those who do not use the crown.
 
 **Wear OS pages the same way**, on its rotary input (crown or bezel), on `BarcodeScreen`. Story 23.3
-builds it; its spec, refined on 2026-10-25, still says rotary does nothing on the barcode and has to
-be amended to this before it is built.
+built it, after its spec was amended to this ruling (ifero, 2026-10-28; its decisions 4–6).
+
+✅ **BUILT on Wear OS (Story 23.3).** `BarcodeScreen` hosts a Compose foundation `VerticalPager` with
+swipes off (`userScrollEnabled = false`) and the app's one rotary reader outside the two lists:
+`Modifier.rotaryScrollable` with `RotaryScrollableDefaults.snapBehavior` at `LowSnapSensitivity`,
+which gives one card per detent, the platform's detent haptic and the bezel's low-resolution path.
+wear-compose's own `VerticalPager` was tried first and rejected on the AVD: it wraps each page in a
+hierarchical focus group, and a page joining the active path cleared the focus of a reader wired
+outside its pages, so a turn did nothing — and its own reader applies only with swipes on, which
+would let a vertical swipe page. The order is the list's at opening (the same `CardSorter` sort of
+the same cards and mode), held in `rememberSaveable` for the visit: a card gone since is skipped, one
+added since is not reachable, and if the card on screen goes the screen returns to the list, which
+is Wear's rule for a card that vanished before opening (Wear has no "unavailable" string). It stops
+at the first and the last card, and does nothing with one card. The card on screen is the pager's
+settled page while it is not moving: the opened card plays the open haptic and sends its `CARD_USED`
+at once, a paged card sends it after 1 s at rest, cancelled by the next turn or by the screen
+closing; full brightness and keep-awake follow the card at rest, held across rendered cards and
+dropped on an error card. The next card slides in from below; under `LocalReduceMotion` each page is
+held in place and faded instead. TalkBack offers "Next card" and "Previous card" (English and
+Italian) where that move exists, standing in for VoiceOver's adjust gesture. Nothing is overlaid: no
+page indicator and no scroll indicator. The arithmetic is `BarcodePaging`, pure Kotlin that
+`BarcodePagingTest` runs on the JVM (the held order under a re-sort, gone and new cards, both ends,
+one card, both delays).
+
+Measured on the AVDs, with `adb shell input rotaryencoder scroll` on round and square API 34 (API
+30's `input` has no rotary source): one detent pages exactly one card onward (`SCROLL,-2`) or back
+(`SCROLL,2`), the next card entering from below; turned past either end, the barcode stays
+pixel-identical; with one card, a turn changes nothing. At rest the barcode is pixel-identical to the
+build before paging on round API 34 and on round and square API 30. Swipes up and down and taps on
+the code change nothing; the swipe from the left returns to the list, where the crown scrolls again.
+Usage, read from the outbox: the opened card at once; a paged card about 1.8 s after the turn (the
+snap's ~0.8 s, then 1 s at rest); nothing for a card skimmed past, for one turned away from 0.5 s
+after it settled, or for one whose screen was closed 0.4 s after it settled; a return to the opened
+card counts again, after 1 s. `sbrt=1.0` with `KEEP_SCREEN_ON` on a rendered card, released on an
+error card and taken back on the next rendered one. **Reduce motion, two findings:** on the API 34
+image the system setting also sets the three animation scales to 0, so the change of card is
+instant there; and an app targeting SDK 35 may not read `reduce_motion` on API 34+ (wear-compose
+logs the `SecurityException`), so `LocalReduceMotion` reads false there. On API 30 the setting is
+readable and leaves the scales alone, so the crossfade is the live path, but API 30 cannot be turned.
+The crossfade was checked once by forcing the flag in a scratch build: both cards held at rest, one
+fading out as the other fades in. TalkBack's actions were not driven (the AVDs run no TalkBack); the
+source suite pins them. **Real-device result: not performed** (Story 23.3, decision 2).
 
 ⚠️ **This removes a shipped affordance, deliberately.** It is a behaviour change for Story 23.2,
-and it is not a regression: the screen keeps **two** dismissals on each platform.
+and it is not a regression: the screen keeps **two** dismissals on watchOS and **one** on Wear OS.
+A tap dismisses on neither — Story 23.2's decision 1 on watchOS, Story 23.3's on Wear, so that a
+stray touch while the code is held to a scanner cannot close it.
 
-| dismiss        | watchOS                                                              | Wear OS                                         |
-| -------------- | -------------------------------------------------------------------- | ----------------------------------------------- |
-| **Swipe**      | system swipe-from-left                                               | system back gesture (`SwipeDismissableNavHost`) |
-| **Second way** | the navigation-bar back chevron, already drawn in the reserved strip | tap anywhere (`BarcodeScreen.kt:135`)           |
+| dismiss        | watchOS                                                              | Wear OS                                                                                                                                                                                                             |
+| -------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Swipe**      | system swipe-from-left                                               | the system back (`SwipeDismissableNavHost`): the swipe, and the same back arriving from a hardware back key or TalkBack's back action, which its back handler (`BackHandler`, or `PredictiveBackHandler`) also pops |
+| **Second way** | the navigation-bar back chevron, already drawn in the reserved strip | none — a tap does nothing (Story 23.3, decision 1)                                                                                                                                                                  |
 
-**Why explicit rather than inherited.** Both lists scroll by rotary today only because a scaffold
-happens to wire it — there is **no `rotaryScrollable` or `onRotaryScrollEvent` anywhere in the Wear
-source**, and no crown handler in `CardListView.swift`. Behaviour that works by inheritance is
+**Why explicit rather than inherited.** Before Stories 23.2 and 23.3, both lists scrolled by rotary
+only by inheritance — on Wear because `TransformingLazyColumn`'s `rotaryScrollableBehavior`
+parameter defaults to a scrolling behaviour, with **no `rotaryScrollable` or `onRotaryScrollEvent`
+anywhere in the Wear source** (the barcode's paging reader came with 23.3) — and with no crown
+handler in `CardListView.swift`. Behaviour that works by inheritance is
 behaviour nobody decided, and it silently disappears when a container is swapped. 23.2 and 23.3
 make it explicit; the implementation names are theirs to choose.
 
@@ -705,6 +791,21 @@ Motion crossfade are pinned in the contract suites only: the simulator runs no V
 result (real Apple Watch): _pending — ifero's check (Story 23.2 AC4, before merge)._** Record here
 the crown's detent feel on hardware, and whether a stray click of the crown pages a card at a till.
 
+✅ **APPLIED on Wear OS (Story 23.3).** The card list's and the sort picker's
+`TransformingLazyColumn` each pass `rotaryScrollableBehavior =
+RotaryScrollableDefaults.behavior(scrollableState = listState)` — the value that parameter defaults
+to in wear-compose 1.6.2 (read from the resolved AAR), now named at the call site — and wire it
+once: neither also uses `Modifier.rotaryScrollable`. The only other rotary reader in the app is the
+barcode pager's (above). `BarcodeScreen`'s tap-anywhere dismissal and single-shot latch are gone
+(decision 1), leaving the system swipe. `test/wear-cardi-palette.test.ts` pins all of it. Driven with
+`adb shell input rotaryencoder scroll` on round and square API 34 AVDs (API 30's `input` has no
+rotary source, and the AVDs carry no rotary device): three detents move the list's first row from
+y 256 to y 80 px and three back return it exactly; the picker scrolls and returns the same way;
+three taps leave the barcode pixel-identical, at full brightness; and the crown scrolls the list
+again after the barcode pops. On API 30 (round and square) the taps and the swipe were driven the
+same way; the crown was not. **Real-device result: not performed** — there is
+no Wear OS device (Story 23.3, decision 2), and the story records it as an accepted risk.
+
 ### 8.1 The sort picker keeps each platform's native selected control
 
 The frames draw a generic beam dot in the sort picker. **That dot is schematic — it is not an
@@ -726,6 +827,12 @@ asked for, and it would cost the platform's own accessibility semantics.
 ✅ **APPLIED on watchOS (Story 23.2):** the native `List` and `checkmark` stay; the rows are ink
 (radius 14) on black and at least 48 tall; unselected labels are cream, the selected one semibold
 beam with a beam checkmark, and the `.isSelected` trait stays.
+
+✅ **APPLIED on Wear OS (Story 23.3):** the Material 3 `RadioButton` stays, with its colours named:
+the rows are ink selected or not, the selected radio and its label beam and the label semibold, the
+others cream and regular with a cream-60 % ring. Measured on the round AVD: rows `#181824`, the
+selected label and radio beam, an unselected ring `#9A9A99` (cream 60 % over ink). The rows keep
+M3's own pill shape; this story changed no shape.
 
 ---
 
@@ -844,6 +951,23 @@ opened card only, the 1 s delay for a paged one and the on-screen check after it
 `watch-display-luminance-contract.test.ts` (no tap dismissal; no crown or focus in
 `BarcodeFlashView`) and `watch-brand-logo-contract.test.ts` (the chip's `#3A3A48` ring). The orange
 row is moot on watchOS since Story 21.2a, and `FavoriteStarTint` is Wear's (23.3).
+
+✅ **Wear OS (Story 23.3)** carries its rows in `test/wear-cardi-palette.test.ts`, a Jest suite that
+runs in `yarn test` on every PR — not a Gradle test, which only the path-filtered
+`wear-os-build.yml` runs: the four roles declared once, in the theme, at these values and at the
+phone's tokens, with no other Compose `Color(` construction in the app but the row's conversion of
+the card's own accent; the scheme built on them and no typeface passed; `4DA3FF`, `1C1C1F`, `B0B3B8` and `F59E0B`
+absent from every file under `watch-android/app/src`, comments included; no `Color.White` in the
+row or the list; the beam star with no plate; ink and cream initials; the beam sort control; the
+picker's colours and its semibold selection; 48, 14 and the gap of 4; the explicit rotary behaviour
+in both lists, once each, and rotary nowhere else but the barcode; on the barcode, one rotary reader
+(the snap behaviour at low sensitivity, on a foundation pager with swipes off, read through a
+one-item-per-page provider), no page or scroll indicator and no other scroll container, the held
+order taken from the list's own sort, the card taken only once the pager rests, the usage effect
+keyed on that card with the policy's delay, every per-card effect kept off the pages, the
+reduce-motion crossfade, the TalkBack actions and their strings, no tap handler and no Cardì role,
+and a return to the list only when the card on screen has gone; and the theme KDoc naming this
+document. Each assertion was seen to fail under a mutation of the source it reads.
 
 ---
 

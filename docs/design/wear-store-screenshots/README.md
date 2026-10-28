@@ -45,7 +45,13 @@ finished while carrying colours the next story changes.
 Wearable Data Layer from a paired phone running the same-signed phone app — which needs the
 keystore from (1), plus a phone emulator paired through the Wear OS companion app.
 
-### 3. ⚠️ The Wear palette is knowingly stale, and Story 23.3 owns it
+### 3. ✅ Cleared by Story 23.3: the Wear palette was knowingly stale
+
+**Cleared.** Story 23.3 put the Cardì roles into `CarbonTheme.kt`: `primary` is beam `#FCCC0C`
+with ink on it, the favourite star is beam, and `#4DA3FF` and `#F59E0B` appear in no Wear source
+(`test/wear-cardi-palette.test.ts` asserts both). The committed PNGs still show the old palette, so
+this page's warning about them stands until blockers 1 and 2 clear and they are recaptured. What
+the blocker said, as it stood before Story 23.3:
 
 This is the blocker that matters most, because it is invisible in a screenshot until you know to
 look for it. `presentation/theme/CarbonTheme.kt` marks two values **KNOWINGLY STALE** in its own
@@ -75,7 +81,8 @@ invalidates as soon as it lands.
 
 Prerequisites, in order:
 
-1. **Story 23.3 has landed**, so the chip is beam and the star is not orange.
+1. ~~**Story 23.3 has landed**, so the chip is beam and the star is not orange.~~ Met by Story
+   23.3.
 2. **@ifero's release keystore** is available to sign both the Wear APK and the phone app with the
    same key.
 3. A **paired phone** (device or emulator with the Wear OS companion app) holding genuine cards, so
