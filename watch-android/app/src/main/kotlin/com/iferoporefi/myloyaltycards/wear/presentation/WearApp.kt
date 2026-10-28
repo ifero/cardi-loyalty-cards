@@ -85,10 +85,13 @@ fun WearApp(
                     route = "$ROUTE_BARCODE/{$ARG_CARD_ID}",
                     arguments = listOf(navArgument(ARG_CARD_ID) { type = NavType.StringType }),
                 ) { backStackEntry ->
-                    val cardId = backStackEntry.arguments?.getString(ARG_CARD_ID)
-                    val card = cards.firstOrNull { it.id == cardId }
+                    // The live cards and the sort mode, not one resolved card: the barcode pages
+                    // through the list's order as it stood at opening (Story 23.3, decision 4), so
+                    // it takes that order from the same cards and mode the list sorted.
                     BarcodeScreen(
-                        card = card,
+                        openedCardId = backStackEntry.arguments?.getString(ARG_CARD_ID),
+                        cards = cards,
+                        sortMode = sortMode,
                         barcodeGenerator = barcodeGenerator,
                         usageRecorder = usageRecorder,
                         onDismiss = { navController.popBackStack() },

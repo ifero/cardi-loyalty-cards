@@ -29,6 +29,10 @@ const CARD_ROW_METRICS = `${PRESENTATION}/CardRowMetrics.kt`;
 const CARD_LIST = `${PRESENTATION}/CardListScreen.kt`;
 const SORT_PICKER = `${PRESENTATION}/SortPickerScreen.kt`;
 const BARCODE = `${PRESENTATION}/BarcodeScreen.kt`;
+const BARCODE_PAGING = `${PRESENTATION}/BarcodePaging.kt`;
+const WEAR_APP = `${PRESENTATION}/WearApp.kt`;
+const STRINGS_EN = `${WEAR_SRC}/main/res/values/strings.xml`;
+const STRINGS_IT = `${WEAR_SRC}/main/res/values-it/strings.xml`;
 
 /**
  * Kotlin `source` with its comments removed. The KDoc on these files explains the grammar, and an
@@ -354,20 +358,174 @@ describe('Wear OS on the Cardì watch grammar (Story 23.3)', () => {
       expect(enclosed(code, 'TransformingLazyColumn(', file)).toMatch(/^ state = listState,/);
     });
 
-    it('binds rotary nowhere else in the Wear app', () => {
+    it('binds rotary in the two lists and the barcode, and nowhere else in the Wear app', () => {
       const rotarySites = wearKotlinFiles().filter((file) =>
         /rotary/i.test(codeOnly(readText(file)))
       );
-      expect(rotarySites).toEqual([CARD_LIST, SORT_PICKER]);
+      expect(rotarySites).toEqual([BARCODE, CARD_LIST, SORT_PICKER]);
+    });
+  });
+
+  describe('rotary pages through the cards on the barcode (§8; decisions 4–6)', () => {
+    const barcode = (): string => flatCode(BARCODE);
+    const pager = (): string => enclosed(barcode(), 'VerticalPager(', BARCODE);
+
+    it('has exactly one rotary reader: the snap behaviour at low sensitivity, on the pager', () => {
+      expect(occurrences(barcode(), '.rotaryScrollable(')).toBe(1);
+      expect(barcode()).not.toMatch(
+        /onRotaryScrollEvent|onPreRotaryScrollEvent|rotaryHandler|rotaryScrollableBehavior/
+      );
+      expect(pager()).toContain(
+        '.requestFocusOnHierarchyActive() .rotaryScrollable( behavior = RotaryScrollableDefaults.snapBehavior( scrollableState = pagerState, layoutInfoProvider = snapLayoutInfo, snapSensitivity = RotaryScrollableDefaults.LowSnapSensitivity, ), focusRequester = focusRequester, ),'
+      );
+      expect(occurrences(barcode(), 'LowSnapSensitivity')).toBe(1);
+      expect(barcode()).not.toMatch(/HighSnapSensitivity/);
     });
 
-    it('wires nothing on the barcode, which has nothing to scroll', () => {
-      const code = flatCode(BARCODE);
-      expect(code).not.toMatch(/rotary/i);
-      expect(code).not.toMatch(
-        /verticalScroll|horizontalScroll|LazyColumn|LazyRow|Pager\b|\.scrollable\(|scrollState\s*=/
+    it('snaps one card per page: the provider reads one item per page off the pager', () => {
+      const provider = enclosed(
+        barcode(),
+        'private class PagerSnapLayoutInfo(private val state: PagerState) : RotarySnapLayoutInfoProvider {',
+        BARCODE
       );
-      expect(code).toContain('ScreenScaffold(modifier = modifier, timeText = {})');
+      expect(provider.trim()).toBe(
+        [
+          'override val averageItemSize: Float get() = state.layoutInfo.pageSize.toFloat()',
+          'override val currentItemIndex: Int get() = state.currentPage',
+          'override val currentItemOffset: Float get() = state.currentPageOffsetFraction * averageItemSize',
+          'override val totalItemCount: Int get() = state.pageCount'
+        ].join(' ')
+      );
+    });
+
+    it('is the foundation pager with swipe paging off, and nothing else scrolls or pages', () => {
+      // wear-compose's pager wraps each page in a hierarchical focus group, which on the AVD
+      // cleared the focus of a reader wired outside its pages: rotary then did nothing.
+      expect(barcode()).toContain('import androidx.compose.foundation.pager.VerticalPager');
+      expect(barcode()).not.toMatch(/androidx\.wear\.compose\.foundation\.pager/);
+      expect(occurrences(barcode(), 'VerticalPager(')).toBe(1);
+      expect(pager()).toMatch(/^ state = pagerState,/);
+      expect(pager()).toContain('userScrollEnabled = false,');
+      // The card on each side is composed, so its barcode has rendered by the time it slides in.
+      expect(pager()).toContain('beyondViewportPageCount = 1,');
+      expect(barcode()).not.toMatch(
+        /HorizontalPager|verticalScroll|horizontalScroll|LazyColumn|LazyRow|\.scrollable\(|draggable|swipeable|detectDragGestures|detectVerticalDragGestures/
+      );
+    });
+
+    it('overlays nothing on the field: no page indicator, no scroll indicator, no clock', () => {
+      expect(barcode()).not.toMatch(/PageIndicator|ScrollIndicator|PositionIndicator/);
+      // A scaffold given a scroll state draws a scroll indicator over the field.
+      expect(barcode()).toContain('ScreenScaffold(modifier = modifier, timeText = {})');
+      expect(barcode()).not.toMatch(/scrollState\s*=/);
+    });
+
+    it('holds the list’s order at opening, from the list’s own sort, for the visit', () => {
+      expect(barcode()).toContain(
+        'val heldOrder: List<String> = rememberSaveable { ArrayList(BarcodePaging.heldOrder(cards, sortMode, CardSorter())) }'
+      );
+      expect(barcode()).toContain(
+        'val reachable = remember(heldOrder, cardsById) { BarcodePaging.reachableIds(heldOrder, cardsById.keys) }'
+      );
+      expect(pager()).toContain('key = { page -> currentReachable[page] },');
+      expect(flatCode(BARCODE_PAGING)).toContain(
+        'fun heldOrder(cards: List<WearCard>, sortMode: WatchSortMode, sorter: CardSorter): List<String> = sorter.sort(cards, sortMode).map { it.id }'
+      );
+      // The route hands the screen what the list sorted, not one resolved card.
+      expect(flatCode(WEAR_APP)).toContain(
+        'BarcodeScreen( openedCardId = backStackEntry.arguments?.getString(ARG_CARD_ID), cards = cards, sortMode = sortMode,'
+      );
+    });
+
+    it('opens on the tapped card and keeps the visit’s state across a recreation', () => {
+      expect(barcode()).toContain(
+        'val pagerState = rememberPagerState(initialPage = reachable.indexOf(shownCardId).coerceAtLeast(0)) { currentReachable.size }'
+      );
+      expect(barcode()).toContain(
+        'var shownId by rememberSaveable { mutableStateOf(openedCardId) } var arrival by rememberSaveable { mutableStateOf(BarcodeArrival.Opened) } var counted by rememberSaveable { mutableStateOf(false) }'
+      );
+    });
+
+    it('re-anchors the pager on the live card at rest when a held card drops out', () => {
+      // The live `shownId`, not the `shownCardId` captured at composition: a sync landing as the
+      // pager settles on a new card would otherwise scroll it back to the card before.
+      expect(barcode()).toContain(
+        'LaunchedEffect(reachable) { val position = reachable.indexOf(shownId ?: return@LaunchedEffect) if (position >= 0 && position != pagerState.currentPage && !pagerState.isScrollInProgress) { pagerState.scrollToPage(position) } }'
+      );
+    });
+
+    it('takes the card on screen from the pager only once it has come to rest', () => {
+      expect(barcode()).toContain(
+        'snapshotFlow { pagerState.isScrollInProgress to pagerState.settledPage } .collect { (moving, page) -> if (moving) return@collect val settledId = BarcodePaging.idAtPage(page, currentReachable) ?: return@collect if (settledId != shownId) { shownId = settledId arrival = BarcodeArrival.Paged counted = false } }'
+      );
+    });
+
+    it('counts the card at rest: the opened one at once with the open haptic, a paged one after the policy’s delay', () => {
+      expect(barcode()).toContain(
+        'LaunchedEffect(shownCardId, arrival, counted, pageMoving) { if (counted || pageMoving) return@LaunchedEffect if (arrival == BarcodeArrival.Opened) haptics.performHapticFeedback(HapticFeedbackType.Confirm) delay(BarcodePaging.usageDelay(arrival)) usageRecorder.recordCardUsed(shownCardId, UsageTimestamps.now()) counted = true }'
+      );
+      expect(barcode()).toContain('val pageMoving = pagerState.isScrollInProgress');
+      expect(occurrences(barcode(), 'recordCardUsed(')).toBe(1);
+      expect(occurrences(barcode(), 'performHapticFeedback(')).toBe(1);
+      const paging = flatCode(BARCODE_PAGING);
+      expect(paging).toContain('val PAGED_USAGE_DELAY: Duration = 1.seconds');
+      expect(paging).toContain(
+        'when (arrival) { BarcodeArrival.Opened -> Duration.ZERO BarcodeArrival.Paged -> PAGED_USAGE_DELAY }'
+      );
+    });
+
+    it('keeps every per-card effect off the pages, which the pager also composes beside', () => {
+      const page = functionBody(barcode(), 'private fun BarcodePage(', BARCODE);
+      expect(page).not.toMatch(/recordCardUsed|performHapticFeedback|KeepScreenAwakeAndBright/);
+      // Full brightness follows the card at rest: one call site, released on an error card.
+      expect(occurrences(barcode(), 'KeepScreenAwakeAndBright()')).toBe(2);
+      expect(barcode()).toContain(
+        'if (failedCardIds[shownCardId] != true) { KeepScreenAwakeAndBright() }'
+      );
+      // Each page reports a failed render; the screen records it by card, for the call above.
+      expect(page).toContain(
+        'val failed = state is BarcodeRenderState.Failed LaunchedEffect(failed) { currentOnRenderFailedChange(failed) }'
+      );
+      expect(barcode()).toContain(
+        'onRenderFailedChange = { failed -> failedCardIds[card.id] = failed },'
+      );
+    });
+
+    it('slides, or crossfades in place under reduce motion', () => {
+      expect(barcode()).toContain('val reduceMotion = LocalReduceMotion.current');
+      expect(barcode()).toContain(
+        'modifier = if (reduceMotion) Modifier.crossfadeInPlace(pagerState, page) else Modifier,'
+      );
+      expect(barcode()).toContain(
+        'translationY = offset * size.height alpha = 1f - offset.absoluteValue.coerceIn(0f, 1f)'
+      );
+    });
+
+    it('offers TalkBack “Next card” and “Previous card”, each only where that move exists', () => {
+      expect(barcode()).toContain(
+        'BarcodePaging.pageAfter(shownCardId, reachable, step = 1)?.let { target -> add(CustomAccessibilityAction(nextCardLabel) { pageTo(target) }) }'
+      );
+      expect(barcode()).toContain(
+        'BarcodePaging.pageAfter(shownCardId, reachable, step = -1)?.let { target -> add(CustomAccessibilityAction(previousCardLabel) { pageTo(target) }) }'
+      );
+      expect(barcode()).toContain('scope.launch { pagerState.animateScrollToPage(target) }');
+      expect(barcode()).toContain(
+        'accessibilityActions = if (card.id == shownCardId) pagingActions else emptyList(),'
+      );
+      // On the page node, merged, so TalkBack focuses one node per card that carries them.
+      expect(functionBody(barcode(), 'private fun BarcodePage(', BARCODE)).toContain(
+        '.semantics(mergeDescendants = true) { customActions = accessibilityActions }'
+      );
+      expect(readText(STRINGS_EN)).toContain('<string name="barcode_next_card">Next card</string>');
+      expect(readText(STRINGS_EN)).toContain(
+        '<string name="barcode_previous_card">Previous card</string>'
+      );
+      expect(readText(STRINGS_IT)).toContain(
+        '<string name="barcode_next_card">Carta successiva</string>'
+      );
+      expect(readText(STRINGS_IT)).toContain(
+        '<string name="barcode_previous_card">Carta precedente</string>'
+      );
     });
   });
 
@@ -376,14 +534,14 @@ describe('Wear OS on the Cardì watch grammar (Story 23.3)', () => {
 
     it('has no tap handler and no dismissal latch', () => {
       expect(barcode()).not.toMatch(
-        /detectTapGestures|pointerInput|clickable|onClick|dismissOnce|\bdismissed\b|mutableStateOf/
+        /detectTapGestures|pointerInput|clickable|combinedClickable|onClick|dismissOnce|\bdismissed\b/
       );
     });
 
-    it('returns to the list by itself only when the card vanished mid-navigation', () => {
+    it('returns to the list by itself only when the card on screen has gone', () => {
       expect(occurrences(barcode(), 'currentOnDismiss()')).toBe(1);
       expect(barcode()).toContain(
-        'if (card == null) { LaunchedEffect(Unit) { currentOnDismiss() } return }'
+        'val shown = cards.firstOrNull { it.id == shownId } if (shown == null) { LaunchedEffect(Unit) { currentOnDismiss() } return }'
       );
     });
 
