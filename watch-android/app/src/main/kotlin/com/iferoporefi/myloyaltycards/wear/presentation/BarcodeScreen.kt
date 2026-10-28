@@ -6,7 +6,6 @@ import android.content.ContextWrapper
 import android.view.WindowManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,18 +19,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
@@ -71,9 +67,12 @@ import kotlinx.coroutines.withContext
  *   (ms precision), mirroring watchOS's emission point (the barcode appearing, not the list tap; AC8).
  * - **While a barcode is shown** — the screen is kept awake at full brightness, both restored on every
  *   exit path by a lifecycle-scoped effect (AC5). An error state does neither.
- * - **Dismissal** — a tap anywhere returns to the list, exactly once (single-shot latch). Swipe-to-
- *   dismiss (the Wear system back gesture, from the host `SwipeDismissableNavHost`) also returns.
- *   See the Dev Agent Record for the Open Decision 3 choice (rotary was not shipped).
+ * - **Dismissal** — only the swipe: the Wear system back gesture, from the host
+ *   `SwipeDismissableNavHost`. A tap does nothing (Story 23.3, decision 1, as on watchOS), so a stray
+ *   touch while the code is held to a scanner cannot close it.
+ * - **Rotary input (crown or bezel)** — does nothing. No rotary handler is wired here and nothing on
+ *   the screen scrolls, so a turn neither moves nor dismisses the code
+ *   (`cardi-watch-grammar.md` §8: the crown and the rotary scroll; they never act).
  *
  * Generation runs on [Dispatchers.Default] and is cached, so the UI thread never encodes and
  * re-opening a card never re-encodes (AC10). Works entirely offline — nothing here touches the
@@ -81,7 +80,8 @@ import kotlinx.coroutines.withContext
  *
  * @param card the tapped card, or `null` if it vanished from the snapshot mid-navigation (a sync
  *   race) — in which case the screen simply returns to the list rather than showing an empty screen.
- * @param onDismiss returns to the list.
+ * @param onDismiss returns to the list. Called only for a vanished [card]: the user's way back is the
+ *   host's swipe, which does not run through this screen.
  */
 @Composable
 fun BarcodeScreen(
@@ -107,17 +107,6 @@ fun BarcodeScreen(
         usageRecorder.recordCardUsed(card.id, UsageTimestamps.now())
     }
 
-    // Single-shot latch for the tap route (AC6): tapping returns to the list exactly once, even on a
-    // rapid double-tap. Swipe-to-dismiss is the host SwipeDismissableNavHost's own single-shot back
-    // gesture and never runs through this latch.
-    var dismissed by remember { mutableStateOf(false) }
-    val dismissOnce: () -> Unit = {
-        if (!dismissed) {
-            dismissed = true
-            currentOnDismiss()
-        }
-    }
-
     val isRound = LocalConfiguration.current.isScreenRound
     val density = LocalDensity.current
     val isQr = BarcodeFormats.isQr(card.barcodeFormat)
@@ -131,8 +120,7 @@ fun BarcodeScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White)
-                .pointerInput(Unit) { detectTapGestures { dismissOnce() } },
+                .background(Color.White),
             contentAlignment = Alignment.Center,
         ) {
             BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(contentPadding)) {
@@ -280,7 +268,7 @@ private fun BarcodeSuccessContent(
 /**
  * The localised error state (AC2): distinct copy for an unsupported format (re-add the card) versus
  * an invalid value (the stored barcode is wrong). Never a blank screen. Black text on the same white
- * surface, centered; the user taps to return.
+ * surface, centered; the user swipes back to return.
  */
 @Composable
 private fun BarcodeErrorContent(result: BarcodeResult, modifier: Modifier = Modifier) {
@@ -320,8 +308,8 @@ private fun BarcodeErrorContent(result: BarcodeResult, modifier: Modifier = Modi
 
 /**
  * Holds the screen awake at full brightness for as long as this composable is in the tree, and
- * restores both on **every** exit path — tap-dismiss, swipe-dismiss, navigation, or composition
- * teardown — via [DisposableEffect]'s `onDispose` (AC5). Brightness is set as a window override
+ * restores both on **every** exit path — swipe-dismiss, navigation, or composition teardown — via
+ * [DisposableEffect]'s `onDispose` (AC5). Brightness is set as a window override
  * (no `WRITE_SETTINGS` permission needed) and restored to whatever it was before.
  */
 @Composable
