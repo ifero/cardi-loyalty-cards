@@ -2,7 +2,7 @@
 title: 'Story 23.3: Wear OS implementation — the list, the barcode and the sort picker on the watch grammar'
 type: 'feature'
 created: '2026-10-25'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: 'd59cf49d00bd2f57f9102418c447a5a3f554d404'
