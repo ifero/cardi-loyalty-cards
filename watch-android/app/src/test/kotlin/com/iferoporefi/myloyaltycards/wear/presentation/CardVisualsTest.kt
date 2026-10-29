@@ -89,8 +89,8 @@ class CardVisualsTest {
      *
      * The Cardì deep blue lands at luminance **0.04976** — 0.00024 below the 0.05
      * [isNearBlack] threshold — where the retired `#1A73E8` sat at 0.183. So a deep-blue custom
-     * card now draws the hairline border [CardRow] gives near-black avatars on the OLED-black
-     * Carbon surface, and the other four accents do not.
+     * card now draws the hairline border [CardRow] gives near-black avatars on the ink row over the
+     * OLED-black ground, and the other four accents do not.
      *
      * That is the RIGHT outcome: at that luminance the avatar genuinely does recede into the
      * background, which is the whole reason the hairline exists. But the margin is 0.5% of the

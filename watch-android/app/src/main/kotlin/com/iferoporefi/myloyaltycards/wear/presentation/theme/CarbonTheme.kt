@@ -6,46 +6,56 @@ import androidx.wear.compose.material3.ColorScheme
 import androidx.wear.compose.material3.MaterialTheme
 
 /**
- * "Carbon Utility" — the minimalist, OLED-black, high-density watch design language shared with
- * watchOS (`docs/ux-design-specification.md` §Carbon). Card colours come from the catalogue, not
- * the theme, so this scheme only needs a true-black surface, white text, and the app's brand
- * primary for interactive Wear M3 components (RadioButton, EdgeButton).
- */
-
-/** The card-row surface — one step above true black, mirroring watchOS's `#1C1C1F` row fill. */
-val CarbonSurface: Color = Color(0xFF1C1C1F)
-
-/**
- * Favourite-badge tint.
+ * The Cardì roles on Wear OS, as the watch grammar decides them
+ * (`docs/design/cardi/cardi-watch-grammar.md` §4.1, §4.4). Every chrome colour the app paints is
+ * defined here, once; screens read these constants or the [ColorScheme] roles built from them,
+ * never a literal of their own.
  *
- * ⚠️ KNOWINGLY STALE, and owned by Story 23.3. This used to be "the phone's `theme.warning` on
- * dark (`#F59E0B`), for star parity (AC3)" — both halves of that are now false. Story 21.2
- * repainted the phone's favourite star beam `#FCCC0C` on an ink plate and moved `theme.warning`
- * off amber entirely, so this value has no referent on the phone any more; and the Cardì system
- * bans orange by name, which `#F59E0B` is (it is bit-identical to the `orange` card key).
- * `cardi-watch-grammar.md` §4.3 and §4.4 already ruled: no orange value ships on any watch
- * surface, and the star takes beam. The colour is left here rather than changed because moving it
- * needs the emulator pass 23.3 carries — 21.2 touches no Kotlin behaviour.
+ * Card accents are not chrome and do not live here: they come from the catalogue and
+ * `CardVisuals.kt`. The barcode screen's white field and black bars are not chrome either (§6), so
+ * it reads none of these.
+ *
+ * No `typography` and no `shapes` are passed to [MaterialTheme]: the watch ships no custom
+ * typeface (§5.2), and the row radius lives in `CardRowMetrics`. The file name predates the
+ * grammar and is kept.
  */
-val FavoriteStarTint: Color = Color(0xFFF59E0B)
 
-// Declared before CarbonColorScheme so top-level initialization order gives it a real value.
-// ⚠️ KNOWINGLY STALE, owned by Story 23.3. This was the phone's dark-theme `primary`; Story 21.2
-// made that beam `#FCCC0C`, and `cardi-watch-grammar.md` §4 puts beam with ink text here too.
-private val BrandPrimaryDark: Color = Color(0xFF4DA3FF)
+/** Row and sheet fill (§4.1). */
+val Ink: Color = Color(0xFF181824)
 
-private val CarbonColorScheme: ColorScheme = ColorScheme(
+/** Primary and interactive, always with [Ink] on it (§4.1, §4.5). */
+val Beam: Color = Color(0xFFFCCC0C)
+
+/** Body text on the black ground and on [Ink] (§4.1). Never pure white. */
+val Cream: Color = Color(0xFFF0F0E8)
+
+/** Secondary text: [Cream] at 60 %, one mechanism rather than a fixed grey (§4.1). */
+val CreamSecondary: Color = Cream.copy(alpha = 0.6f)
+
+/** The system's dark outline, for the near-black accent's hairline (§4.1). */
+val Hairline: Color = Color(0xFF3A3A48)
+
+/** The favourite star: beam, no plate (§4.4). */
+val FavoriteStarTint: Color = Beam
+
+// Declared after the roles above so top-level initialization order gives every role a real value.
+private val CardiColorScheme: ColorScheme = ColorScheme(
+    primary = Beam,
+    onPrimary = Ink,
+    // M3 derives a selected RadioButton's fill from primaryContainer and its label from
+    // onPrimaryContainer. The sort picker names its colours, but these keep any such derivation on
+    // the Cardì roles too: an ink row with beam on it, whichever option is selected (§8.1).
+    primaryContainer = Ink,
+    onPrimaryContainer = Beam,
     background = Color.Black,
-    onBackground = Color.White,
-    surfaceContainer = CarbonSurface,
-    onSurface = Color.White,
-    onSurfaceVariant = Color(0xFFB0B3B8), // dim secondary text
-    primary = BrandPrimaryDark,
-    onPrimary = Color.Black,
+    onBackground = Cream,
+    surfaceContainer = Ink,
+    onSurface = Cream,
+    onSurfaceVariant = CreamSecondary,
 )
 
-/** Wraps the app in the Carbon [ColorScheme]. */
+/** Wraps the app in the Cardì [ColorScheme]. */
 @Composable
 fun MyLoyaltyCardsWearTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = CarbonColorScheme, content = content)
+    MaterialTheme(colorScheme = CardiColorScheme, content = content)
 }

@@ -30,6 +30,10 @@
     <string name="barcode_error_unsupported_message">Il tipo di codice di questa carta non può essere mostrato sull\'orologio. Aggiungi di nuovo la carta dal tuo telefono.</string>
     <string name="barcode_error_invalid_title">Codice non valido</string>
     <string name="barcode_error_invalid_message">Il codice di questa carta non può essere mostrato. Controlla la carta sul tuo telefono.</string>
+    <!-- TalkBack's stand-ins for the rotary input on the barcode (Story 23.3): they page through
+         the cards as a turn does, each offered only where that move exists. -->
+    <string name="barcode_next_card">Carta successiva</string>
+    <string name="barcode_previous_card">Carta precedente</string>
 
     <!-- DEBUG-only; never shown in release builds -->
     <string name="debug_import_sample_cards">Importa carte di esempio</string>

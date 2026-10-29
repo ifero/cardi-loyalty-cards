@@ -12,7 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -23,7 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.wear.compose.foundation.lazy.TransformingLazyColumn
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberTransformingLazyColumnState
+import androidx.wear.compose.foundation.rotary.RotaryScrollableDefaults
 import androidx.wear.compose.material3.Button
+import androidx.wear.compose.material3.ButtonDefaults
 import androidx.wear.compose.material3.Icon
 import androidx.wear.compose.material3.ListHeader
 import androidx.wear.compose.material3.MaterialTheme
@@ -33,13 +34,20 @@ import androidx.wear.compose.material3.Text
 import androidx.wear.compose.material3.lazy.rememberTransformationSpec
 import com.iferoporefi.myloyaltycards.wear.R
 import com.iferoporefi.myloyaltycards.wear.data.WearCard
+import com.iferoporefi.myloyaltycards.wear.presentation.theme.Cream
+import com.iferoporefi.myloyaltycards.wear.presentation.theme.CreamSecondary
 import com.iferoporefi.myloyaltycards.wear.sort.CardSorter
 import com.iferoporefi.myloyaltycards.wear.sort.WatchSortMode
 
 /**
  * The card list (AC1). Renders each locally-stored card as a [CardRow] inside a
- * [TransformingLazyColumn] wired to [ScreenScaffold] — so the list scales/fades toward the bezel,
- * scrolls by rotary, and is never clipped on a round screen (AC8), with no hand-computed insets.
+ * [TransformingLazyColumn] wired to [ScreenScaffold] — so the list scales/fades toward the bezel
+ * and is never clipped on a round screen (AC8), with no hand-computed insets. Square screens get
+ * the same layout, corners empty (`cardi-watch-grammar.md` §2.1).
+ *
+ * Rotary input (crown or bezel) scrolls the list and does nothing else. It is wired once, here,
+ * by naming the column's [RotaryScrollableDefaults.behavior] at the call site rather than
+ * inheriting the parameter's default, so swapping the container cannot silently drop it (§8).
  *
  * When there are no cards it shows [EmptyState] and hides the sort control (nothing to sort),
  * mirroring watchOS.
@@ -76,6 +84,7 @@ fun CardListScreen(
             state = listState,
             contentPadding = contentPadding,
             verticalArrangement = Arrangement.spacedBy(4.dp),
+            rotaryScrollableBehavior = RotaryScrollableDefaults.behavior(scrollableState = listState),
             modifier = Modifier.fillMaxSize(),
         ) {
             item(key = "list-title") {
@@ -97,7 +106,9 @@ fun CardListScreen(
 
 /**
  * The list-header control that opens the full-screen sort picker (Open Decision 4). Shows the
- * current mode's label so the active ordering is visible at a glance.
+ * current mode's label so the active ordering is visible at a glance. Beam with ink label and
+ * glyph, the watch's one primary (`cardi-watch-grammar.md` §4.1), named here rather than left to
+ * M3's filled-button defaults.
  */
 @Composable
 private fun SortControlButton(
@@ -109,6 +120,11 @@ private fun SortControlButton(
     val description = stringResource(R.string.sort_button_content_description, modeLabel)
     Button(
         onClick = onClick,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary,
+            iconColor = MaterialTheme.colorScheme.onPrimary,
+        ),
         modifier = modifier
             .semantics(mergeDescendants = true) { contentDescription = description },
     ) {
@@ -126,6 +142,9 @@ private fun SortControlButton(
  * Empty state (AC10): a clear message that cards come from the phone — deliberately not phrased as
  * an error, because it is what a user sees before the first sync. In DEBUG builds it also offers
  * the sample-card seeder ([onImportSampleCards] non-null).
+ *
+ * One glyph, one title, one subtitle, all cream: the glyph at 50 %, the title full, the subtitle
+ * at 60 % (`cardi-watch-grammar.md` §3.2).
  */
 @Composable
 private fun EmptyState(
@@ -144,7 +163,7 @@ private fun EmptyState(
         Icon(
             painter = painterResource(R.drawable.ic_cards_empty),
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.5f),
+            tint = Cream.copy(alpha = 0.5f),
             modifier = Modifier.size(40.dp),
         )
         Spacer(Modifier.height(12.dp))
@@ -152,14 +171,14 @@ private fun EmptyState(
             text = stringResource(R.string.cards_empty_title),
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.titleMedium,
-            color = Color.White,
+            color = Cream,
         )
         Spacer(Modifier.height(6.dp))
         Text(
             text = stringResource(R.string.cards_empty_subtitle),
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodySmall,
-            color = Color.White.copy(alpha = 0.6f),
+            color = CreamSecondary,
         )
         if (onImportSampleCards != null) {
             Spacer(Modifier.height(12.dp))

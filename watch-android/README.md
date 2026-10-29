@@ -100,6 +100,40 @@ emulator -avd wearos30_arm64 -no-snapshot-load
 ./gradlew installDebug && adb shell am start -n com.iferoporefi.myloyaltycards/com.iferoporefi.myloyaltycards.wear.MainActivity
 ```
 
+**Square screens get the same layout** (`cardi-watch-grammar.md` §2.1), and are checked on a square
+AVD made the same way from the square hardware profile:
+
+```bash
+avdmanager create avd -n wear_square_30 -k "system-images;android-30;android-wear;arm64-v8a" -d wearos_square
+```
+
+**Rotary input on an emulator.** These AVDs are created with `hw.rotaryInput=no`, so the emulator's
+extended-controls rotary panel is absent. Inject crown/bezel turns with the shell instead — one
+`scroll` per detent, positive and negative for the two directions:
+
+```bash
+adb shell input rotaryencoder scroll --axis SCROLL,-2
+```
+
+`SCROLL,-2` turns onward (the list scrolls down) and `SCROLL,2` back; on the barcode screen each one
+pages exactly one card. API 30's `input` has no rotary source, so rotary is checked on API 34 AVDs
+only, made the same way from the API 34 image, round and square:
+
+```bash
+sdkmanager --install "system-images;android-34;android-wear;arm64-v8a"
+```
+
+```bash
+avdmanager create avd -n wearos5_round_34 -k "system-images;android-34;android-wear;arm64-v8a" -d wearos_small_round
+```
+
+```bash
+avdmanager create avd -n wear_square_34 -k "system-images;android-34;android-wear;arm64-v8a" -d wearos_square
+```
+
+On the API 34 image, `settings put global reduce_motion 1` also sets the three animation scales to 0
+(and clearing it restores them), so every animation in the app is instant while it is on.
+
 ### Run on a real watch
 
 Enable **Developer options** → **ADB debugging** → **Debug over Wi-Fi** on the watch, then
@@ -142,7 +176,7 @@ watch-android/
         │   ├── data/                     ← Room store (CardEntity/CardDao/WearDatabase), read-only CardRepository seam, mappers, DEBUG samples
         │   ├── sort/                     ← WatchSortMode + CardSorter (comparators mirror the phone)
         │   ├── prefs/                    ← DataStore-backed watch-local sort preference
-        │   └── presentation/             ← Carbon theme, card list, row, sort picker, nav host
+        │   └── presentation/             ← Cardì theme (theme/CarbonTheme.kt), card list, row, sort picker, nav host
         └── res/                          ← strings (values/ + values-it/), sort/star/empty vector icons
 ```
 
@@ -266,10 +300,18 @@ tints it.
 
 ## Card list and sort (Story 10.3)
 
-The list mirrors watchOS's `CardListView.swift` on the Carbon (OLED-black) surface: each row is a
-colour accent bar, an initials avatar in the brand/card colour with contrast-correct text, the card
-name, and a favourite star. There is **no brand artwork** — initials on a coloured circle is the
-shipped design, not an omission.
+The list mirrors watchOS's `CardListView.swift` on the Cardì watch grammar
+([`docs/design/cardi/cardi-watch-grammar.md`](../docs/design/cardi/cardi-watch-grammar.md), applied by
+Story 23.3): each row is an **ink** `#181824` row on the true-black ground, carrying a colour accent
+bar, an initials avatar in the brand/card colour with **ink or cream** initials by its luminance, the
+card name in **cream** `#F0F0E8`, and a **beam** `#FCCC0C` favourite star with no plate. There is
+**no brand artwork** — initials on a coloured circle is the shipped design, not an omission.
+
+**Colours live in one place.** `presentation/theme/CarbonTheme.kt` (the file keeps its pre-grammar
+name) defines `Ink`, `Beam`, `Cream`, `CreamSecondary` (cream at 60 %), `Hairline` `#3A3A48` and
+`FavoriteStarTint` (beam), and builds the Material 3 scheme on them; screens read those or the
+scheme's roles, never a literal. `test/wear-cardi-palette.test.ts` — in `yarn test`, which is not
+path-filtered — asserts each value is written once and that every retired one is gone.
 
 **Row metrics are ported, with one change.** `CardRowMetrics` is the single source of truth, ported
 from watchOS `WatchCardRowLayoutMetrics.compact` (Story 5-10's density tuning). The one deliberate
@@ -278,9 +320,16 @@ guidance). Recorded here because it is a deviation from the mirror.
 
 **Round-screen correctness** comes from `TransformingLazyColumn` — the Wear scaling list container,
 never a plain `LazyColumn` — wired to `ScreenScaffold` by a shared scroll state. The scaffold supplies
-shape-aware content padding (so the first and last rows are never clipped on a round device), the
-scroll indicator, and rotary/bezel scrolling; none of it is hand-computed. Rows scale and fade toward
-the bezel via a `SurfaceTransformation`.
+shape-aware content padding (so the first and last rows are never clipped on a round device) and the
+scroll indicator; none of it is hand-computed. Rows scale and fade toward the bezel via a
+`SurfaceTransformation`.
+
+**Rotary (crown or bezel) scrolls, and never acts** (`cardi-watch-grammar.md` §8). The list and the
+sort picker each pass `rotaryScrollableBehavior = RotaryScrollableDefaults.behavior(scrollableState =
+listState)` to their `TransformingLazyColumn` — the value the parameter would default to, named at the
+call site so that swapping the container cannot silently drop it, and wired once (never also through
+`Modifier.rotaryScrollable`). The barcode screen has the app's one other rotary reader, which pages
+through the cards ([§ Barcode](#barcode-story-104)); nothing else reads rotary input.
 
 **Sort — three modes, mirroring the phone's `useCardSort.ts` exactly** (`CardSorter`):
 
@@ -309,7 +358,8 @@ compared by parsing the ISO-8601 strings to `Instant`, never by widening the mod
 
 **Catalogue vs custom colour.** A catalogue card's avatar uses the **brand's** colour from
 `Brands.kt` (recognisable on the wrist — watchOS could not, its brand record had no colour); a custom
-card uses the user's picked colour. Missing/unparseable colours fall back to a neutral grey.
+card uses the user's picked colour. Missing/unparseable colours fall back to **azure `#0C84CC`**
+(`DEFAULT_CARD_ACCENT`, the phone's `DEFAULT_CARD_COLOR`) — the Cardì accents contain no neutral.
 
 **The read seam.** `CardRepository` is a read-only interface. Story 10-3 shipped an in-memory
 implementation; **Story 10-5 replaced it with a Room-backed one** — see
@@ -355,11 +405,36 @@ re-opening a card never re-encodes.
 digit) each render a **distinct, localised** error state naming the problem — the two have different
 remedies (re-add the card vs the stored barcode is wrong).
 
-**Dismissal.** Tap anywhere returns to the list (single-shot latch); swipe-to-dismiss (the
-`SwipeDismissableNavHost` back gesture) also returns. Rotary dismiss (Open Decision 3's ideal) was
-**not** shipped — it cannot be injected on a headless emulator, so it is unverifiable in CI, and Open
-Decision 3 blesses "tap-only plus the system back gesture" as acceptable. A follow-up for on-wrist
-verification.
+**Dismissal: the swipe only.** The `SwipeDismissableNavHost` back gesture returns to the list. A tap
+does **nothing** (Story 23.3, decision 1, as on watchOS): the tap-anywhere dismissal and its
+single-shot latch were removed so that a stray touch while the code is held to a scanner cannot close
+it. Rotary input never dismisses either: it pages (below).
+
+**Rotary pages through the cards** (Story 23.3, decisions 4–6; `cardi-watch-grammar.md` §8). One card
+per detent, in the order the list showed when the barcode opened, held for the visit (`rememberSaveable`)
+so a sync or a usage re-sort cannot reshuffle it mid-scan; a card deleted since is skipped and a card
+added since is not reachable. It stops at the first and the last card (no wrap), and does nothing with
+one card. Only rotary moves the card — and TalkBack's "Next card" / "Previous card" actions, offered
+only where that move exists. A vertical swipe pages nothing. The arithmetic is `BarcodePaging`, pure
+Kotlin with JVM tests (`BarcodePagingTest`), mirroring watchOS's `WatchBarcodePaging`.
+
+- **The pager is Compose foundation's `VerticalPager`, not wear-compose's**, with swipes off
+  (`userScrollEnabled = false`) and one `Modifier.rotaryScrollable` reader:
+  `RotaryScrollableDefaults.snapBehavior` at `LowSnapSensitivity`, which carries the platform's
+  detent haptic and the bezel's low-resolution path. wear-compose's pager wraps each page in its own hierarchical focus group, and on the AVD a page
+  joining the active path cleared the focus of a reader wired outside its pages — rotary then did
+  nothing (its own reader applies only with swipes on). The snap behaviour reads the foundation pager
+  through a small `RotarySnapLayoutInfoProvider`, the same arithmetic as wear-compose's.
+- **Per-card effects follow the card at rest, never a page composed beside it.** The opened card plays
+  the confirm haptic and sends its `CARD_USED` at once, as before. A card rotary pages to plays no open
+  haptic (the detent's is its own) and sends its `CARD_USED` only once it has stayed 1 s at rest —
+  cancelled if rotary moves on or the screen closes first. Full brightness and keep-awake are held
+  across rendered cards without a drop, and released on an error card.
+- **The slide** is the pager's own: the next card enters from below, as the list's rows move. Under
+  `LocalReduceMotion` each page is held in place and faded instead, a crossfade. Two measured caveats:
+  on the API 34 image the system's reduce-motion setting zeroes the animation scales, so the change of
+  card is instant there anyway; and an app targeting SDK 35 may not read that setting
+  (`SecurityException`, logged by wear-compose), so `LocalReduceMotion` reads false on API 34+.
 
 **Release builds keep ZXing explicitly.** `proguard-rules.pro` keeps the ZXing writer path, because
 `core` ships no consumer rules and CI only builds the debug variant — see the comment there for why

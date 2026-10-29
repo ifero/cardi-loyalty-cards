@@ -38,6 +38,10 @@
     <string name="barcode_error_unsupported_message">This card\'s barcode type can\'t be shown on your watch. Re-add the card on your phone.</string>
     <string name="barcode_error_invalid_title">Invalid barcode</string>
     <string name="barcode_error_invalid_message">This card\'s barcode can\'t be displayed. Check the card on your phone.</string>
+    <!-- TalkBack's stand-ins for the rotary input on the barcode (Story 23.3): they page through
+         the cards as a turn does, each offered only where that move exists. -->
+    <string name="barcode_next_card">Next card</string>
+    <string name="barcode_previous_card">Previous card</string>
 
     <!-- DEBUG-only; never shown in release builds -->
     <string name="debug_import_sample_cards">Import sample cards</string>

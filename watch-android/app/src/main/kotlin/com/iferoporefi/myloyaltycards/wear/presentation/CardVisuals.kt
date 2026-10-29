@@ -102,8 +102,8 @@ fun relativeLuminance(rgb: Rgb): Double {
 fun shouldUseWhiteText(rgb: Rgb): Boolean = relativeLuminance(rgb) < 0.4
 
 /**
- * Near-black colours (e.g. `#000000`) all but disappear on the OLED-black Carbon surface; the row
- * gives them a hairline border instead. Ports watchOS `isNearBlack` (threshold 0.05).
+ * Near-black colours (e.g. `#000000`) all but disappear on the ink row over the OLED-black ground;
+ * the row gives them a hairline border instead. Ports watchOS `isNearBlack` (threshold 0.05).
  */
 fun isNearBlack(rgb: Rgb): Boolean = relativeLuminance(rgb) < 0.05
 

@@ -32,13 +32,16 @@ import androidx.wear.compose.material3.SurfaceTransformation
 import androidx.wear.compose.material3.Text
 import com.iferoporefi.myloyaltycards.wear.R
 import com.iferoporefi.myloyaltycards.wear.data.WearCard
-import com.iferoporefi.myloyaltycards.wear.presentation.theme.CarbonSurface
+import com.iferoporefi.myloyaltycards.wear.presentation.theme.Cream
 import com.iferoporefi.myloyaltycards.wear.presentation.theme.FavoriteStarTint
+import com.iferoporefi.myloyaltycards.wear.presentation.theme.Hairline
+import com.iferoporefi.myloyaltycards.wear.presentation.theme.Ink
 
 /**
- * One card row, a faithful port of watchOS's `CardRowView` onto the Carbon surface: a colour
- * accent bar, an initials avatar in the brand/card colour with contrast-correct text, the card
- * name (truncated, never wrapped), and a favourite star when pinned.
+ * One card row, on the watch grammar (`cardi-watch-grammar.md` §5.3, §4.4, §7.2): an ink row on
+ * the black ground carrying a colour accent bar, an initials avatar in the brand/card colour with
+ * ink or cream initials by its luminance, the card name in cream (truncated, never wrapped), and a
+ * beam favourite star when pinned — no plate behind it. The M3 ripple is the press feedback (§3.1).
  *
  * Built on the Wear M3 [Card] so it gets, idiomatically and for free, the tap target, the
  * merged accessibility node, and — crucially — the [transformation] that makes the row scale and
@@ -65,12 +68,12 @@ fun CardRow(
 
     Card(
         onClick = onClick,
-        colors = CardDefaults.cardColors(containerColor = CarbonSurface),
+        colors = CardDefaults.cardColors(containerColor = Ink),
         shape = RoundedCornerShape(CardRowMetrics.cornerRadius),
-        // A near-black avatar (e.g. a `#000000` brand) all but vanishes on the dark row; a hairline
-        // keeps the row legible on OLED black, mirroring watchOS's near-black border.
+        // A near-black avatar (e.g. a `#000000` brand) all but vanishes on the ink row; the
+        // system's dark-outline hairline keeps the row legible on OLED black, as on watchOS.
         border = if (presentation.isNearBlackAvatar) {
-            BorderStroke(1.dp, Color.White.copy(alpha = 0.15f))
+            BorderStroke(1.dp, Hairline)
         } else {
             null
         },
@@ -105,7 +108,8 @@ fun CardRow(
             ) {
                 Text(
                     text = presentation.initials,
-                    color = if (presentation.useWhiteText) Color.White else Color.Black,
+                    // Light text below the 0.4 luminance line is cream, dark text above it is ink.
+                    color = if (presentation.useWhiteText) Cream else Ink,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
@@ -114,7 +118,7 @@ fun CardRow(
 
             Text(
                 text = card.name,
-                color = Color.White,
+                color = Cream,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
