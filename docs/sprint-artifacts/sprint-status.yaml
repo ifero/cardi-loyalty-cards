@@ -47,7 +47,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-01-03
-last_updated: 2026-10-30
+last_updated: 10-30-2026 16:32
 project: myLoyaltyCards
 project_key: NOKEY
 tracking_system: file-system
@@ -668,7 +668,7 @@ development_status:
   23-2-watchos-implementation: done # READY FOR REVIEW 2026-10-27 (uncommitted, awaiting ifero's review and the AC4 Apple Watch check). PICKED UP 2026-10-27 through bmad-build. REFINED 2026-10-25 through bmad-build, approved by ifero ("Approve and stop"); full spec kept at ~4,000 tokens by ifero's choice; decision 1: a tap no longer leaves the barcode screen, only the swipe and the back chevron; ends on a real Apple Watch (ifero), where the cream title and the grammar's §6a clock-strip measurement are checked; spec at docs/sprint-artifacts/stories/23-2-watchos-implementation.md
   23-3-wear-os-implementation: done # READY FOR REVIEW 2026-10-28. PICKED UP 2026-10-28 (bmad-build, branch feature/23-3-wear-os-implementation). REFINED 2026-10-25 through bmad-build, approved by ifero ("Approve and stop"); full spec kept at ~3,800 tokens by ifero's choice; decision 1: a tap no longer leaves the Wear barcode, as on watchOS; decision 2: NO WEAR OS DEVICE, so the real-device check and rotary on hardware are an ACCEPTED RISK, recorded in the story, not claimed; decision 3: 21-5 AC5 (the Wear store screenshots) stays open, this story clears only its palette blocker; spec at docs/sprint-artifacts/stories/23-3-wear-os-implementation.md
   23-4-watch-widget-and-complication: done # READY FOR REVIEW 2026-10-30. Decision 3 (ifero, 2026-10-30, mid-build): a tap on a family that names the top card opens its barcode (circular and no card open the list); the watch app also publishes topCardId. PICKED UP 2026-10-29 (bmad-build, branch feature/23-4-watch-widget-and-complication). REFINED 2026-10-25 through bmad-build, approved by ifero ("Approve and stop"); full spec kept at ~3,400 tokens by ifero's choice; decision 1: the full mark and a one-bar reduction (the middle bar, the beam crossing it) are rendered in all four families, full colour and tinted, and the build HALTS for ifero's pick; decision 2: the rectangular family has two lines, no store and no card number on the face; ends on ifero's Apple Watch, inline placed on a face; spec at docs/sprint-artifacts/stories/23-4-watch-widget-and-complication.md
-  epic-23-retrospective: optional
+  epic-23-retrospective: done
 
 # ============================================
 # ACTION ITEMS
@@ -826,7 +826,7 @@ action_items:
     epic: 22
     action: 'Stop recompiling the epic context in every story session (~78 min across Sprint 21): commit docs/sprint-artifacts/epic-*-context.md or cache it outside the worktree. (Retro P-6)'
     owner: 'Amelia'
-    status: open
+    status: done
     ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
   - id: 'epic-22-retro-item-12-reconcile-agents-md-sign-off-gate'
     epic: 22
@@ -834,3 +834,69 @@ action_items:
     owner: 'ifero'
     status: open
     ref: 'docs/sprint-artifacts/epic-22-retro-2026-10-22.md'
+  - id: 'epic-23-retro-item-1-wear-round-barcode-module-width'
+    epic: 23
+    action: 'Fix the Wear OS round barcode: on a 384 px round screen an EAN-13 draws at 1 px per module (95 px wide; square 3 px, watchOS 3-4 px), pre-existing since Epic 10 (BarcodeLayoutMetrics.kt 88-110 dp bar height inscribed with the title and value rows). Trade bar height for width on round until the narrowest element is at least 2 px, record module width per AVD in the device check, and test decodability with a scanner if one is available. (Retro V-1)'
+    owner: 'Amelia (ifero: priority)'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-23-retro-2026-10-30.md'
+  - id: 'epic-23-retro-item-2-record-apple-watch-accepted-risk'
+    epic: 23
+    action: "Record ifero's 2026-10-30 decision that the real-Apple-Watch pass (23.2 AC4, 23.4's Apple Watch list) is an ACCEPTED RISK, as 23-3 did for Wear: replace the 'pending, before merge' lines in cardi-watch-grammar.md (:369, :593-595, :795-796), the 23-2 tracker comment and the 23-2/23-4 Verification sections with the decision and its exposure list (cream title, 6a clock strip, crown detents, VoiceOver FNF 11, Always-On crown FNF 12, inline on a tinted face, vibrant, watchOS 10 tint path). (Retro V-2)"
+    owner: 'Amelia'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-23-retro-2026-10-30.md'
+  - id: 'epic-23-retro-item-3-gate-merge-on-hardware-acs'
+    epic: 23
+    action: "Gate the merge on hardware ACs: a PR whose 'before merge' AC box is unticked does not merge unless the spec records an accepted risk. The gate sits before the merge, because mark-story-done.yml flips the key to done after it regardless (#285 merged 9 minutes after opening with its Apple Watch box unticked). (Retro V-2)"
+    owner: 'Amelia (ifero approves)'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-23-retro-2026-10-30.md'
+  - id: 'epic-23-retro-item-4-pull-retro-items-into-sprints'
+    epic: 23
+    action: "At every roll-over, each open action_items entry is either placed in the next sprint's waves or re-parked with a written reason; apply it first when Sprint 23 is committed. None of Wave A's twelve items moved during Sprint 22 and the sprint repeated the failures they targeted. (Retro P-1)"
+    owner: 'ifero + Amelia'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-23-retro-2026-10-30.md'
+  - id: 'epic-23-retro-item-5-file-23-3-and-23-4-follow-ups'
+    epic: 23
+    action: "File the follow-up issues 23-3 and 23-4 never filed and link them from #286 and #287: 23-3 FNF 1-5 and its five 'Open, for ifero' items; 23-4 D1-D7 and SD1-SD3; plus this retro's B-3 rows (Wear pager key lambda without a bounds guard, re-sync skipped mid-scroll, widget reloaded on every upsert, no .privacySensitive() on card names). (Retro P-2, S-3, B-3)"
+    owner: 'Amelia'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-23-retro-2026-10-30.md'
+  - id: 'epic-23-retro-item-6-fix-watch-deep-link-handler'
+    epic: 23
+    action: "Fix the watch app's deep-link handler (CardListView.swift:620-645): handle cardi://watch explicitly so it pops to the card list (23-4 SD1, a warm app otherwise resumes on a barcode), and clear the parked pendingDeepLinkCardId on any other navigation so a late-arriving card cannot open unasked. (Retro B-1)"
+    owner: 'Amelia'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-23-retro-2026-10-30.md'
+  - id: 'epic-23-retro-item-7-reconcile-epic-23-docs'
+    epic: 23
+    action: "One docs reconciliation pass: docs/epics.md Epic 23 to the decisions (crown/rotary paging, no tap dismissal, the 1 s paged-use dwell, topCardId tap, the accepted risks; :4426 six surfaces, :4458 px vs dp, :4462 orange key, :4510 rotary injectable on API 34); the grammar's stale pending/unapplied/today lines and its Swift line references (cite symbols); and the stale comments in lottie/README.md:47, CardRowMetrics.kt:8-9, core/schemas/card.ts:70-76, ComplicationProvider.swift:9, AppLaunchScreen.tsx:143 and .agents/skills/native-watchos/SKILL.md:52. (Retro S-1, S-2)"
+    owner: 'Amelia'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-23-retro-2026-10-30.md'
+  - id: 'epic-23-retro-item-8-ifero-rulings-watch-deviations'
+    epic: 23
+    action: "Rule on the watch deviations nobody has decided: 23-3's sort picker keeping M3 pill rows against the grammar's mixed-radii ban, its beam selected label, and the paged-to error card with no name; whether paging counting as use (1 s dwell) feeding the complication's top card is intended; and whether card names on the face need .privacySensitive(). (Retro S-3, B-2, B-3)"
+    owner: 'ifero'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-23-retro-2026-10-30.md'
+  - id: 'epic-23-retro-item-9-watch-consolidation-chore'
+    epic: 23
+    action: "Watch consolidation chore: generate WatchColor, CarbonTheme and ComplicationColor from tokens/color.json and delete the widget's dormant WidgetCardPalette and BrandLogoCatalog; one JSON paging case table read by the Swift harness and BarcodePagingTest; new watch contracts are executed tests by default and text pins go through one shared helper (six comment strippers today); run watch-ios/UITests on a simulator in CI or the nightly and add one Compose UI test for the Wear pager. (Retro A-1, A-2, A-3, V-3)"
+    owner: 'Amelia'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-23-retro-2026-10-30.md'
+  - id: 'epic-23-retro-item-10-worktree-environment-fixes'
+    epic: 23
+    action: "Environment: restore _bmad/config.user.toml in the renamed cardi-loyalty-cards main checkout (23-3 and 23-4 both halted on it), set the worktree branch prefix so sessions start on feature/ rather than claude/ (renamed in 4 of 4 sessions), and fix the watch suite's verification-command template (missing --testPathIgnorePatterns=/node_modules/ in two specs). (Retro P-4)"
+    owner: 'ifero (config) + Amelia'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-23-retro-2026-10-30.md'
+  - id: 'epic-23-retro-item-11-shared-contract-amendment-rule'
+    epic: 23
+    action: "Add a shared-contract rule to _bmad/custom/bmad-build.toml, in the same change as epic-22-retro items 5 and 6: a story that amends the watch grammar or the design system lists the refined-but-unbuilt specs citing the changed section, and each is re-checked before it starts (23-2 amended grammar 8 for crown paging after 23-3's spec froze, and 23-3 halted on the conflict). (Retro P-3)"
+    owner: 'Amelia (ifero approves)'
+    status: open
+    ref: 'docs/sprint-artifacts/epic-23-retro-2026-10-30.md'
