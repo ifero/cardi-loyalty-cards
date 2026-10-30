@@ -648,6 +648,23 @@ needed. The test change alters the reviewed diff, so the code loop goes round ag
 - Any round-7 finding that arrives after the commit is reported to ifero and is not applied
   silently.
 
+**Code review, round 7 (after the commit): CHANGES_REQUESTED, 2 findings, both verified.** ifero
+approved fixing them in a follow-up commit on the PR. Both were test-pin gaps, not defects in the
+shipped code.
+
+1. **The writers' `persistCards` call was not pinned at either call site.** The reader shows a name,
+   and attaches an id, only when the `cards` snapshot holds the card. So dropping that write
+   would leave the face on "Open app" and the tap on the list, with every test green.
+   - The call-site regex now starts at `ComplicationSharedState.persistCards(...)`, and asserts it
+     occurs once per site.
+2. **The disc's text fallback was not tied to its `else`.** Deleting `} else {` would draw the
+   app name beside the mark instead of in its place.
+   - The disc regex now spans `} else { Text(... app_name ...)`.
+   - The reviewer's optional point is done too: the tint regex now spans `markArtwork`'s watchOS 10
+     `else` branch.
+   - Each mutant fails the suite: `persistCards` dropped at either site, and either `else` dropped.
+     The suite is back to 29/29 once restored.
+
 ### Matrix test audit, decision 3 (step 3, second pass)
 
 The watch suites ran 182 tests and all passed, including the Swift harness.
