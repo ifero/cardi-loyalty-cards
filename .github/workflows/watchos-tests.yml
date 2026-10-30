@@ -18,6 +18,9 @@ on:
       # comment beside `wear:catalogue:check` in ci-quality-gates.yml.)
       - 'catalogue/**'
       - 'targets/watch-widget/**'
+      # The widget's and watch app's colour pins read the tokens, so a token-only PR must run them.
+      - 'tokens/color.json'
+      - 'shared/theme/tokens.generated.ts'
       - 'watch-ios/**'
       - 'ios/**'
       - 'app.json'
@@ -37,6 +40,8 @@ on:
       # Generator inputs too — see the pull_request filter above for why.
       - 'catalogue/**'
       - 'targets/watch-widget/**'
+      - 'tokens/color.json'
+      - 'shared/theme/tokens.generated.ts'
       - 'watch-ios/**'
       - 'ios/**'
       - 'app.json'
