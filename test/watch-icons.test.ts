@@ -2,7 +2,13 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { COLOR_TYPE_RGB, decodeScanlines, readHeader, type Header } from './png-scanlines';
+import {
+  COLOR_TYPE_RGB,
+  COLOR_TYPE_RGBA,
+  decodeScanlines,
+  readHeader,
+  type Header
+} from './png-scanlines';
 import { IDENTITY_COLORS } from '../shared/theme/tokens.generated';
 
 /**
@@ -32,6 +38,7 @@ const WATCH_APP_ICON = 'targets/watch/AppIcon.png';
 const WATCH_APPICONSET = 'targets/watch/Assets.xcassets/AppIcon.appiconset';
 const WIDGET_APPICONSET = 'targets/watch-widget/Assets.xcassets/AppIcon.appiconset';
 const OPEN_APP_ICON = 'targets/watch-widget/Assets.xcassets/OpenAppIcon.imageset';
+const OPEN_APP_ICON_GLYPH = 'targets/watch-widget/Assets.xcassets/OpenAppIconGlyph.imageset';
 
 /** Every artefact this story added, with the size it must be. */
 const GENERATED: ReadonlyArray<readonly [string, number]> = [
@@ -40,6 +47,17 @@ const GENERATED: ReadonlyArray<readonly [string, number]> = [
   [`${OPEN_APP_ICON}/open-app-icon@1x.png`, 64],
   [`${OPEN_APP_ICON}/open-app-icon@2x.png`, 128],
   [`${OPEN_APP_ICON}/open-app-icon@3x.png`, 192]
+];
+
+/**
+ * The complication's inline glyph (Story 23.4): the same mark, TRANSPARENT and framed on the mark's
+ * own bounding box. `accessoryInline` draws its image as a template from the alpha channel, so it
+ * must carry one, at `OpenAppIcon`'s sizes and under the same 76 px downsample.
+ */
+const GLYPH: ReadonlyArray<readonly [string, number]> = [
+  [`${OPEN_APP_ICON_GLYPH}/open-app-icon-glyph@1x.png`, 64],
+  [`${OPEN_APP_ICON_GLYPH}/open-app-icon-glyph@2x.png`, 128],
+  [`${OPEN_APP_ICON_GLYPH}/open-app-icon-glyph@3x.png`, 192]
 ];
 
 const header = (relative: string): Header => readHeader(read(relative));
@@ -125,9 +143,9 @@ describe('watchOS icon artefacts (Story 21.3)', () => {
     });
 
     it.each(GENERATED)('%s carries NO alpha channel', (relative) => {
-      // The App Store rejects an app icon with an alpha channel, and the complication
-      // artwork fills its slot edge-to-edge and lets the system mask it — a transparent
-      // field would show the watch face through the mark. Both want colour type 2.
+      // The App Store rejects an app icon with an alpha channel. The complication clips its
+      // artwork to a round disc itself, so the artwork's ink field is the disc, and a
+      // transparent field would show the watch face through it. Both want colour type 2.
       expect(header(relative).colorType).toBe(COLOR_TYPE_RGB);
     });
 
@@ -178,6 +196,80 @@ describe('watchOS icon artefacts (Story 21.3)', () => {
       // above right up to the moment it clipped. This fails first, while there is still
       // something to discuss.
       expect(farthestInkedRadiusFraction(WATCH_APP_ICON)).toBeLessThan(0.85);
+    });
+  });
+
+  describe('the inline glyph is the mark as a silhouette (Story 23.4)', () => {
+    /** The inked box of an RGBA artefact: every pixel whose alpha is not zero. */
+    const inkedBox = (relative: string) => {
+      const { width: size, channels, pixels } = decodeScanlines(read(relative), relative);
+      let x0 = size;
+      let y0 = size;
+      let x1 = -1;
+      let y1 = -1;
+      for (let y = 0; y < size; y += 1) {
+        for (let x = 0; x < size; x += 1) {
+          if (at(pixels, (y * size + x) * channels + 3) === 0) continue;
+          x0 = Math.min(x0, x);
+          y0 = Math.min(y0, y);
+          x1 = Math.max(x1, x);
+          y1 = Math.max(y1, y);
+        }
+      }
+      return { size, x0, y0, x1, y1 };
+    };
+
+    it.each(GLYPH)('%s is a %ipx square with an alpha channel', (relative, size) => {
+      const png = header(relative);
+      expect(png.width).toBe(size);
+      expect(png.height).toBe(size);
+      expect(png.colorType).toBe(COLOR_TYPE_RGBA);
+    });
+
+    it.each(GLYPH)('%s is not clipped by its tight frame', (relative) => {
+      // Framed on the mark's own box with a one-unit margin, so no inked pixel touches an edge.
+      const { size, x0, y0, x1, y1 } = inkedBox(relative);
+      expect(Math.min(x0, y0)).toBeGreaterThan(0);
+      expect(Math.max(x1, y1)).toBeLessThan(size - 1);
+    });
+
+    it.each(GLYPH)('%s fills its height, which the padded icon canvas would halve', (relative) => {
+      // watchOS sizes the inline image to the line of text, so the mark's height is the glyph's.
+      const { size, y0, y1 } = inkedBox(relative);
+      expect((y1 - y0 + 1) / size).toBeGreaterThan(0.9);
+    });
+
+    it.each(GLYPH)('%s is listed in the generator', (relative) => {
+      expect(readText('scripts/build-brand-icons.mjs')).toContain(`'${relative}'`);
+    });
+  });
+
+  describe('only the chosen mark ships (Story 23.4, decision 1)', () => {
+    it('keeps the full mark and its glyph as the widget’s only mark imagesets', () => {
+      // ifero picked the full mark over the one-bar reduction (2026-10-29). The reduction was
+      // rendered for the comparison alone; its imagesets and generator entries left with the pick.
+      const sets = fs
+        .readdirSync(path.join(repoRoot, 'targets/watch-widget/Assets.xcassets'))
+        .filter((name) => name.startsWith('OpenAppIcon'))
+        .sort();
+      expect(sets).toEqual(['OpenAppIcon.imageset', 'OpenAppIconGlyph.imageset']);
+      expect(readText('scripts/build-brand-icons.mjs')).not.toMatch(/ONE_BAR|OneBar|one-bar/);
+    });
+
+    it.each<readonly [string, ReadonlyArray<readonly [string, number]>]>([
+      [OPEN_APP_ICON, GENERATED.filter(([relative]) => relative.startsWith(`${OPEN_APP_ICON}/`))],
+      [OPEN_APP_ICON_GLYPH, GLYPH]
+    ])('%s/Contents.json names exactly the generated PNGs, at 1x, 2x and 3x', (set, table) => {
+      // `actool` passes a mistyped filename with a warning only, and the slot then has no image.
+      const { images } = JSON.parse(readText(`${set}/Contents.json`)) as {
+        images: ReadonlyArray<{ filename: string; scale: string }>;
+      };
+      expect(images.map(({ filename, scale }) => ({ filename, scale }))).toEqual(
+        table.map(([relative], index) => ({
+          filename: path.basename(relative),
+          scale: `${index + 1}x`
+        }))
+      );
     });
   });
 
