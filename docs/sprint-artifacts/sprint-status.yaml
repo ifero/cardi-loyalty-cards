@@ -612,12 +612,13 @@ development_status:
   # an epic around it, which left 21-23 referencing artefacts from nowhere.
   # Artefacts: docs/design/cardi/ (system doc, 41 frames, 9 prompt sets, tools/)
   # and scripts/build-brand-icons.mjs (8 artefacts, gated by `yarn icons:check`).
-  epic-20: done
+  epic-20: in-progress # REOPENED 2026-10-30 for 20-6, at ifero's direction.
   20-1-cardi-design-system: done
   20-2-nine-screen-patterns-drawn: done
   20-3-the-mark-35-grave-contained: done
   20-4-one-generator-every-icon: done
   20-5-design-frames-reproducible-source: done
+  20-6-tessera-mark: backlog # ADDED 2026-10-30 by hand, at ifero's direction: adopt the Tessera mark (3C, chosen 2026-10-30 over the 20-3 barcode stem) across every generated asset, the wordmark's ì and Welcome brand moment D. Reference: docs/design/cardi/logo-concepts/final/.
   epic-20-retrospective: optional
 
   # --- Epic 21: Cardì Rebrand — Native Identity ------------------------------
