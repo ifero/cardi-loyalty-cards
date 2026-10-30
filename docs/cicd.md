@@ -105,6 +105,9 @@ regenerate would match nothing and skip the drift check entirely (Story 16.29):
   `phone-wear-module-tests.yml` prebuilds on PRs but `--platform android`, where an iOS mod never
   runs.
 - `fastlane/Fastfile`
+- `tokens/color.json`, `shared/theme/tokens.generated.ts` — the widget's and the watch app's colour
+  pins read the identity colours from the tokens, and `jest.config.js` ignores `targets/watch/`
+  outside this workflow, so a token-only PR must still run it (Story 23.4).
 
 What it runs:
 

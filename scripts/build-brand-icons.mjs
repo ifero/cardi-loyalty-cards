@@ -17,6 +17,9 @@
  *   targets/watch/AppIcon.png    1024   opaque; the watchOS app icon PREBUILD reads (Story 21.3)
  *   targets/watch-widget/…/OpenAppIcon.imageset/open-app-icon@{1,2,3}x.png
  *                          64/128/192   opaque; the artwork the COMPLICATION draws (Story 21.3)
+ *   targets/watch-widget/…/OpenAppIconGlyph.imageset/open-app-icon-glyph@{1,2,3}x.png
+ *                          64/128/192   transparent, framed on the mark's own box; the
+ *                                       complication's INLINE glyph (Story 23.4)
  *   watch-android/…/mipmap-{h,x,xx,xxx}dpi/ic_launcher_foreground.png
  *                  162/216/324/432   Wear OS adaptive foreground, transparent (Story 21.4)
  *   watch-android/…/mipmap-{h,x,xx,xxx}dpi/ic_launcher_monochrome.png
@@ -139,6 +142,16 @@ const ANDROID_SCALE = Math.min(1, (SAFE_FRACTION * CANVAS) / 2 / B.radius);
 const originX = B.cx - CANVAS / 2;
 const originY = B.cy - CANVAS / 2;
 
+/**
+ * A square framed on the mark's own bounding box, for a raster that must not carry the icon
+ * canvas's padding: the complication's inline glyph, which watchOS sizes to the line of text, so
+ * the canvas's padding would shrink the mark to about half that height. The margin is one unit,
+ * enough that the antialiased edge is not cut at the 64 px size.
+ */
+const TIGHT_MARGIN = 1;
+const TIGHT_SIDE = Math.max(B.x1 - B.x0, B.y1 - B.y0) + 2 * TIGHT_MARGIN;
+const TIGHT_FRAME = { x: B.cx - TIGHT_SIDE / 2, y: B.cy - TIGHT_SIDE / 2, side: TIGHT_SIDE };
+
 /** Scaling a rounded rect about a point yields another rounded rect, exactly. */
 const scaleRect = (rect, s) => ({
   x: B.cx + (rect.x - B.cx) * s,
@@ -207,17 +220,23 @@ const coverage = (distance) => Math.min(1, Math.max(0, 0.5 - distance));
  * `field` is the opaque background, or null for transparent. `stem` and `accent`
  * are the two ink colours; passing the same value for both is what produces the
  * Android themed layer, where there is no hue left to tell them apart.
+ *
+ * `tight` frames the square on the mark's own bounding box instead of the padded
+ * icon canvas — see {@link TIGHT_FRAME}.
+ * Unlike `buildSvg`'s `tight` (the exact, non-square box, no margin), this is a centred SQUARE on
+ * that box with a one-unit margin.
  */
-const render = ({ size, scale, field, stem, accent }) => {
+const render = ({ size, scale, field, stem, accent, tight = false }) => {
   const { bars, beam, pivot } = shapes(scale);
   const px = Buffer.alloc(size * size * 4);
-  const perPixel = CANVAS / size; // canvas units per device pixel
+  const frame = tight ? TIGHT_FRAME : { x: originX, y: originY, side: CANVAS };
+  const perPixel = frame.side / size; // canvas units per device pixel
 
   for (let y = 0; y < size; y += 1) {
     for (let x = 0; x < size; x += 1) {
       // Sample at the pixel CENTRE, in canvas units offset to the mark's frame.
-      const sx = (x + 0.5) * perPixel + originX;
-      const sy = (y + 0.5) * perPixel + originY;
+      const sx = (x + 0.5) * perPixel + frame.x;
+      const sy = (y + 0.5) * perPixel + frame.y;
       // The SDF is in canvas units; AA wants it in device pixels.
       const toPixels = 1 / perPixel;
 
@@ -517,9 +536,10 @@ const PNGS = [
   ['targets/watch/AppIcon.png', { size: 1024, field: INK, ...FULL }],
 
   // The complication's artwork — what `WatchComplicationWidget.swift` renders on
-  // the WATCH FACE, not an app icon. Opaque, because the widget fills the slot
-  // edge-to-edge and lets the system mask it; a transparent field would show the
-  // watch face through the mark.
+  // the WATCH FACE, not an app icon. Opaque, because the widget clips the artwork
+  // to a round disc itself, and the artwork's own ink field is that disc. A
+  // transparent field would show the watch face through the disc, and on a tinted
+  // face the ink field's luminance is what falls away.
   //
   // The three scales stay 64/128/192. `ComplicationImage.swift` downsamples to
   // 38pt x 2 = 76 px because `accessoryCorner` rejects anything larger with
@@ -536,6 +556,27 @@ const PNGS = [
   [
     'targets/watch-widget/Assets.xcassets/OpenAppIcon.imageset/open-app-icon@3x.png',
     { size: 192, field: INK, ...FULL }
+  ],
+
+  // The complication's INLINE glyph (Story 23.4): the same mark, TRANSPARENT and framed tight.
+  //
+  // `accessoryInline` draws its image as a template, from the alpha channel alone, on every face
+  // — so the opaque artwork above renders there as a solid square, measured on the watchOS 26.5
+  // simulator. Transparent, the alpha IS the mark, and the template reads as its silhouette: the
+  // beam still crosses the bars and extends past them on both sides, the argument `MONOCHROME`
+  // makes for Android. The beam keeps its colour for any surface that draws the image untinted.
+  // Same sizes as `OpenAppIcon`, under the same 76 px downsample.
+  [
+    'targets/watch-widget/Assets.xcassets/OpenAppIconGlyph.imageset/open-app-icon-glyph@1x.png',
+    { size: 64, field: null, tight: true, ...FULL }
+  ],
+  [
+    'targets/watch-widget/Assets.xcassets/OpenAppIconGlyph.imageset/open-app-icon-glyph@2x.png',
+    { size: 128, field: null, tight: true, ...FULL }
+  ],
+  [
+    'targets/watch-widget/Assets.xcassets/OpenAppIconGlyph.imageset/open-app-icon-glyph@3x.png',
+    { size: 192, field: null, tight: true, ...FULL }
   ],
 
   // The widget extension's app icon.

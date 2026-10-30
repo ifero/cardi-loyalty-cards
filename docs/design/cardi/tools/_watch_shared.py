@@ -54,18 +54,62 @@ def stem(w=12, fill="var(--cream)"):
             f'height="{BASELINE - STEM_TOP:.1f}" rx="{w / 2:.1f}" fill="{fill}" />')
 
 
-def mark(px, stem_fill="var(--cream)", beam_fill="var(--beam)"):
-    """The standalone ì mark, centred in a square box `px` on a side.
+# ---- the SHIPPED mark: three bars, the beam crossing them ------------------
+# The standalone mark is NOT the ì above. `stem()` + `beam()` draw the ì inside the
+# wordmark's live type; the mark that ships as the app icon and in every complication
+# family is variant C of cardi-icon-explore.html: the stem is a barcode of three bars
+# and the beam crosses them high. Story 23.4 chose it for the complication over a
+# one-bar reduction (ifero, 2026-10-29). Every value below is re-stated from
+# scripts/build-brand-icons.mjs, the generator of record for the shipped artwork, so a
+# frame shows the pixels `OpenAppIcon` and `OpenAppIconGlyph` actually carry.
+ICON_BEAM_LENGTH, ICON_BEAM_WEIGHT, ICON_BEAM_CY = 52, 9, 30
+ICON_BARS = [            # (x, width, corner radius), from STEM_TOP to BASELINE
+    (CX - 11, 4.5, 2.2),
+    (CX - 4.5, 9, 4.5),
+    (CX + 7, 4, 2),
+]
+ICON_CANVAS = 100        # the icon canvas, in em units: the mark at ~76 % of the frame
+TIGHT_MARGIN = 1         # the inline glyph's frame: the mark's own box plus one unit
 
-    Content spans y 0..70 (accent top to baseline) and x 0..30, centre (15, 35).
-    The box is square so the mark drops straight into a circular mask without
-    the caller computing anything.
+
+def _icon_bounds():
+    """The mark's bounding box, as the generator's `bounds()` computes it."""
+    import math
+
+    a = math.radians(ANGLE)
+    hw = ICON_BEAM_LENGTH / 2 * math.cos(a) + ICON_BEAM_WEIGHT / 2 * math.sin(a)
+    hh = ICON_BEAM_LENGTH / 2 * math.sin(a) + ICON_BEAM_WEIGHT / 2 * math.cos(a)
+    x0 = min(CX - hw, ICON_BARS[0][0])
+    x1 = max(CX + hw, ICON_BARS[2][0] + ICON_BARS[2][1])
+    y0 = min(ICON_BEAM_CY - hh, STEM_TOP)
+    y1 = max(ICON_BEAM_CY + hh, BASELINE)
+    return x0, y0, x1, y1
+
+
+def mark(px, tight=False, bar_fill="var(--white)", beam_fill="var(--beam)"):
+    """The shipped mark, centred in a square box `px` on a side.
+
+    By default the box is the icon canvas, framed exactly as `OpenAppIcon` is: drop it
+    into a round disc of the same size and the mark sits where the artwork puts it, at
+    0.672 of the radius and inside the inscribed square (§7.2) -- the canvas carries the
+    padding, so the caller adds none. `tight=True` frames the mark's own box instead, as
+    `OpenAppIconGlyph` does for the inline family, which sizes its image to the line.
+
+    The bars are white because the shipped artwork's are (the generator's `FULL`). Pass
+    one colour for both fills to draw the silhouette a tinted or template slot shows.
     """
-    side = 92.0
-    vb = f"{CX - side / 2:.1f} {35.0 - side / 2:.1f} {side:.0f} {side:.0f}"
+    x0, y0, x1, y1 = _icon_bounds()
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    side = (max(x1 - x0, y1 - y0) + 2 * TIGHT_MARGIN) if tight else ICON_CANVAS
+    vb = f"{cx - side / 2:.2f} {cy - side / 2:.2f} {side:.2f} {side:.2f}"
+    bars = "".join(
+        f'<rect x="{x:.2f}" y="{STEM_TOP:.1f}" width="{w}" '
+        f'height="{BASELINE - STEM_TOP:.1f}" rx="{r}" fill="{bar_fill}" />'
+        for x, w, r in ICON_BARS)
     return (f'<svg viewBox="{vb}" width="{px}" height="{px}" aria-hidden="true" '
-            f'style="display:block;overflow:visible">'
-            f'{stem(fill=stem_fill)}{beam(fill=beam_fill)}</svg>')
+            f'style="display:block">{bars}'
+            f'{beam(length=ICON_BEAM_LENGTH, weight=ICON_BEAM_WEIGHT, cy=ICON_BEAM_CY, fill=beam_fill)}'
+            f'</svg>')
 
 
 def wordglyph(stem_fill="currentColor", beam_fill="var(--beam)"):

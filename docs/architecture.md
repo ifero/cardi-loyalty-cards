@@ -1197,9 +1197,14 @@ watch-android/scripts/generate-catalogue.kts # Reads JSON → Brands.kt
 
 **watchOS Complication:**
 
-- Type: Simple icon complication (graphic circular)
-- Tap action: Launch app to card list
-- No dynamic data displayed (keeps implementation simple)
+- Type: a non-configurable WidgetKit widget in all four accessory families (circular, corner,
+  rectangular, inline), drawn to `docs/design/cardi/cardi-watch-grammar.md` §10 (Story 23.4)
+- Data: the Cardì mark and the top card's name, read from the App Group snapshot the watch app
+  writes after every sync; with no card, the mark and the open-app strings
+- Tap action: the families that name a card (corner, rectangular, inline) open the app on that
+  card's barcode (`cardi://watch-card?id=<id>`, the watch app writing the top card's id beside its
+  name); circular, which names none, and every family with no card open the card list
+  (`cardi://watch`)
 
 **Wear OS Tile:**
 

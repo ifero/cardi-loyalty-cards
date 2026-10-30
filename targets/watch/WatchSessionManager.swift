@@ -290,9 +290,10 @@ final class WatchSessionManager: NSObject, WCSessionDelegate {
     try? context.save()
     ComplicationSharedState.persistCards(cards)
 
-    let topCardName = WatchCard.sortedForDisplay(cards).first?.name
+    let topCard = WatchCard.sortedForDisplay(cards).first
 
-    ComplicationSharedState.persistTopCardName(topCardName)
+    ComplicationSharedState.persistTopCardName(topCard?.name)
+    ComplicationSharedState.persistTopCardId(topCard?.id)
     ComplicationReloader.reloadAllActiveComplications()
   }
 }

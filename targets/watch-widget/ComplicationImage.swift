@@ -8,12 +8,12 @@ import UIKit
 /// size and rejects anything over the per-family budget with
 /// `WidgetArchiver.ArchivingError.imageTooLarge` — which renders the slot as a
 /// grey placeholder. `.frame`/`.scaledToFit` only change layout, not the
-/// archived bitmap, so the pixels themselves must be shrunk. ~44pt is safe
-/// across accessory families (circular ≈ 81.6pt, corner ≈ 46pt budgets).
+/// archived bitmap, so the pixels themselves must be shrunk.
+///
+/// The budget is 76 px: `maxPoint` 38 × `scale` 2. It is the shipped value, and
+/// it archives in all four families, `accessoryCorner` included, the tightest
+/// of them; a larger image fails there first. Design to 76 px; do not raise it.
 enum ComplicationImage {
-  // 38pt × 2 = 76px keeps the rasterized image under the strictest accessory
-  // budget (accessoryCorner ≈ 81.6px); larger values pass circular but fail
-  // corner with imageTooLarge.
   static func make(_ assetName: String, maxPoint: CGFloat = 38, scale: CGFloat = 2) -> Image? {
     guard
       let downsampled = UIImage(named: assetName)?.complicationDownsampled(maxPoint: maxPoint, scale: scale)

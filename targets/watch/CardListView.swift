@@ -265,9 +265,10 @@ final class CardStore: ObservableObject {
     UserDefaults.standard.removeObject(forKey: "watch.cards")
     ComplicationSharedState.persistCards(decoded)
 
-    let topCardName = WatchCard.sortedForDisplay(decoded).first?.name
+    let topCard = WatchCard.sortedForDisplay(decoded).first
 
-    ComplicationSharedState.persistTopCardName(topCardName)
+    ComplicationSharedState.persistTopCardName(topCard?.name)
+    ComplicationSharedState.persistTopCardId(topCard?.id)
 
     ComplicationReloader.reloadAllActiveComplications()
   }
