@@ -2,7 +2,7 @@
 title: 'Story 23.4: The watch widget and complication — the four families on the watch grammar, with the top card'
 type: 'feature'
 created: '2026-10-25'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'dcfd8051bca13e963bd5ddbc7ae7a0b2c07a6a79'
 route: 'dispatch'
 review_loop_iteration: 1
