@@ -268,6 +268,10 @@ colour, the fallback: a value that cannot be resolved (in `parseHexColor`, in `m
 card row) now takes **azure `#0C84CC`**, the phone's `DEFAULT_CARD_COLOR` and Wear's
 `DEFAULT_CARD_ACCENT`, where it took SwiftUI's `.gray`.
 
+✅ **The widget.** Story 21.2a also replaced the widget column above: `WidgetCardPalette.swift`
+resolves the five keys to the five Cardì hexes, and `core/wear-sync-contract.test.ts` pins them.
+No complication family draws a card colour since Story 23.4 (§10), so the palette is dormant there.
+
 ### 4.3 `orange` goes — the value, not the key
 
 The system bans orange by name: _"Coral, salmon, terracotta and orange are banned from this system
@@ -850,8 +854,8 @@ edit the generator and re-run it.
 
 ## 10. The complication — four families, one 76 px budget
 
-`WatchComplicationWidget.swift:89-94` declares **all four** accessory families, so all four are
-designed. (`ComplicationProvider.swift` declares none — it is App-Group state persistence, not a
+`WatchComplicationWidget.swift` declares **all four** accessory families, so all four are designed.
+(`ComplicationProvider.swift` declares none — it is the App-Group snapshot the widget reads, not a
 widget.)
 
 ### The budget is a hard gate, not a guideline
@@ -861,53 +865,143 @@ raster image's **native** pixel size and rejects anything over the per-family bu
 `imageTooLarge` — which renders the slot as a **grey placeholder**. `.frame` and `.scaledToFit`
 change layout, not the archived bitmap, so **they do not help**.
 
-> ⚠️ **Do not derive a looser budget from the source comment.** It states the `accessoryCorner`
+> ✅ **The source comment is reconciled (Story 23.4).** It used to state the `accessoryCorner`
 > ceiling two ways — `≈ 46 pt` on one line and `≈ 81.6 px` three lines below — and those do not
-> reconcile at ×2. **76 px is the shipped, working value; design to it.** Flagged for 23.4 to
-> reconcile the comment; no design here depends on which reading is right, because 76 is under both.
+> reconcile at ×2. It now states the budget once: **76 px**, `maxPoint` 38 × `scale` 2, which
+> archives in all four families, `accessoryCorner` included, the tightest of them. **Design to
+> 76 px; do not raise it.** Both of the widget's images, the mark and the inline glyph, take it.
 
-### ⚠️ These four are a BEHAVIOUR CHANGE, not a re-skin
+### ✅ These four were a BEHAVIOUR CHANGE, not a re-skin — applied (Story 23.4)
 
 Every other shipped-versus-decided gap in this document is flagged as a behaviour change, and this
-one is the largest. **The shipped complication is an "open the app" button and nothing more.**
-`WatchComplicationWidget.swift`'s own header says so: _"There is intentionally NO configuration /
-card selection… The card-specific infrastructure (App Group snapshot, BrandLogoCatalog,
-WidgetCardPalette) is retained but dormant."_ `targets/watch/README.md` adds: _"Nothing in the
-extension reads any of it today."_
+one was the largest. **Before Story 23.4 the complication was an "open the app" button and nothing
+more.** Its own header said so — _"There is intentionally NO configuration / card selection… The
+card-specific infrastructure (App Group snapshot, BrandLogoCatalog, WidgetCardPalette) is retained
+but dormant"_ — and `targets/watch/README.md` added _"Nothing in the extension reads any of it
+today."_ This document named two consequences for 23.4, neither of them styling. Both are met:
 
-Two consequences for **Story 23.4**, neither of them styling:
+1. **The consumer is wired.** The producer already ran: `ComplicationSharedState` persists
+   `topCardName`, `hasCards` and the `cards` snapshot on every sync (`ComplicationProvider.swift`),
+   from both `CardListView.swift` and `WatchSessionManager.swift`. The writer's one change is the
+   top card's id, `topCardId`, for the tap (decision 3, below). Each site now writes the cards, then
+   the top card's name and its id, and one
+   `ComplicationReloader.reloadAllActiveComplications()` follows those writes. The widget's
+   `ComplicationSnapshot` reads those four keys under the writer's own suite, on **every** timeline
+   request. It takes the name only when `hasCards` is set and the name is in the `cards` snapshot,
+   so a stale name is never shown. The policy stays `.never`: the watch app's existing reload calls
+   drive the refresh, and nothing on the face changes with the time. The watch app's deep-link
+   route is unchanged.
+2. **The corner arc is `.widgetLabel`**, new code in the widget: the card's name, in cream. The
+   truncation is the system's.
 
-1. **The producer side already runs; the consumer side does not.** `ComplicationSharedState`
-   **persists `topCardName` on every sync** — `ComplicationProvider.swift:20-31`, written from
-   both `CardListView.swift:270` and `WatchSessionManager.swift:295`. The data is in the App Group
-   today. The widget simply never reads it, and its `TimelineProvider` emits a single static entry
-   with `policy: .never`. Making these designs real is **wiring a consumer and a reload policy**,
-   not reactivating dead plumbing.
-2. **`accessoryCorner`'s text arc needs an API the target does not use.** The curved label is
-   `.widgetLabel`, and it appears **nowhere** in either watch target. It is new code, not a
-   modifier on an existing view.
+The complication stays **non-configurable** — a `StaticConfiguration` with no card selection — so
+there is nothing to misconfigure. The card it names is the watch app's top card by
+`sortedForDisplay` (favourites first, then most used), whatever order the list is sorted in.
 
-**This does not change the designs** — it changes the estimate. Design the four families as below;
-budget 23.4 for behaviour, and expect the `accessoryCorner` arc to be the piece that surprises.
+### The mark — the full mark ships (ifero, 2026-10-29)
+
+The frames before Story 23.4 drew a word-form ì — one cream stem and a floating tick. That is the
+wordmark's glyph, a stand-in for the mark, and it is not what ships. The epic left the choice
+between the full mark and a reduction to be made against a rendered complication, so 23.4 rendered
+two candidates in all four families, full colour and tinted, at 40 mm (SE 3, the smallest size the
+simulator offers) and 46 mm (Series 11), on the watchOS 26.5 simulator, with the top card
+"Esselunga":
+
+- **the full mark**, Story 21.3's `OpenAppIcon`: three bars, the beam crossing them;
+- **a reduction**: one bar with the beam crossing it — the middle, widest bar at its own width,
+  height and position, and the beam unchanged.
+
+**ifero chose the full mark.** The reduction was dropped and does not ship.
+
+- Both candidates measured **0.679** of the circle's radius at @3x (0.672 on the 1024 icon, as
+  21.3 measured). The beam's tip, which both keep, is the farthest inked point, so the reduction
+  bought no room.
+- In the 40 mm corner disc the full mark's bars start to merge. That was accepted.
+
+The artwork comes from `scripts/build-brand-icons.mjs` and from nowhere else, and `yarn icons:check`
+gates it: `OpenAppIcon` (opaque, the mark on ink, 64/128/192 px, sizes that must not grow) for every
+disc, and `OpenAppIconGlyph` for the inline family (below).
 
 ### The four designs
 
 The complication has **one job**: get you into the wallet in one tap. It is not a data readout.
 
-| family                     | what it is                                 | design                                                                                                                                                                                               |
-| -------------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`accessoryCircular`**    | a circle on the face                       | **the ì mark alone**, beam on ink, filling the inscribed square of the circle (§7.2). No text — at this size a word is a smudge                                                                      |
-| **`accessoryCorner`**      | a small circle plus a curved text arc      | the **same ì mark** in the circle; the arc carries the **top card's name**, truncated. The tightest image budget of the four, so the mark must be legible at 76 px and is therefore the mark alone   |
-| **`accessoryRectangular`** | three lines of content                     | line 1 the app name in `label-bold`; line 2 the **top card's name**; line 3 its store, dimmed. The only family with room for a brand mark beside the text — 30 pt circle, same avatar rules          |
-| **`accessoryInline`**      | **one row of text plus an optional image** | the ì as the image, the **top card's name** as the text. Apple's own definition of the family — _"a flat widget that contains a single row of text and an optional image"_ — is the whole constraint |
+**The tap (decision 3, ifero, 2026-10-30).** The families that name a card (corner, rectangular
+and inline) open the app on **that card's barcode**, with the card list beneath it. Circular, which
+draws only the mark and names no card, opens the **card list**, as every family does with no card.
 
-**Colour.** Watch faces render complications in a **tinted** mode where the system recolours
+- The URL is `cardi://watch-card?id=<id>`, the route the watch app's `CardListView` already handles
+  (`WatchComplicationDeepLink`, then the barcode pager). For circular, and with no card, it is
+  `cardi://watch`. It is set once, on the entry view, so no family sets its own.
+- The id is `watch.complication.topCardId`, which the watch app writes beside `topCardName`. The
+  widget carries it only when the `cards` snapshot holds a card with **that id and that name**, so a
+  tap never opens a card other than the one named. Matching on the id keeps two cards with the same
+  name apart.
+- An App Group written before the id was published holds the name but no id. Until the watch app
+  next writes, the face shows the name and the tap opens the list.
+- A card removed before the tap is not opened: the app's route waits for a card with that id, so
+  the list stays on screen.
+
+| family                     | what it is                                 | design                                                                                                                                                                                                                                                                                                |
+| -------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`accessoryCircular`**    | a circle on the face                       | **the mark alone**, beam on ink, in the inscribed square of a round disc (§7.2). The artwork's own canvas puts it there, so the disc adds no reduction. No text — at this size a word is a smudge                                                                                                     |
+| **`accessoryCorner`**      | a small circle plus a curved text arc      | the **same mark** in the disc; the arc carries the **top card's name** in cream, truncated by the system with "…". The tightest image budget of the four, so the disc carries the mark alone                                                                                                          |
+| **`accessoryRectangular`** | the mark beside **two lines**              | the mark in a **30 pt round disc** — "same avatar rules" means the Cardì mark, not the card's brand logo — beside the app name "CARDÌ" (beam, 10 pt, 600, uppercase, tracked 0.06 em) over the **top card's name** (cream, 15 pt, 600). **No third line**: no store and no card number reach the face |
+| **`accessoryInline`**      | **one row of text plus an optional image** | the mark's **glyph** as the image, the **top card's name** as the text. Apple's own definition of the family — _"a flat widget that contains a single row of text and an optional image"_ — is the whole constraint                                                                                   |
+
+**Two lines, not three (decision 2, ifero, 2026-10-25).** The rectangular family shows the mark,
+the app name and the card's name. This section's first draft gave it a third line, the store
+dimmed, and the frames drew a card number there too; neither joins the snapshot or reaches the face.
+
+**No card.** With `hasCards` false, or no snapshot yet, each family falls back to the mark and the
+open-app strings:
+
+- circular and corner: the mark, and the corner has no arc;
+- rectangular: the disc beside "Open app", today's open-app title, on **one line**. ifero declined
+  "CARDÌ" over "Open app" (2026-10-29): the app name labels a card's name, and there is none;
+- inline: the glyph and "Open Cardì".
+
+**The inline glyph, `OpenAppIconGlyph`.** `accessoryInline` draws its image as a **template**, from
+the alpha channel alone, on every face, so the opaque `OpenAppIcon` rendered there as a solid square.
+The glyph is the same full mark, **transparent and framed tight** on the mark's own box. It ships
+at 64/128/192 px and is downsampled at runtime to the 76 px budget, as the mark is. Framed tight,
+it fills the line's height, which the icon
+canvas's padding would halve. As a template it reads as the mark's silhouette, because the beam
+crosses the bars and extends past them on both sides.
+
+**Colour.** Ink `#181824` grounds the widget (`containerBackground`), and the disc is the artwork's
+own ink field. Beam `#FCCC0C` is the mark's beam and the "CARDÌ" label. Cream `#F0F0E8` is the
+rectangular family's text (the card's name, or "Open app") and the corner arc. The inline family's
+text carries no colour of its own and takes the face's style. **No system fill stands in for
+ink**: the old `.fill.tertiary` ground is gone.
+
+**Tinted.** Watch faces render complications in a **tinted** mode where the system recolours
 content, so no design may depend on its own hue. Every one of the four must read as **shape** when
-the colour is taken away — which the ì mark does, and which a beam-versus-ink distinction does not.
-Draw them in beam on ink; verify them desaturated.
+the colour is taken away — which the mark does, and which a beam-versus-ink distinction does not.
+Draw them in beam on ink; verify them desaturated. Verified on accented faces (Infograph and
+Modular, tinted red) on the watchOS 26.5 simulator, at 40 mm and 46 mm, for circular, corner and
+rectangular; inline as the last bullet says:
 
-**The fallback tint `#1A73E8`** (`WatchComplicationWidget.swift:75`) is the pre-Cardì blue and goes
-with the rest of §4.2.
+- The mark is opaque artwork, ink field included, so it must not be tinted as one block. On
+  watchOS 11 and later it takes `.widgetAccentedRenderingMode(.accentedDesaturated)`, and its
+  luminance becomes the tint's alpha. That was seen in circular and rectangular: the bars and the
+  beam carry the face's tint and the ink field falls away. The corner is different: on the tinted
+  Infograph face the system draws the corner's mark desaturated, white and grey on a dark grey disc,
+  not in the tint. It still reads by its shape. On watchOS 10 the mark takes `.widgetAccentable()`
+  instead, and that path is **unverified**: no watchOS 10 runtime was available.
+- The "CARDÌ" label is accentable and takes the tint. The card's name and the corner arc stay in
+  the primary group, which the face draws in white.
+- The inline family draws its glyph as a template, a one-colour silhouette. That was seen on the
+  Utility face at both sizes. Inline on a **tinted** face was **not captured**: the simulator's
+  Utility face keeps its complications full colour whatever colour it is set to, and choosing
+  another face's colour needs the crown. A tinted face recolours the same silhouette, so it should
+  read the same, but this is unverified.
+
+**Asset missing.** If the mark fails to load, each family falls back to text. Circular and corner
+show the app name where the disc was. Rectangular drops the disc and keeps its own text ("Open
+app" alone with no card). Inline shows its text alone. The mark is never replaced by a stand-in
+glyph: the pre-Cardì fallback, `creditcard.fill` in
+`#1A73E8`, is gone with the rest of §4.2, and so is `.renderingMode(.original)`.
 
 ---
 
@@ -968,6 +1062,24 @@ keyed on that card with the policy's delay, every per-card effect kept off the p
 reduce-motion crossfade, the TalkBack actions and their strings, no tap handler and no Cardì role,
 and a return to the list only when the card on screen has gone; and the theme KDoc naming this
 document. Each assertion was seen to fail under a mutation of the source it reads.
+
+✅ **The widget and complication (Story 23.4)** carry their rows in
+`targets/watch/__tests__/watch-complication-contract.test.ts` and `test/watch-icons.test.ts`: the
+four families, corner included, each routed to its §10 design; the App Group read under the writer's
+own suite and keys, and a Swift harness that runs the watch app's real writer and then the widget's
+real reader and provider over an in-memory store; the tap (decision 3): the id written beside the
+name at both call sites, `.widgetURL` set once on the entry view with circular sent to the card
+list, and, in the harness, the tap's URL
+parsed by the watch app's own `WatchComplicationDeepLink` to the named card's id (two cards sharing
+a name included), with `cardi://watch` when there is no card or the stored id names another card,
+and the app's route opening no card it does not hold; the snapshot read on every timeline request
+under `.never`;
+`.widgetLabel` on the corner, in cream; the rectangular family's two lines and its one-line no-card
+fallback; the inline glyph; ink, beam and cream each defined once, and every foreground one of the
+three; `#1A73E8`, `creditcard.fill`, `.renderingMode(.original)`, `.fill.tertiary` and the old
+24 pt rounded icon absent; no store, brand or card number decoded; the 76 px budget stated once and
+taken by both images; and the full mark and its glyph as the only mark imagesets in the widget's
+catalogue, each generated. Each assertion was seen to fail under a mutation of the source it reads.
 
 ---
 
