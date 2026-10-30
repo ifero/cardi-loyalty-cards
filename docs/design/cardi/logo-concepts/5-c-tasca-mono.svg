@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Cardì — C, monochrome">
+  <defs>
+    <mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#000"/>
+      <path d="M676 304 H420 Q304 304 304 420 V604 Q304 720 420 720 H676" fill="none" stroke="#fff" stroke-width="128" stroke-linecap="round"/>
+      <rect x="456" y="404" width="360" height="226" rx="34" fill="#fff" stroke="#000" stroke-width="24" transform="rotate(-14 636 517)"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#23402F" mask="url(#m)"/>
+</svg>

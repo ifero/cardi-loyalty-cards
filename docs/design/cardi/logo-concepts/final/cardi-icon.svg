@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Cardì">
+  <rect width="1024" height="1024" fill="#181824"/>
+  <rect x="380" y="187" width="264" height="166" rx="28" fill="#FCCC0C" transform="rotate(35 512 270)"/>
+  <rect x="407" y="249" width="26" height="78" rx="3" fill="#181824" transform="rotate(35 512 270)"/>
+  <rect x="451" y="249" width="40" height="78" rx="3" fill="#181824" transform="rotate(35 512 270)"/>
+  <rect x="509" y="249" width="18" height="78" rx="3" fill="#181824" transform="rotate(35 512 270)"/>
+  <rect x="545" y="249" width="32" height="78" rx="3" fill="#181824" transform="rotate(35 512 270)"/>
+  <rect x="595" y="249" width="22" height="78" rx="3" fill="#181824" transform="rotate(35 512 270)"/>
+  <rect x="456" y="462" width="156" height="400" rx="78" fill="#F0F0E8"/>
+</svg>

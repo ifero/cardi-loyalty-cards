@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Cardì — Ventaglio, monochrome">
+  <defs>
+    <mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#000"/>
+      <g transform="translate(146 50)" stroke="#000" stroke-width="22" stroke-linejoin="round" fill="#fff">
+        <rect x="200" y="420" width="500" height="316" rx="42" transform="rotate(-48 250 700)"/>
+        <rect x="200" y="420" width="500" height="316" rx="42" transform="rotate(-32 250 700)"/>
+        <rect x="200" y="420" width="500" height="316" rx="42" transform="rotate(-16 250 700)"/>
+        <rect x="200" y="420" width="500" height="316" rx="42"/>
+        <g fill="#000" stroke="none">
+          <rect x="256" y="610" width="16" height="78" rx="3"/>
+          <rect x="284" y="610" width="30" height="78" rx="3"/>
+          <rect x="326" y="610" width="12" height="78" rx="3"/>
+          <rect x="350" y="610" width="26" height="78" rx="3"/>
+          <rect x="388" y="610" width="12" height="78" rx="3"/>
+          <rect x="412" y="610" width="22" height="78" rx="3"/>
+        </g>
+      </g>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#23402F" mask="url(#m)"/>
+</svg>

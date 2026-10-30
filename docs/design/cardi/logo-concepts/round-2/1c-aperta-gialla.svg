@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Cardì — Scatola C, Aperta gialla">
+  <rect width="1024" height="1024" fill="#FCCC0C"/>
+  <rect x="381" y="250" width="262" height="420" rx="38" fill="#FCCC0C" stroke="#FCCC0C" stroke-width="22" stroke-linejoin="round" transform="rotate(-24 512 900)"/>
+  <rect x="381" y="250" width="262" height="420" rx="38" fill="#0C843C" transform="rotate(-24 512 900)"/>
+  <rect x="381" y="210" width="262" height="420" rx="38" fill="#FCCC0C" stroke="#FCCC0C" stroke-width="22" stroke-linejoin="round" transform="rotate(-9 512 900)"/>
+  <rect x="381" y="210" width="262" height="420" rx="38" fill="#0C84CC" transform="rotate(-9 512 900)"/>
+  <rect x="381" y="236" width="262" height="420" rx="38" fill="#FCCC0C" stroke="#FCCC0C" stroke-width="22" stroke-linejoin="round" transform="rotate(14 512 900)"/>
+  <rect x="381" y="236" width="262" height="420" rx="38" fill="#E42424" transform="rotate(14 512 900)"/>
+  <rect x="381" y="176" width="262" height="460" rx="38" fill="#FCCC0C" stroke="#FCCC0C" stroke-width="22" stroke-linejoin="round" transform="rotate(3 512 900)"/>
+  <rect x="381" y="176" width="262" height="460" rx="38" fill="#F0F0E8" transform="rotate(3 512 900)"/>
+  <rect x="431" y="240" width="14" height="96" rx="3" fill="#181824" transform="rotate(3 512 900)"/>
+  <rect x="457" y="240" width="26" height="96" rx="3" fill="#181824" transform="rotate(3 512 900)"/>
+  <rect x="495" y="240" width="10" height="96" rx="3" fill="#181824" transform="rotate(3 512 900)"/>
+  <rect x="517" y="240" width="22" height="96" rx="3" fill="#181824" transform="rotate(3 512 900)"/>
+  <rect x="551" y="240" width="10" height="96" rx="3" fill="#181824" transform="rotate(3 512 900)"/>
+  <rect x="573" y="240" width="22" height="96" rx="3" fill="#181824" transform="rotate(3 512 900)"/>
+  <path d="M236.5 536 L107.5 428 Q86 410 113.3 403.6 L178.7 388.4 Q206 382 227.5 399.9 L390.5 536.1 Q412 554 384 554 L286 554 Q258 554 236.5 536Z" fill="#FCCC0C" stroke="#FCCC0C" stroke-width="30" stroke-linejoin="round"/>
+  <path d="M236.5 536 L107.5 428 Q86 410 113.3 403.6 L178.7 388.4 Q206 382 227.5 399.9 L390.5 536.1 Q412 554 384 554 L286 554 Q258 554 236.5 536Z" fill="#181824"/>
+  <path d="M787.5 536 L916.5 428 Q938 410 910.7 403.6 L845.3 388.4 Q818 382 796.5 399.9 L633.5 536.1 Q612 554 640 554 L738 554 Q766 554 787.5 536Z" fill="#FCCC0C" stroke="#FCCC0C" stroke-width="30" stroke-linejoin="round"/>
+  <path d="M787.5 536 L916.5 428 Q938 410 910.7 403.6 L845.3 388.4 Q818 382 796.5 399.9 L633.5 536.1 Q612 554 640 554 L738 554 Q766 554 787.5 536Z" fill="#181824"/>
+  <path d="M278 560 L746 560 Q762 560 762 576 L762 784 Q762 828 718 828 L306 828 Q262 828 262 784 L262 576 Q262 560 278 560Z" fill="#FCCC0C" stroke="#FCCC0C" stroke-width="30" stroke-linejoin="round"/>
+  <path d="M278 560 L746 560 Q762 560 762 576 L762 784 Q762 828 718 828 L306 828 Q262 828 262 784 L262 576 Q262 560 278 560Z" fill="#181824"/>
+</svg>

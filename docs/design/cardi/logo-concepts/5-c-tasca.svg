@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Cardì — C">
+  <rect width="1024" height="1024" fill="#181824"/>
+  <path d="M676 304 H420 Q304 304 304 420 V604 Q304 720 420 720 H676" fill="none" stroke="#F0F0E8" stroke-width="128" stroke-linecap="round"/>
+  <rect x="456" y="404" width="360" height="226" rx="34" fill="#FCCC0C" stroke="#181824" stroke-width="24" transform="rotate(-14 636 517)"/>
+</svg>
