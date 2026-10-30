@@ -77,8 +77,10 @@ describe('watch complication contract', () => {
   });
 
   it('publishes the top card’s id beside its name at both call sites (decision 3)', () => {
-    // Both sites take ONE card from `sortedForDisplay` and write its name and its id, so the id the
-    // widget opens is the id of the card it names; the one reload follows both writes.
+    // Both sites write the cards snapshot first (the reader shows a name, and attaches an id, only
+    // when that snapshot holds the card), then take ONE card from `sortedForDisplay` and write its
+    // name and its id, so the id the widget opens is the id of the card it names; the one reload
+    // follows the writes.
     for (const [file, cards] of [
       [cardListViewPath, 'decoded'],
       [watchSessionPath, 'cards']
@@ -87,12 +89,14 @@ describe('watch complication contract', () => {
 
       expect(source).toMatch(
         new RegExp(
-          `let topCard = WatchCard\\.sortedForDisplay\\(${cards}\\)\\.first\\s+` +
+          `ComplicationSharedState\\.persistCards\\(${cards}\\)\\s+` +
+            `let topCard = WatchCard\\.sortedForDisplay\\(${cards}\\)\\.first\\s+` +
             'ComplicationSharedState\\.persistTopCardName\\(topCard\\?\\.name\\)\\s+' +
             'ComplicationSharedState\\.persistTopCardId\\(topCard\\?\\.id\\)\\s+' +
             'ComplicationReloader\\.reloadAllActiveComplications\\(\\)'
         )
       );
+      expect(source.split('ComplicationSharedState.persistCards(').length - 1).toBe(1);
       expect(source.split('ComplicationSharedState.persistTopCardId(').length - 1).toBe(1);
       // The name-only write it replaces.
       expect(source).not.toContain('let topCardName = WatchCard.sortedForDisplay(');
@@ -324,9 +328,9 @@ describe('watch complication contract', () => {
   it('draws circular and every disc as the mark clipped round, falling back to text', () => {
     const disc = swiftDeclaration(widgetCode(), 'private var disc: some View {', widgetLabel);
 
-    expect(disc).toMatch(/if let mark \{\s+markArtwork\(mark\)\s+\.clipShape\(Circle\(\)\)/);
-    expect(disc).toContain(
-      'Text(verbatim: WatchWidgetL10n.string("watch.widget.complication.app_name"))'
+    // The app name stands IN PLACE of the mark when the asset fails to load, never beside it.
+    expect(disc).toMatch(
+      /if let mark \{\s+markArtwork\(mark\)\s+\.clipShape\(Circle\(\)\)\s+\} else \{\s+Text\(verbatim: WatchWidgetL10n\.string\("watch\.widget\.complication\.app_name"\)\)/
     );
   });
 
@@ -407,8 +411,9 @@ describe('watch complication contract', () => {
     );
 
     // Luminance becomes the tint's alpha, so the ink field falls away and the bars and beam stay.
+    // On watchOS 10 the other branch joins the accent group instead (unverified on a device).
     expect(artwork).toMatch(
-      /if #available\(watchOS 11\.0, \*\) \{\s+image\s+\.resizable\(\)\s+\.widgetAccentedRenderingMode\(\.accentedDesaturated\)/
+      /if #available\(watchOS 11\.0, \*\) \{\s+image\s+\.resizable\(\)\s+\.widgetAccentedRenderingMode\(\.accentedDesaturated\)\s+\.scaledToFit\(\)\s+\} else \{\s+image\s+\.resizable\(\)\s+\.scaledToFit\(\)\s+\.widgetAccentable\(\)\s+\}/
     );
     expect(widgetCode().split('.widgetAccentable()').length - 1).toBe(2);
   });
