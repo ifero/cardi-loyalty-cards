@@ -13,6 +13,7 @@ struct ComplicationCardSnapshot: Codable, Sendable {
 enum ComplicationSharedState {
   static let suiteName = "group.com.iferoporefi.myloyaltycards.watch-complication"
   static let topCardNameKey = "watch.complication.topCardName"
+  static let topCardIdKey = "watch.complication.topCardId"
   static let hasCardsKey = "watch.complication.hasCards"
   static let updatedAtKey = "watch.complication.updatedAt"
   static let cardsKey = "watch.complication.cards"
@@ -29,6 +30,19 @@ enum ComplicationSharedState {
       defaults.set(normalizedName, forKey: topCardNameKey)
     } else {
       defaults.removeObject(forKey: topCardNameKey)
+    }
+  }
+
+  /// The top card's id, written beside its name so a tap on the complication opens that card
+  /// (Story 23.4, decision 3). Removed when there is no card, as the name is.
+  static func persistTopCardId(_ topCardId: String?) {
+    let defaults = UserDefaults(suiteName: suiteName) ?? .standard
+    let normalizedId = topCardId?.trimmingCharacters(in: .whitespacesAndNewlines)
+
+    if let normalizedId, !normalizedId.isEmpty {
+      defaults.set(normalizedId, forKey: topCardIdKey)
+    } else {
+      defaults.removeObject(forKey: topCardIdKey)
     }
   }
 

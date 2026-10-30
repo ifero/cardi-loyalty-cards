@@ -10,3 +10,4 @@
 "watch.widget.complication.inline.card_format" = "Card: %@";
 "watch.widget.complication.recommendation.open_app" = "Open app";
 "watch.widget.complication.recommendation.show_format" = "Show %@";
+"watch.widget.complication.app_name" = "Cardì";
