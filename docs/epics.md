@@ -3870,9 +3870,10 @@ barcode. The reference is `docs/design/cardi/logo-concepts/final/`, with the rou
 - The drawn ì in the wordmark (`scripts/lib/brand-wordmark.mjs`) takes the same card as its
   accent, scaled to its 12-unit stem with the same five bars, and everything drawn from the
   wordmark is regenerated.
-- Brand moment D on Welcome becomes "scan, then settle" for this mark: the stem stands alone; the
-  beam cuts on at the card's left edge at 0.12 s and sweeps at a steady pace to 0.50 s while the
-  card is drawn in behind it; the card turns to 38.5° and settles at 35° by 0.84 s. The length is
+- Brand moment D on Welcome becomes "scan, then settle" for this mark: the stem stands alone; a
+  horizontal beam as wide as the card cuts on above it at 0.12 s and sweeps it top to bottom at a
+  steady pace to 0.50 s while the card is drawn in behind it, as the design system's motion rule
+  asks (ifero, 2026-10-30); the card turns to 38.5° and settles at 35° by 0.84 s. The length is
   unchanged, so the Welcome drawing keeps its timing; the file stays inside the Lottie subset
   both platforms draw, and `build-onboarding-lottie.py --check` passes.
 - The design system's mark section and the brand docs describe the new mark, and every test that
