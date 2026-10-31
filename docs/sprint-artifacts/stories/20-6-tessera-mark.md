@@ -2,7 +2,7 @@
 title: 'The Tessera mark'
 type: 'feature'
 created: '2026-10-30'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 2
 baseline_commit: '5ff53defa6481c963b088c2f1f7515ae31eb684e'
