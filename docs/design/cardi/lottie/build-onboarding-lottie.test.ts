@@ -316,6 +316,36 @@ const staticMark = () => {
   };
 };
 
+describe('every committed onboarding Lottie', () => {
+  const DIR = path.dirname(INTRO);
+  const files = fs.readdirSync(DIR).filter((name) => name.endsWith('.json'));
+
+  /** Every animated property in a Lottie document, with its JSON path. */
+  const animatedProperties = (node: unknown, at: string): [string, Keyframe[]][] => {
+    if (Array.isArray(node))
+      return node.flatMap((item, n) => animatedProperties(item, `${at}[${n}]`));
+    if (node === null || typeof node !== 'object') return [];
+    const record = node as Record<string, unknown>;
+    const own: [string, Keyframe[]][] =
+      record.a === 1 && Array.isArray(record.k) ? [[at, record.k as Keyframe[]]] : [];
+    return own.concat(
+      Object.entries(record).flatMap(([key, value]) => animatedProperties(value, `${at}.${key}`))
+    );
+  };
+
+  it('ends every held track on a held keyframe', () => {
+    // lottie-android drops a last keyframe that is not held (KeyframesParser.setEndFrames), so the
+    // hold before it never ends there; lottie-iOS honours it, which hid the bug on iOS.
+    expect(files.length).toBeGreaterThan(0);
+    const unended = files.flatMap((name) =>
+      animatedProperties(JSON.parse(fs.readFileSync(path.join(DIR, name), 'utf8')), name)
+        .filter(([, keys]) => keys.some((key) => key.h === 1) && keys[keys.length - 1]?.h !== 1)
+        .map(([where]) => where)
+    );
+    expect(unended).toEqual([]);
+  });
+});
+
 describe('brand moment D, cardi-mark-intro.json (Story 20.6)', () => {
   const mark = intro.layers[0]?.shapes.find((shape) => shape.nm === 'mark');
   const beam = child(mark, 'beam');

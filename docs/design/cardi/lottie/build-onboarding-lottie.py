@@ -130,10 +130,12 @@ def animated(points, hold=False, linear=False):
     keys = []
     for n, (pct, value) in enumerate(points):
         key = {"t": frame(pct), "s": value if isinstance(value, list) else [value]}
-        if n < len(points) - 1:
-            if hold:
-                key["h"] = 1
-            elif linear:
+        if hold:
+            # The last key too: lottie-android drops a last keyframe that is not held, so the
+            # hold before it would never end.
+            key["h"] = 1
+        elif n < len(points) - 1:
+            if linear:
                 key["o"], key["i"] = LINEAR_OUT, LINEAR_IN
             else:
                 key["o"], key["i"] = EASE_OUT, EASE_IN

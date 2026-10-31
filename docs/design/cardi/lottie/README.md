@@ -42,7 +42,7 @@ The generator uses only features that lottie-ios and lottie-android both draw:
 - groups, and rect, ellipse and path shapes;
 - solid fills, and strokes, dashed or not;
 - trim paths and group transforms;
-- eased, linear and hold keyframes.
+- eased, linear and hold keyframes; a held track ends on a held keyframe, because lottie-android drops an unheld last one.
 
 It uses no masks, mattes, expressions, images or text.
 
