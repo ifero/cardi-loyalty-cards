@@ -12,4 +12,5 @@ _Cardì logo concepts_ Design canvas.
 | Chosen | `final/`       | **3C Tessera.** A cream capsule stem under a beam ID-1 card at 35° (grave), its five-bar barcode set low under a plain band, so it reads as a loyalty card rather than a bank card. The wordmark's ì carries the same card. |
 
 `final/` is the reference the shipped assets are generated to match, not their source:
-`scripts/build-brand-icons.mjs` and `scripts/lib/brand-wordmark.mjs` own the geometry.
+`scripts/lib/brand-mark.mjs` owns the geometry, and `scripts/build-brand-icons.mjs` and
+`scripts/lib/brand-wordmark.mjs` draw from it (Story 20.6).
