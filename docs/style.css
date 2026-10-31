@@ -165,10 +165,10 @@ html[data-active-language='it'] .lang-en {
   /* The glyph's share of the badge — derived, not tuned. The mark's viewBox is tight to
      the artwork, so this fraction IS the optical padding, and the fraction it should take
      is the one the shipped app icon already uses: on `cardi-icon.svg`'s 1024 canvas the
-     artwork measures 489.04 × 600.06, i.e. 0.586 of the height (the width follows from
-     the mark's fixed 0.8150 aspect). Matching it makes this badge and the home-screen
-     icon the same lockup at two sizes rather than two guesses. */
-  --badge-glyph: 0.586;
+     Tessera mark's box measures 311.47 × 735.70, i.e. 0.718 of the height (the width
+     follows from the mark's fixed 0.4234 aspect). Matching it makes this badge and the
+     home-screen icon the same lockup at two sizes rather than two guesses. */
+  --badge-glyph: 0.718;
 
   display: grid;
   place-items: center;

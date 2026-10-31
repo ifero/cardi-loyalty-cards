@@ -410,7 +410,7 @@ describe('watch complication contract', () => {
       widgetLabel
     );
 
-    // Luminance becomes the tint's alpha, so the ink field falls away and the bars and beam stay.
+    // Luminance becomes the tint's alpha, so the ink field falls away and the stem and card stay.
     // On watchOS 10 the other branch joins the accent group instead (unverified on a device).
     expect(artwork).toMatch(
       /if #available\(watchOS 11\.0, \*\) \{\s+image\s+\.resizable\(\)\s+\.widgetAccentedRenderingMode\(\.accentedDesaturated\)\s+\.scaledToFit\(\)\s+\} else \{\s+image\s+\.resizable\(\)\s+\.scaledToFit\(\)\s+\.widgetAccentable\(\)\s+\}/

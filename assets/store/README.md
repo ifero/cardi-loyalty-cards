@@ -39,8 +39,10 @@ without opening them:
 
 - the feature graphic's raster showed the wordmark **clipped** by the artwork beside it, letterboxed
   inside transparent bands, and carried an alpha channel the slot forbids;
-- the `-alpha` icon was a **transparent** export. The mark's stem is white, so Play would have
-  composited white bars onto its own white surface and shown an empty tile.
+- the `-alpha` icon was a **transparent** export. That mark's stem was white, so Play would have
+  composited white bars onto its own white surface and shown an empty tile. The Tessera mark
+  (Story 20.6) would fail in part: its beam card would stay visible, but its cream stem would all
+  but vanish on Play's white surface, and its bar holes would show that surface through the card.
 
 Generating them costs almost nothing — the icons are two rows in the generator's asset table, and
 the banners share its PNG encoder — and `yarn icons:check` already runs in `.husky/pre-push` and in

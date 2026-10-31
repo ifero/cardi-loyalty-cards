@@ -1,22 +1,22 @@
+import { ANGLE, CARD, STEM, cardBars, cardCorners } from './brand-mark.mjs';
+
 /**
  * The Cardì WORDMARK: `Card` in Space Grotesk Bold, converted to outlines, plus
  * the drawn `ì` that replaces the letter.
  *
- * ⚠️ THE MARK AND THE WORDMARK ARE DIFFERENT ARTEFACTS. The icon mark's stem is a
- * BARCODE — three bars — crossed by a 52-unit beam; the wordmark's is a single
- * 12-unit stem under a CONTAINED 24-unit accent that stays inside the letter's own
- * advance. `docs/design/cardi/cardi-design-system.md` states the rule the two
- * share: "the stem varies with available space (single inside the word, barcode
- * inside the mark), because the beam is what joins them." Every number below is
- * `docs/design/cardi/tools/mark_locked.py` — the generator of record for the
- * locked mark, gated by `yarn frames:check` — rather than a second set that
- * happens to look the same.
+ * THE ì CARRIES THE MARK'S OWN CARD (Story 20.6). Its stem is the word's single
+ * 12-unit bar, from the x-height to the baseline, and its accent is the icon's
+ * card scaled to that stem — the icon's 156-unit stem becomes 12 — with the same
+ * five bars cut through it. The card, its bars and its angle come from
+ * `brand-mark.mjs`, the one definition the icon generator reads too, so the word
+ * and the icon cannot carry two different cards. Only its PLACE is the word's
+ * own: see {@link WORD_CARD_GAP}.
  *
  * ⛔ THE ACCENT DESCENDS. `rotate(35)` is a grave and spells Cardì; `rotate(-35)`
  * rises and spells a different word. SVG's y-axis points down, so the POSITIVE
  * angle is the correct one. Every exploration sheet in `docs/design/cardi/frames/`
- * was drawn wrong until 2026-08-25. The angle is a parameter here rather than a
- * literal precisely so it comes from the one place that owns it.
+ * was drawn wrong until 2026-08-25. The angle comes from `brand-mark.mjs` rather
+ * than a literal here precisely so it comes from the one place that owns it.
  *
  * ⚠️ `vertical-align: -0.30em` DOES NOT APPLY HERE, and copying it in would do
  * nothing. That correction exists because an inline `<svg>` in a line of HTML
@@ -45,9 +45,8 @@
  * bundling the typefaces for the APP is Story 21.6.
  *
  * The extracted em geometry agrees with `docs/design/cardi/`, measured rather than
- * assumed: the drawn `x` is 49.6 units tall (the `XHEIGHT` the mark uses), `d`
- * reaches 70.0 (its `BASELINE`), and `r`'s x-height shoulder lands exactly on
- * `STEM_TOP`.
+ * assumed: the drawn `x` is 49.6 units tall ({@link X_HEIGHT}), `d` reaches 70.0
+ * above the baseline, and `r`'s x-height shoulder lands exactly on the ì's stem top.
  */
 
 /**
@@ -101,42 +100,50 @@ export const KERNING = { rd: -1.8 };
  */
 export const LETTER_SPACING = -3;
 
-/**
- * The drawn `ì`, from `mark_locked.py`: 35°, contained, round caps — "ifero's
- * choice, carried over exactly".
- *
- * `length` is `LEN_WORD`, deliberately NOT the mark's `LEN_MARK` of 52: contained
- * means the accent stays inside the letter's own 30-unit advance, which is also
- * what keeps it clear of the `d` in front of it.
- */
-export const WORD_ACCENT = { length: 24, weight: 9, centreY: 10.5 };
+/** Space Grotesk Bold's drawn x-height, in em units: the height of the ì's stem. */
+export const X_HEIGHT = 49.6;
+
+/** The drawn ì's advance, in em units: the room the stem is centred in. */
+export const MARK_ADVANCE = 30;
 
 /** `stem_single(w=12)`: one rounded bar from the x-height to the baseline. */
 export const WORD_STEM_WIDTH = 12;
 
+/**
+ * The space between the card and the stem's top, in em units, measured from the
+ * card's TURNED BOX — the corners of its sharp rectangle once turned, which the
+ * rounded card never quite reaches. The word's own value, from the reference
+ * wordmark (`docs/design/cardi/logo-concepts/final/wordmark-*.svg`): a quarter of
+ * the stem's width, where the icon's card sits about a third of its stem's width
+ * clear.
+ */
+export const WORD_CARD_GAP = 3;
+
 const radians = (degrees) => (degrees * Math.PI) / 180;
+
+/** @typedef {{x: number, y: number, width: number, height: number, radius: number}} WordRect */
 
 /**
  * Position `Cardì` on a baseline, in em units.
  *
- * Everything is returned in the caller's own em space — it owns `baseline`,
- * `xHeight`, `markAdvance` and `angle`, so there is no second copy of those
- * numbers here to drift from the mark's.
+ * The caller owns only `baseline`. The x-height and the ì's advance are the
+ * word's own metrics, above; the card and its angle are the mark's, from
+ * `brand-mark.mjs`.
  *
- * @param {{baseline: number, xHeight: number, markAdvance: number, angle: number}} em
+ * @param {{baseline: number}} em
  * @returns {{
  *   letters: {glyph: string, path: string, dx: number}[],
- *   stem: {x: number, y: number, width: number, height: number, radius: number},
- *   beam: {x: number, y: number, width: number, height: number, radius: number,
- *          pivotX: number, pivotY: number, angle: number},
+ *   stem: WordRect,
+ *   card: {rect: WordRect, pivot: {x: number, y: number}, angle: number, bars: WordRect[]},
  *   advance: number,
  *   ink: {x0: number, y0: number, x1: number, y1: number}
- * }} `ink` is the drawn extent, which is what to centre on. It is WIDER than
- *   `advance` on neither side here — the contained accent is the reason — but it
- *   is narrower on both, because `C` has a left side bearing and the `ì` stops
- *   short of its advance.
+ * }} The card's `rect` and `bars` are LEVEL: turn them together by `angle` about
+ *   `pivot`, the card's centre. The bars are holes through the card, never paint.
+ *   `ink` is the drawn extent, which is what to centre on. It is WIDER than
+ *   `advance` on neither side, but it is narrower on both, because `C` has a left
+ *   side bearing and the turned card stops short of the ì's advance.
  */
-export const layoutWordmark = ({ baseline, xHeight, markAdvance, angle }) => {
+export const layoutWordmark = ({ baseline }) => {
   const letters = [];
   let pen = 0;
   let previous = null;
@@ -148,57 +155,78 @@ export const layoutWordmark = ({ baseline, xHeight, markAdvance, angle }) => {
   }
   const markX = pen + LETTER_SPACING;
 
-  const centreX = markX + markAdvance / 2;
+  const centreX = markX + MARK_ADVANCE / 2;
   const stem = {
     x: centreX - WORD_STEM_WIDTH / 2,
-    y: baseline - xHeight,
+    y: baseline - X_HEIGHT,
     width: WORD_STEM_WIDTH,
-    height: xHeight,
+    height: X_HEIGHT,
     radius: WORD_STEM_WIDTH / 2
   };
-  // The accent's centre is quoted in `mark_locked.py`'s 1em box, whose baseline
-  // is at 70; re-express it against whatever baseline this caller uses.
-  const beamCentreY = baseline - (70 - WORD_ACCENT.centreY);
-  const beam = {
-    x: centreX - WORD_ACCENT.length / 2,
-    y: beamCentreY - WORD_ACCENT.weight / 2,
-    width: WORD_ACCENT.length,
-    height: WORD_ACCENT.weight,
-    radius: WORD_ACCENT.weight / 2,
-    pivotX: centreX,
-    pivotY: beamCentreY,
-    angle
+
+  // The icon's card, scaled by the ratio of the two stems. Across, it keeps the
+  // icon's offset from the stem: 22 of the icon's 156 stem units left of the stem's
+  // centre. Down, its turned box sits WORD_CARD_GAP above the stem's top.
+  const k = WORD_STEM_WIDTH / STEM.w;
+  const width = CARD.w * k;
+  const height = CARD.h * k;
+  const pivot = {
+    x: centreX + (CARD.cx - (STEM.x + STEM.w / 2)) * k,
+    y: stem.y - WORD_CARD_GAP - Math.max(...cardCorners(k).map((corner) => corner.y))
+  };
+  const rect = {
+    x: pivot.x - width / 2,
+    y: pivot.y - height / 2,
+    width,
+    height,
+    radius: CARD.r * k
+  };
+  const card = {
+    rect,
+    pivot,
+    angle: ANGLE,
+    bars: cardBars(k).map((bar) => ({
+      x: rect.x + bar.x,
+      y: rect.y + bar.y,
+      width: bar.w,
+      height: bar.h,
+      radius: bar.r
+    }))
   };
 
-  // The accent's rotated extent, closed-form — no need to flatten it to find out
-  // how far the accent reaches. It is also the number that proves "contained":
-  // it must stay inside the mark's own advance.
+  // The card's DRAWN extent once turned, closed-form — no need to flatten it to
+  // find out how far it reaches. A rounded rect is its inner rect, shorter than it
+  // by one corner radius at each end, swept by a disc of that radius; its bounding
+  // box is the turned inner rect plus that radius on each axis, NOT the turned
+  // corners of the sharp rectangle, which overstate it by about 0.85 units here.
   //
-  // `rx` is half the height, so the caps are true semicircles and the shape is a
-  // STADIUM — the spine (shorter than `length` by one `weight`, because a cap eats
-  // half of it at each end) swept by a disc of `weight / 2`. Its bounding box is
-  // the rotated spine plus that radius on each axis, NOT the rotated corners of a
-  // sharp rectangle, which overstates it by about 1.8 units at this angle.
+  // ⚠️ This deliberately differs from the turned box that places the card above.
+  // Both are right for their own job: the box is the measure the reference states
+  // the gap in, and the same bound `build-brand-icons.mjs` frames the mark with,
+  // while this is the drawn extent the banner CENTRES on, where erring outward
+  // pushes the wordmark off centre.
   //
-  // ⚠️ This deliberately differs from `beamExtent()` in `build-brand-icons.mjs`,
-  // which does take the sharp-rectangle form. Both are right for their own job:
-  // that one bounds the mark for CONTAINMENT inside Android's safe circle, where
-  // erring outward is the safe direction, while this is the drawn extent the
-  // banner CENTRES on, where erring outward pushes the wordmark off centre.
-  const spine = (WORD_ACCENT.length - WORD_ACCENT.weight) / 2;
-  const cap = WORD_ACCENT.weight / 2;
-  const halfWidth = spine * Math.cos(radians(angle)) + cap;
-  const halfHeight = spine * Math.sin(radians(angle)) + cap;
+  // ⚠️ The card's top lands 73.86 above the baseline, past the 70 the design
+  // system's inline-ì recipe allows: in its 1em box, baseline at y = 70 of 100,
+  // the card's top is at y = −3.86 and is clipped. An inline `<svg>` drawn from
+  // this layout needs `overflow: visible`, or a taller box, to show the card whole.
+  // The banners are unaffected: they frame the wordmark on `ink`, which includes it.
+  const a = radians(ANGLE);
+  const innerW = width / 2 - rect.radius;
+  const innerH = height / 2 - rect.radius;
+  const halfWidth = innerW * Math.cos(a) + innerH * Math.sin(a) + rect.radius;
+  const halfHeight = innerW * Math.sin(a) + innerH * Math.cos(a) + rect.radius;
 
   const ink = {
     x0: Math.min(...letters.map((l) => l.dx + SPACE_GROTESK_BOLD_GLYPHS[l.glyph].bounds.x0)),
     x1: Math.max(
       ...letters.map((l) => l.dx + SPACE_GROTESK_BOLD_GLYPHS[l.glyph].bounds.x1),
-      centreX + halfWidth
+      stem.x + stem.width,
+      pivot.x + halfWidth
     ),
     y0: Math.min(
       ...letters.map((l) => baseline + SPACE_GROTESK_BOLD_GLYPHS[l.glyph].bounds.y0),
-      beamCentreY - halfHeight
+      pivot.y - halfHeight
     ),
     y1: Math.max(
       ...letters.map((l) => baseline + SPACE_GROTESK_BOLD_GLYPHS[l.glyph].bounds.y1),
@@ -206,5 +234,5 @@ export const layoutWordmark = ({ baseline, xHeight, markAdvance, angle }) => {
     )
   };
 
-  return { letters, stem, beam, advance: markX + markAdvance, ink };
+  return { letters, stem, card, advance: markX + MARK_ADVANCE, ink };
 };
