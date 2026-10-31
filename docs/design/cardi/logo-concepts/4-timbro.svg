@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Cardì — Timbro">
+  <rect width="1024" height="1024" fill="#181824"/>
+  <g transform="rotate(-9 512 512)">
+    <rect x="172" y="298" width="680" height="428" rx="56" fill="#F0F0E8"/>
+    <g fill="#E42424" stroke="#E42424" stroke-width="10" stroke-linejoin="round">
+      <path transform="translate(332 444)" d="M0 40C-10 31-58 4-58-22C-58-41-44-54-28-54C-15-54-5-46 0-37C5-46 15-54 28-54C44-54 58-41 58-22C58 4 10 31 0 40Z"/>
+      <path transform="translate(512 444)" d="M0 40C-10 31-58 4-58-22C-58-41-44-54-28-54C-15-54-5-46 0-37C5-46 15-54 28-54C44-54 58-41 58-22C58 4 10 31 0 40Z"/>
+      <path transform="translate(692 444)" d="M0 40C-10 31-58 4-58-22C-58-41-44-54-28-54C-15-54-5-46 0-37C5-46 15-54 28-54C44-54 58-41 58-22C58 4 10 31 0 40Z"/>
+      <path transform="translate(332 604)" d="M0 40C-10 31-58 4-58-22C-58-41-44-54-28-54C-15-54-5-46 0-37C5-46 15-54 28-54C44-54 58-41 58-22C58 4 10 31 0 40Z"/>
+    </g>
+    <g fill="#D6D6CB" stroke="#D6D6CB" stroke-width="10" stroke-linejoin="round">
+      <path transform="translate(512 604)" d="M0 40C-10 31-58 4-58-22C-58-41-44-54-28-54C-15-54-5-46 0-37C5-46 15-54 28-54C44-54 58-41 58-22C58 4 10 31 0 40Z"/>
+      <path transform="translate(692 604)" d="M0 40C-10 31-58 4-58-22C-58-41-44-54-28-54C-15-54-5-46 0-37C5-46 15-54 28-54C44-54 58-41 58-22C58 4 10 31 0 40Z"/>
+    </g>
+  </g>
+</svg>

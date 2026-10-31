@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Cardì — Scatola, monochrome">
+  <defs>
+    <mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#000"/>
+      <g stroke="#000" stroke-width="22" stroke-linejoin="round" fill="#fff">
+        <rect x="380" y="236" width="264" height="420" rx="38" transform="rotate(-21 512 880)"/>
+        <rect x="380" y="236" width="264" height="420" rx="38" transform="rotate(19 512 880)"/>
+        <g transform="rotate(-1 512 880)">
+          <rect x="380" y="196" width="264" height="440" rx="38"/>
+          <g fill="#000" stroke="none">
+            <rect x="430" y="262" width="14" height="96" rx="3"/>
+            <rect x="456" y="262" width="26" height="96" rx="3"/>
+            <rect x="494" y="262" width="10" height="96" rx="3"/>
+            <rect x="516" y="262" width="22" height="96" rx="3"/>
+            <rect x="550" y="262" width="10" height="96" rx="3"/>
+            <rect x="572" y="262" width="22" height="96" rx="3"/>
+          </g>
+        </g>
+      </g>
+      <polygon points="244,548 780,548 748,800 276,800" fill="#000" stroke="#000" stroke-width="112" stroke-linejoin="round"/>
+      <polygon points="244,548 780,548 748,800 276,800" fill="#fff" stroke="#fff" stroke-width="72" stroke-linejoin="round"/>
+      <rect x="412" y="628" width="200" height="56" rx="28" fill="#000"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#23402F" mask="url(#m)"/>
+</svg>

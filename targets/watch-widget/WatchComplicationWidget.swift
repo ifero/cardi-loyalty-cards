@@ -259,9 +259,10 @@ struct WatchComplicationEntryView: View {
   }
 
   /// On a tinted face the mark is drawn by its LUMINANCE, so it reads as shape. In circular and
-  /// rectangular the bars and the beam carry the face's tint and the ink field falls away. In the
-  /// corner the system draws the mark white on a grey disc instead. Both were seen for the
-  /// watchOS 11+ branch on the watchOS 26.5 simulator. The watchOS 10 branch
+  /// rectangular the stem and the card carry the face's tint, and the ink field falls away, and
+  /// with it the card's bars, which are cut through to that field. In the corner the system draws
+  /// the mark white on a grey disc instead. Both were seen for the watchOS 11+ branch on the
+  /// watchOS 26.5 simulator, with the mark before Story 20.6's. The watchOS 10 branch
   /// (`.widgetAccentable()`) is unverified: no watchOS 10 runtime was available.
   @ViewBuilder
   private func markArtwork(_ image: Image) -> some View {

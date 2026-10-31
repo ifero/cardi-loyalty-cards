@@ -35,13 +35,15 @@
  * supersampling, and write the PNG by hand. Cheaper and cleaner than supersampling,
  * and it keeps the build dependency-free so CI can verify it.
  *
- * The Cardì mark needs exactly two primitives: a rounded rect, and a ROTATED
- * rounded rect. Rotation is applied to the sample point rather than the shape,
- * which is exact — rotation is an isometry, so it preserves the distance the SDF
- * returns. Scaling is applied to the shape instead, because scaling a rounded rect
- * about a point yields another rounded rect exactly, and transforming the sample
- * point would have left the returned distance in the scaled space and skewed the
- * antialiasing.
+ * The Cardì mark needs exactly two primitives: a rounded rect, the stem, and a
+ * ROTATED rounded rect with rounded-rect HOLES cut through it, the card and its
+ * bars. A hole is a set difference, which a distance field takes in one line:
+ * `max(dCard, −min(dBar))`. Rotation is applied to the sample point rather than
+ * the shape, which is exact — rotation is an isometry, so it preserves the
+ * distance the SDF returns. Scaling is applied to the shape instead, because
+ * scaling a rounded rect about a point yields another rounded rect exactly, and
+ * transforming the sample point would have left the returned distance in the
+ * scaled space and skewed the antialiasing.
  *
  * It is NOT a general SVG renderer. If the mark ever gains a primitive this does
  * not know about, this script must be updated; it will not silently approximate.
@@ -58,97 +60,139 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync } from 'node:zlib';
+import {
+  ANGLE,
+  CARD,
+  STEM,
+  cardBars,
+  cardCorners,
+  cardRect,
+  drawnRadius
+} from './lib/brand-mark.mjs';
 import { layoutWordmark } from './lib/brand-wordmark.mjs';
 import { flattenPath, rasterizeContours } from './lib/path-raster.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 // ---------------------------------------------------------------------------
-// THE MARK, in the design system's own em space: 100 units to the em, the
-// glyph's baseline at y=70. These are the numbers in docs/design/cardi/, not a
-// separate set that happens to look the same — variant C of
-// docs/design/cardi/frames/cardi-icon-explore.html.
+// THE MARK is `lib/brand-mark.mjs`: the Tessera mark (Story 20.6), on the 1024
+// design grid of docs/design/cardi/logo-concepts/final/cardi-icon.svg. This file
+// owns only how it is framed, coloured and rendered, never its shape.
 // ---------------------------------------------------------------------------
-const BASELINE = 70;
-const XHEIGHT = 49.6;
-const STEM_TOP = BASELINE - XHEIGHT; // 20.4
-const CX = 15; // half the ì's 30-unit advance
-
-/**
- * The accent DESCENDS left to right: a grave, which is what "Cardì" spells.
- * Positive is the correct sign because SVG's y-axis points down. A negative
- * angle draws an acute and spells a different word — see
- * docs/design/cardi/cardi-design-system.md.
- */
-const ANGLE = 35;
-
-/** Variant C: the beam crosses the bars HIGH, where an accent belongs. */
-const BEAM = { length: 52, weight: 9, cy: 30 };
-
-/** The stem is a barcode: three bars of different widths. */
-const BARS = [
-  { x: CX - 11, w: 4.5, r: 2.2 },
-  { x: CX - 4.5, w: 9, r: 4.5 },
-  { x: CX + 7, w: 4, r: 2 }
-];
 
 const INK = [0x18, 0x18, 0x24];
 const BEAM_YELLOW = [0xfc, 0xcc, 0x0c];
+const CREAM = [0xf0, 0xf0, 0xe8];
 const WHITE = [0xff, 0xff, 0xff];
 
-/** Android crops the adaptive foreground to the centre 66%. iOS has no such mask. */
-const SAFE_FRACTION = 0.66;
-/** The icon canvas, in em units. 100 puts the mark at ~76% of the frame. */
-const CANVAS = 100;
+/**
+ * The icon canvas, in grid units: the reference's own 1024, so a 1024 px asset
+ * states the reference's numbers, moved only by the centring. The mark's box
+ * takes ~30% × 72% of it.
+ */
+const CANVAS = 1024;
+
+/**
+ * An adaptive-icon layer is 108dp square, so a density bucket's pixel size is
+ * 108 x its multiplier: 162 / 216 / 324 / 432. Derived rather than written out,
+ * because a transposed pair is invisible — each file is still a valid PNG at a
+ * size some other bucket wanted, and only the launcher ever notices.
+ */
+const ADAPTIVE_ICON_DP = 108;
+const HDPI = ADAPTIVE_ICON_DP * 1.5;
+const XHDPI = ADAPTIVE_ICON_DP * 2;
+const XXHDPI = ADAPTIVE_ICON_DP * 3;
+const XXXHDPI = ADAPTIVE_ICON_DP * 4;
+
+/**
+ * Android asks the logo on an adaptive layer to stay inside the centre 66dp, so
+ * it survives every mask a launcher applies — on Wear OS a circle — plus the
+ * parallax and pulse it may add. iOS has no such mask.
+ */
+const MAX_LOGO_DP = 66;
 
 // ---------------------------------------------------------------------------
-// Derived geometry. Everything below falls out of the constants above, so
-// changing the artwork updates the SVG, every PNG, and the Android scale
-// together — there is no hardcoded scale factor to go quietly stale.
+// Derived geometry. Everything below falls out of `brand-mark.mjs`, so changing
+// the artwork updates the SVG, every PNG, and the Android scale together — there
+// is no hardcoded scale factor to go quietly stale.
 // ---------------------------------------------------------------------------
 const rad = (deg) => (deg * Math.PI) / 180;
 
-/** Half-extents of a rounded bar of this length and weight after rotation. */
-const beamExtent = () => ({
-  hw: (BEAM.length / 2) * Math.cos(rad(ANGLE)) + (BEAM.weight / 2) * Math.sin(rad(ANGLE)),
-  hh: (BEAM.length / 2) * Math.sin(rad(ANGLE)) + (BEAM.weight / 2) * Math.cos(rad(ANGLE))
-});
-
+/**
+ * The mark's box: the stem, and the corners of the card's SHARP rectangle once
+ * turned. The drawn card never quite reaches those corners, so the box is an
+ * upper bound on the ink, and it is what every viewBox and frame is cut to and
+ * centred on.
+ */
 const bounds = () => {
-  const { hw, hh } = beamExtent();
-  const x0 = Math.min(CX - hw, BARS[0].x);
-  const x1 = Math.max(CX + hw, BARS[2].x + BARS[2].w);
-  const y0 = Math.min(BEAM.cy - hh, STEM_TOP);
-  const y1 = Math.max(BEAM.cy + hh, BASELINE);
-  const cx = (x0 + x1) / 2;
-  const cy = (y0 + y1) / 2;
-  let radius = 0;
-  for (const px of [x0, x1]) {
-    for (const py of [y0, y1]) radius = Math.max(radius, Math.hypot(px - cx, py - cy));
-  }
-  return { x0, x1, y0, y1, cx, cy, radius };
+  const corners = cardCorners();
+  const xs = [STEM.x, STEM.x + STEM.w, ...corners.map((corner) => CARD.cx + corner.x)];
+  const ys = [STEM.y, STEM.y + STEM.h, ...corners.map((corner) => CARD.cy + corner.y)];
+  const x0 = Math.min(...xs);
+  const x1 = Math.max(...xs);
+  const y0 = Math.min(...ys);
+  const y1 = Math.max(...ys);
+  return { x0, x1, y0, y1, cx: (x0 + x1) / 2, cy: (y0 + y1) / 2 };
 };
 
 const B = bounds();
 
 /**
- * How far the Android foreground must shrink for the whole mark to clear the
- * safe circle. Clamped at 1 because this may only ever reduce: "scale up to
- * fill the safe circle" is a different instruction from "fit inside it".
+ * The furthest DRAWN point from the box's centre, which is the centre of every
+ * canvas. It is the stem's foot: the stem stands 22 units right of the card's
+ * centre, and its round end sits on the box's bottom edge, 368.7 units from the
+ * centre. No ink reaches a corner of the box, which is 399.5 units out.
  */
-const ANDROID_SCALE = Math.min(1, (SAFE_FRACTION * CANVAS) / 2 / B.radius);
+const DRAWN_RADIUS = drawnRadius(B.cx, B.cy);
 
-/** em units -> canvas units, with the mark centred. */
+/** One dp in canvas units, which is one pixel at mdpi (1×). */
+const DP = CANVAS / ADAPTIVE_ICON_DP;
+
+/**
+ * How far the Android foreground must shrink for the whole mark to clear the
+ * 66dp logo circle. The phone and Wear OS share it, and the PHONE sets it.
+ *
+ * Derived from the true rounded shapes rather than from the box. The rule this
+ * replaced took 0.33 of the canvas, 35.64dp, ÷ the box-corner radius (×0.846
+ * for this mark): it aimed outside the 66dp circle, so it held only while a
+ * mark's ink stayed far enough inside its box's corners. This mark's ink stays
+ * inside them too, but not far enough: the rule put the stem's foot at about
+ * 33.3dp of ink, outside the circle. The target is the
+ * 33dp radius LESS ONE MDPI PIXEL, 1dp, because ink spills past the drawn edge
+ * and a pixel of spill is worth the most dp at the coarsest density:
+ *
+ * - This file draws Wear's mipmaps itself, from hdpi up, with analytic
+ *   antialiasing: a pixel whose centre is within half a pixel of the edge is
+ *   inked, and its far corner sits up to 0.5 + √½ ≈ 1.21 px further out.
+ * - The phone's mipmaps it does NOT draw. Expo's prebuild resizes
+ *   `adaptive-icon.png` and `adaptive-icon-monochrome.png` down to every density
+ *   from mdpi, and that resizing spreads the edge by most of a pixel again.
+ *   With one hdpi pixel (⅔dp) of margin, the mdpi foreground and monochrome
+ *   reached 33.24dp, so the margin is one mdpi pixel.
+ *
+ * Nothing here proves the margin is enough: `test/android-phone-icons.test.ts`
+ * runs Expo's own resizing and measures the phone's mipmaps, and
+ * `test/wear-icons.test.ts` measures Wear's. Those two are what guard a future
+ * mark.
+ *
+ * Clamped at 1 because this may only ever reduce: "scale up to fill the safe
+ * circle" is a different instruction from "fit inside it".
+ */
+const SAFE_RADIUS = (MAX_LOGO_DP / 2) * DP - DP;
+const ANDROID_SCALE = Math.min(1, SAFE_RADIUS / DRAWN_RADIUS);
+
+/** Grid units -> canvas units, with the mark's box centred. */
 const originX = B.cx - CANVAS / 2;
 const originY = B.cy - CANVAS / 2;
 
 /**
  * A square framed on the mark's own bounding box, for a raster that must not carry the icon
  * canvas's padding: the complication's inline glyph, which watchOS sizes to the line of text, so
- * the canvas's padding would shrink the mark to about half that height. The margin is one unit,
- * enough that the antialiased edge is not cut at the 64 px size.
+ * the canvas's padding would shrink the mark to about seven tenths of that height. The margin is
+ * 16 units, 1.3 px at the 64 px size: enough that the antialiased edge of the stem's foot, which
+ * sits on the box, is not cut.
  */
-const TIGHT_MARGIN = 1;
+const TIGHT_MARGIN = 16;
 const TIGHT_SIDE = Math.max(B.x1 - B.x0, B.y1 - B.y0) + 2 * TIGHT_MARGIN;
 const TIGHT_FRAME = { x: B.cx - TIGHT_SIDE / 2, y: B.cy - TIGHT_SIDE / 2, side: TIGHT_SIDE };
 
@@ -161,26 +205,15 @@ const scaleRect = (rect, s) => ({
   r: rect.r * s
 });
 
-/** The four shapes, in canvas units, at a given scale. */
+/**
+ * The shapes, in canvas units, at a given scale: the stem, the card level, its
+ * bars placed on it, and the card's centre, which it turns about.
+ */
 const shapes = (scale) => {
-  const bars = BARS.map((bar) =>
-    scaleRect({ x: bar.x, y: STEM_TOP, w: bar.w, h: BASELINE - STEM_TOP, r: bar.r }, scale)
-  );
-  const beam = scaleRect(
-    {
-      x: CX - BEAM.length / 2,
-      y: BEAM.cy - BEAM.weight / 2,
-      w: BEAM.length,
-      h: BEAM.weight,
-      r: BEAM.weight / 2
-    },
-    scale
-  );
-  const pivot = {
-    x: B.cx + (CX - B.cx) * scale,
-    y: B.cy + (BEAM.cy - B.cy) * scale
-  };
-  return { bars, beam, pivot };
+  const stem = scaleRect(STEM, scale);
+  const card = scaleRect(cardRect(), scale);
+  const bars = cardBars(scale).map((bar) => ({ ...bar, x: card.x + bar.x, y: card.y + bar.y }));
+  return { stem, card, bars, pivot: { x: card.x + card.w / 2, y: card.y + card.h / 2 } };
 };
 
 // ---------------------------------------------------------------------------
@@ -196,19 +229,24 @@ const roundedRectSdf = (px, py, { x, y, w, h, r }) => {
 };
 
 /**
- * The same, rotated about `pivot`. The sample point is rotated by the INVERSE
- * angle into the rect's own frame; because rotation is an isometry the distance
- * that comes back is already correct in screen space, with no correction.
+ * A rounded rect turned about `pivot`, with rounded-rect `holes` cut through it.
+ *
+ * The sample point is rotated by the INVERSE angle into the rect's own frame;
+ * because rotation is an isometry the distance that comes back is already
+ * correct in screen space, with no correction. The holes are level in that same
+ * frame, so they turn with the rect. A hole is the set difference
+ * `max(dRect, −min(dHole))`, which leaves the card's coverage zero inside every
+ * bar: the bars are cut THROUGH the card, never painted on it.
  */
-const rotatedRoundedRectSdf = (px, py, rect, degrees, pivot) => {
+const turnedRoundedRectSdf = (px, py, rect, degrees, pivot, holes = []) => {
   const a = rad(-degrees);
   const dx = px - pivot.x;
   const dy = py - pivot.y;
-  return roundedRectSdf(
-    pivot.x + dx * Math.cos(a) - dy * Math.sin(a),
-    pivot.y + dx * Math.sin(a) + dy * Math.cos(a),
-    rect
-  );
+  const x = pivot.x + dx * Math.cos(a) - dy * Math.sin(a);
+  const y = pivot.y + dx * Math.sin(a) + dy * Math.cos(a);
+  let hole = Infinity;
+  for (const h of holes) hole = Math.min(hole, roundedRectSdf(x, y, h));
+  return Math.max(roundedRectSdf(x, y, rect), -hole);
 };
 
 /** Coverage in 0..1 from a signed distance — one-pixel-wide analytic AA. */
@@ -217,17 +255,17 @@ const coverage = (distance) => Math.min(1, Math.max(0, 0.5 - distance));
 /**
  * Render one asset.
  *
- * `field` is the opaque background, or null for transparent. `stem` and `accent`
- * are the two ink colours; passing the same value for both is what produces the
+ * `field` is the opaque background, or null for transparent. `stem` and `card`
+ * are the two colours; passing the same value for both is what produces the
  * Android themed layer, where there is no hue left to tell them apart.
  *
  * `tight` frames the square on the mark's own bounding box instead of the padded
  * icon canvas — see {@link TIGHT_FRAME}.
  * Unlike `buildSvg`'s `tight` (the exact, non-square box, no margin), this is a centred SQUARE on
- * that box with a one-unit margin.
+ * that box with a margin.
  */
-const render = ({ size, scale, field, stem, accent, tight = false }) => {
-  const { bars, beam, pivot } = shapes(scale);
+const render = ({ size, scale, field, stem: stemColour, card: cardColour, tight = false }) => {
+  const { stem, card, bars, pivot } = shapes(scale);
   const px = Buffer.alloc(size * size * 4);
   const frame = tight ? TIGHT_FRAME : { x: originX, y: originY, side: CANVAS };
   const perPixel = frame.side / size; // canvas units per device pixel
@@ -255,8 +293,10 @@ const render = ({ size, scale, field, stem, accent, tight = false }) => {
         a = outA;
       };
 
-      for (const bar of bars) over(stem, coverage(roundedRectSdf(sx, sy, bar) * toPixels));
-      over(accent, coverage(rotatedRoundedRectSdf(sx, sy, beam, ANGLE, pivot) * toPixels));
+      // The stem, then the card minus its bars. The two never overlap, so the
+      // order only matters for the record: it is the order the SVG states them in.
+      over(stemColour, coverage(roundedRectSdf(sx, sy, stem) * toPixels));
+      over(cardColour, coverage(turnedRoundedRectSdf(sx, sy, card, ANGLE, pivot, bars) * toPixels));
 
       const i = (y * size + x) * 4;
       px[i] = Math.round(r);
@@ -380,12 +420,35 @@ const quantiseRect = (rect) => ({
 });
 
 /**
+ * A rounded rect as one closed subpath of quarter arcs, clockwise from the end of
+ * its top-left corner. The card and each of its bars are one of these, in one
+ * `<path>`: under `fill-rule="evenodd"` every bar inside the card is a hole.
+ */
+const roundedRectPath = ({ x, y, w, h, r }) =>
+  `M${n(x + r)} ${n(y)} H${n(x + w - r)} A${n(r)} ${n(r)} 0 0 1 ${n(x + w)} ${n(y + r)} ` +
+  `V${n(y + h - r)} A${n(r)} ${n(r)} 0 0 1 ${n(x + w - r)} ${n(y + h)} ` +
+  `H${n(x + r)} A${n(r)} ${n(r)} 0 0 1 ${n(x)} ${n(y + h - r)} ` +
+  `V${n(y + r)} A${n(r)} ${n(r)} 0 0 1 ${n(x + r)} ${n(y)} Z`;
+
+/**
+ * The card, turned about its centre, as a group around one even-odd path: the card's
+ * subpath first, then one per bar. The Lottie builder reads it in exactly that shape.
+ */
+const cardGroup = ({ card, bars, pivot, angle }, colour) =>
+  [
+    `  <g transform="rotate(${n(angle)} ${n(pivot.x)} ${n(pivot.y)})">`,
+    `    <path fill-rule="evenodd" d="${[card, ...bars].map(roundedRectPath).join(' ')}" ` +
+      `fill="${hex(colour)}" />`,
+    '  </g>'
+  ].join('\n');
+
+/**
  * `tight` crops the viewBox to the artwork instead of the icon canvas.
  *
- * The icon canvas carries deliberate padding — the mark fills ~48% × 59% of it,
- * which is right for something the OS masks and wrong for something a component
- * sizes. An in-app `<CardiMark width={34} />` on the padded box draws a mark
- * about half the size of the Material glyph it replaced, which is exactly what
+ * The icon canvas carries deliberate padding — the mark's box fills ~30% × 72%
+ * of it, which is right for something the OS masks and wrong for something a
+ * component sizes. An in-app `<CardiMark width={34} />` on the padded box draws a
+ * mark well short of the Material glyph it replaced, which is exactly what
  * happened at both call sites. The launch surface had been compensated for the
  * same effect by hand (`SPLASH_LOGO_WIDTH` 200 → 260); a tight box removes the
  * need to compensate at all.
@@ -394,8 +457,8 @@ const quantiseRect = (rect) => ({
  * to `splash-icon.png` at the same width, because that identity is what conceals
  * the native→JS splash handoff. So both boxes exist, on purpose.
  */
-const buildSvg = ({ size, scale, field, stem, accent, tight = false }) => {
-  const { bars, beam, pivot } = shapes(scale);
+const buildSvg = ({ size, scale, field, stem: stemColour, card: cardColour, tight = false }) => {
+  const { stem, card, bars, pivot } = shapes(scale);
   const w = tight ? B.x1 - B.x0 : CANVAS;
   const h = tight ? B.y1 - B.y0 : CANVAS;
   const k = size / Math.max(w, h);
@@ -414,15 +477,12 @@ const buildSvg = ({ size, scale, field, stem, accent, tight = false }) => {
     `  <rect x="${n(r_.x)}" y="${n(r_.y)}" width="${n(r_.w)}" height="${n(r_.h)}" ` +
     `rx="${n(r_.r)}" fill="${hex(colour)}" />`;
   const p = { x: (pivot.x - ox) * k, y: (pivot.y - oy) * k };
-  const beamRect = map(beam);
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n(vw)} ${n(vh)}" ` +
       `width="${n(vw)}" height="${n(vh)}" role="img" aria-label="Cardì">`,
     field ? `  <rect width="${n(vw)}" height="${n(vh)}" fill="${hex(field)}" />` : null,
-    ...bars.map((bar) => rect(map(bar), stem)),
-    `  <g transform="rotate(${ANGLE} ${n(p.x)} ${n(p.y)})">`,
-    `  ${rect(beamRect, accent)}`,
-    '  </g>',
+    rect(map(stem), stemColour),
+    cardGroup({ card: map(card), bars: bars.map(map), pivot: p, angle: ANGLE }, cardColour),
     '</svg>',
     ''
   ]
@@ -433,22 +493,28 @@ const buildSvg = ({ size, scale, field, stem, accent, tight = false }) => {
 // ---------------------------------------------------------------------------
 // The assets
 // ---------------------------------------------------------------------------
-const FULL = { scale: 1, stem: WHITE, accent: BEAM_YELLOW };
-const ANDROID = { scale: ANDROID_SCALE, stem: WHITE, accent: BEAM_YELLOW };
+/** A cream stem under a beam card, on every surface that has a hue to show. */
+const FULL = { scale: 1, stem: CREAM, card: BEAM_YELLOW };
+const ANDROID = { ...FULL, scale: ANDROID_SCALE };
 
 /**
  * The Android themed layer, on both form factors. One colour and no hue to lean
- * on, so the beam has to survive as a SHAPE. It does, because it crosses the bars
- * and extends past them on both sides.
+ * on, so the card has to survive as a SHAPE. It does: its five bars are HOLES cut
+ * through it, and the stem stands apart below it. Painted bars could not survive
+ * here: one colour leaves none to paint them in. The five holes hold down to a
+ * floor, which the tests pin: on the phone from xhdpi, after prebuild's resizing
+ * (at mdpi and hdpi the slots break into fragments); on Wear from hdpi, where
+ * one slot holds only if a pixel of alpha 1 is read as clear; and in the
+ * complication glyph from @2x.
  *
  * It is a SEPARATE asset rather than a second reference to the colour foreground,
  * and the difference shows only when a launcher declines to tint. `getMonochrome()`
  * promises nothing stronger than "callers CAN use a tinted version of this
  * drawable", so an untinted draw is within contract — and untinted, the colour
- * foreground puts a YELLOW beam on a themed field, which is two colours and
- * therefore not a monochrome icon. It costs nothing under a launcher that does
- * tint: the two assets' alpha channels are byte-identical and only their RGB
- * differs, so a SRC_IN tint collapses them to the same image.
+ * foreground puts a YELLOW card and a cream stem on a themed field, which is two
+ * colours and therefore not a monochrome icon. It costs nothing under a launcher
+ * that does tint: the two assets' alpha channels are byte-identical and only their
+ * RGB differs, so a SRC_IN tint collapses them to the same image.
  *
  * ⚠️ NO WEAR LAUNCHER APPEARS TO CONSUME IT, measured rather than assumed. The
  * Wear OS 5 stock launcher (`ClockworkSysUiGoogle.apk`, API 34) references
@@ -460,19 +526,7 @@ const ANDROID = { scale: ANDROID_SCALE, stem: WHITE, accent: BEAM_YELLOW };
  * `MonochromeLauncherIcon`, matches what the phone declares, and costs ~7 KB
  * across four densities. It is NOT here on a belief that Wear tints it.
  */
-const MONOCHROME = { scale: ANDROID_SCALE, stem: WHITE, accent: WHITE };
-
-/**
- * An adaptive-icon layer is 108dp square, so a density bucket's pixel size is
- * 108 x its multiplier: 162 / 216 / 324 / 432. Derived rather than written out,
- * because a transposed pair is invisible — each file is still a valid PNG at a
- * size some other bucket wanted, and only the launcher ever notices.
- */
-const ADAPTIVE_ICON_DP = 108;
-const HDPI = ADAPTIVE_ICON_DP * 1.5;
-const XHDPI = ADAPTIVE_ICON_DP * 2;
-const XXHDPI = ADAPTIVE_ICON_DP * 3;
-const XXXHDPI = ADAPTIVE_ICON_DP * 4;
+const MONOCHROME = { scale: ANDROID_SCALE, stem: WHITE, card: WHITE };
 
 const PNGS = [
   ['assets/icon.png', { size: 1024, field: INK, ...FULL }],
@@ -495,9 +549,10 @@ const PNGS = [
   // dynamically handles shadows", and, on transparency, "pick a background colour
   // for your asset that's appropriate for your brand and doesn't include any
   // transparency. Transparent assets will display the background colour of Google
-  // Play UI." The mark's stem is WHITE, so a transparent upload would put white
-  // bars on Play's white surface and erase the icon — the previous `-alpha` file,
-  // which dropped the field entirely, would have done precisely that.
+  // Play UI." The mark's stem is CREAM and its bars are holes, so a transparent
+  // upload would put a near-white stem on Play's white surface and show that
+  // surface through the card — the previous `-alpha` file, which dropped the
+  // field entirely, would have erased its own white bars the same way.
   //
   // The two differ ONLY in colour type, which is the whole reason the pair
   // exists. Google specifies "Format: 32-bit PNG", so `-alpha` is the file to
@@ -517,15 +572,20 @@ const PNGS = [
   // trims corners, a circle trims everything outside the inscribed disc.
   //
   // They still take the SAME geometry as the phone, and that is a measured
-  // result rather than an assumption. The mark's bounding-box corner radius is
-  // 37.798 canvas units against the inscribed circle's 50 — 24.4 % of the
-  // radius to spare — and its half-extents (23.879 x 29.299) also sit inside
-  // the inscribed SQUARE's 35.355, which is the containment rule the watch
-  // grammar states for circular masks (cardi-watch-grammar.md 7.2). So no
-  // watch-specific scale is needed, and inventing one would break the single
-  // geometry definition this file exists to keep. `watch-icons.test.ts`
-  // decodes the rendered pixels and asserts the containment rather than
-  // trusting this comment.
+  // result rather than an assumption. The mark's INK sits within 0.72 of the
+  // circle's radius: its furthest drawn point, the stem's foot, is 368.7 of
+  // the 512 canvas units to the edge, and the circle is what the mask clips
+  // at. Its BOX does not sit inside the inscribed square that
+  // cardi-watch-grammar.md 7.2 states for avatars: at 735.7 units tall it
+  // overshoots that square's 724.1 by 5.8 units at each end (0.57 on a
+  // 100-unit canvas). At the top that is an empty corner of the turned card's
+  // box; at the bottom it is INK, the round foot of the stem, which reaches
+  // y 879.85 against the square's 874.04, past it only across about x 504–564
+  // under the foot's centre. So no watch-specific scale is needed, and
+  // inventing one would break the single geometry definition,
+  // `lib/brand-mark.mjs`, that every artefact here is
+  // drawn from. `watch-icons.test.ts` decodes the rendered pixels and asserts
+  // the containment rather than trusting this comment.
   // ---------------------------------------------------------------------
 
   // Read by `expo prebuild` (targets/watch/expo-target.config.js `icon:`),
@@ -562,10 +622,10 @@ const PNGS = [
   //
   // `accessoryInline` draws its image as a template, from the alpha channel alone, on every face
   // — so the opaque artwork above renders there as a solid square, measured on the watchOS 26.5
-  // simulator. Transparent, the alpha IS the mark, and the template reads as its silhouette: the
-  // beam still crosses the bars and extends past them on both sides, the argument `MONOCHROME`
-  // makes for Android. The beam keeps its colour for any surface that draws the image untinted.
-  // Same sizes as `OpenAppIcon`, under the same 76 px downsample.
+  // simulator. Transparent, the alpha IS the mark, and the template reads as its silhouette: a
+  // card with its five bars cut through it, the stem apart below, the argument `MONOCHROME` makes
+  // for Android. The stem and the card keep their colours for any surface that draws the image
+  // untinted. Same sizes as `OpenAppIcon`, under the same 76 px downsample.
   [
     'targets/watch-widget/Assets.xcassets/OpenAppIconGlyph.imageset/open-app-icon-glyph@1x.png',
     { size: 64, field: null, tight: true, ...FULL }
@@ -615,13 +675,16 @@ const PNGS = [
   // `res/`, so the self-containment survives and the drift does not.
   //
   // The Wear launcher masks to a CIRCLE, and the phone's own `ANDROID_SCALE`
-  // already clears it — measured rather than assumed. The scaled mark's inked
-  // bounding circle is 64.55dp at its WORST density (hdpi, where one pixel of
-  // analytic antialiasing is worth the most dp), against the 66dp maximum logo
-  // size and the 72dp masked viewport of a 108dp adaptive layer. No Wear scale
-  // is needed, and inventing one would break the single geometry definition
-  // this file exists to keep. `test/wear-icons.test.ts` decodes the rendered
-  // pixels and asserts the containment rather than trusting this comment.
+  // already clears it, because it is derived for exactly this: the drawn mark
+  // against the 66dp logo circle less one mdpi pixel, 1dp. The phone's mdpi
+  // mipmaps set that margin; Wear starts at hdpi, where a pixel of analytic
+  // antialiasing is worth ⅔dp, so it has room to spare. Measured, the inked
+  // bounding circle is 64.68dp at hdpi, its widest, against the 66dp maximum
+  // logo size and the 72dp masked viewport of a 108dp adaptive layer. No Wear
+  // scale is needed, and inventing one would break the single geometry
+  // definition, `lib/brand-mark.mjs`, that every artefact here is drawn from.
+  // `test/wear-icons.test.ts` decodes the rendered pixels and asserts the
+  // containment rather than trusting this comment.
   //
   // There is no `mdpi` bucket and that is not an omission: `minSdk` is 30 and
   // no Wear OS device ships below hdpi, so the bucket would be dead weight in
@@ -672,18 +735,19 @@ const SVGS = [
   ['assets/images/cardi-mark.svg', { size: 1024, field: null, ...FULL }],
   ['assets/images/cardi-icon.svg', { size: 1024, field: INK, ...FULL }],
   [
-    // The in-app mark: tight box, WHITE stem, on whatever ink field the component
+    // The in-app mark: tight box, CREAM stem, on whatever ink field the component
     // paints behind it.
     //
     // This replaced a `currentColor` variant whose stem followed the theme. That
     // idea does not survive contact with the palette: the beam is only legible on
     // ink. Measured — beam on ink 11.53:1, on white 1.52:1, on cream 1.33:1. A
-    // theme-following stem therefore buys nothing, because the accent that makes
+    // theme-following stem therefore buys nothing, because the card that makes
     // the mark "Cardì" disappears on every light ground regardless of what the
-    // stem does. The design system already says this: beam is a FILL that carries
+    // stem does, and its bars are holes that show whatever ground is behind
+    // them. The design system already says this: beam is a FILL that carries
     // dark text, never a stroke on a light surface.
     'assets/images/cardi-mark-inline.svg',
-    { size: 1024, field: null, scale: 1, stem: WHITE, accent: BEAM_YELLOW, tight: true }
+    { size: 1024, field: null, ...FULL, tight: true }
   ],
   [
     // The same tight mark again, published under `docs/`.
@@ -694,7 +758,7 @@ const SVGS = [
     // is what puts it under `yarn icons:check` — a hand-copied file would drift the
     // moment the geometry changed, silently and only on the public site.
     'docs/assets/cardi-mark-inline.svg',
-    { size: 1024, field: null, scale: 1, stem: WHITE, accent: BEAM_YELLOW, tight: true }
+    { size: 1024, field: null, ...FULL, tight: true }
   ]
 ];
 
@@ -712,20 +776,15 @@ const SVGS = [
 // ---------------------------------------------------------------------------
 
 /**
- * `Cardì`, baseline-relative, in this file's own em space.
+ * `Cardì`, baseline-relative, in the wordmark's em space.
  *
  * The four letters are Space Grotesk Bold outlines; the `ì` is the wordmark's
- * single stem and CONTAINED accent, which is a different artefact from the
- * barcode-and-beam mark above. `brand-wordmark.mjs` explains why, and takes
- * `BASELINE`, `XHEIGHT`, the advance and `ANGLE` from here so there is no second
- * copy of them to drift.
+ * single 12-unit stem under the mark's own card, scaled to that stem with the
+ * same five bars. `brand-wordmark.mjs` takes the card and its angle from
+ * `brand-mark.mjs`, as this file does, so the icon and the word cannot carry two
+ * different cards.
  */
-const WORDMARK = layoutWordmark({
-  baseline: 0,
-  xHeight: XHEIGHT,
-  markAdvance: CX * 2,
-  angle: ANGLE
-});
+const WORDMARK = layoutWordmark({ baseline: 0 });
 
 /**
  * The card accents, back to front, as the design system lists them.
@@ -737,8 +796,8 @@ const WORDMARK = layoutWordmark({
  * the colour — stated as plainly as it can be.
  *
  * `angle` fans them. ⚠️ These tilts are UNRELATED to the accent's sign rule: that
- * rule governs the ì's beam alone, where a negative angle spells a different word.
- * A card leaning either way is just a card.
+ * rule governs the ì's card alone, where a negative angle spells a different word.
+ * A wallet card leaning either way is just a card.
  */
 const WALLET_CARDS = [
   { colour: [0x0c, 0x84, 0x3c], dx: 0.1, dy: -0.155, angle: 10 }, // green
@@ -847,11 +906,14 @@ const bannerLayout = ({
       scale
     })),
     stem: toDevice(WORDMARK.stem),
-    beam: toDevice(WORDMARK.beam),
-    pivot: {
-      x: quantise(originX + WORDMARK.beam.pivotX * scale),
-      y: quantise(baselineY + WORDMARK.beam.pivotY * scale),
-      angle: WORDMARK.beam.angle
+    card: {
+      rect: toDevice(WORDMARK.card.rect),
+      bars: WORDMARK.card.bars.map(toDevice),
+      pivot: {
+        x: quantise(originX + WORDMARK.card.pivot.x * scale),
+        y: quantise(baselineY + WORDMARK.card.pivot.y * scale)
+      },
+      angle: WORDMARK.card.angle
     },
     cards,
     front,
@@ -860,20 +922,26 @@ const bannerLayout = ({
 };
 
 /**
- * Composite one rounded rect, optionally rotated, onto RGBA pixels.
+ * Composite one rounded rect, optionally rotated and with `holes` cut through it,
+ * onto RGBA pixels.
  *
  * Only the shape's own bounding box is walked. At 4096 x 2304 the difference is
  * not cosmetic: the banner routes 26 shapes through here — three wallet cards, the
- * white card, twenty barcode bars, the stem and the beam — and walking the full
+ * white card, twenty barcode bars, the stem and the ì's card — and walking the full
  * frame for each would be 245 million distance evaluations for artwork that covers
  * a fraction of it. Most of those 26 are barcode bars a few pixels wide.
  *
  * `margin` is the rect's own half-diagonal, which is the furthest any of its points
  * can be from its centre; rotation about that centre preserves the distance at any
  * angle, so the bound holds for the negative tilt on one wallet card as well as for
- * the beam.
+ * the ì's card. Holes only remove coverage, so they never widen the bound; they are
+ * cut in the rect's turned frame, so holes without a `rotation` throw rather than
+ * being dropped.
  */
-const overRoundedRect = (px, width, height, rect, colour, rotation) => {
+const overRoundedRect = (px, width, height, rect, colour, rotation, holes = []) => {
+  if (holes.length > 0 && !rotation) {
+    throw new Error('overRoundedRect: holes are cut in a turned frame, so they need a rotation');
+  }
   const margin = rotation ? Math.hypot(rect.w, rect.h) / 2 + 2 : 2;
   const x0 = Math.max(0, Math.floor(rect.x - margin));
   const x1 = Math.min(width, Math.ceil(rect.x + rect.w + margin));
@@ -884,7 +952,7 @@ const overRoundedRect = (px, width, height, rect, colour, rotation) => {
       const sx = x + 0.5;
       const sy = y + 0.5;
       const distance = rotation
-        ? rotatedRoundedRectSdf(sx, sy, rect, rotation.angle, rotation.pivot)
+        ? turnedRoundedRectSdf(sx, sy, rect, rotation.angle, rotation.pivot, holes)
         : roundedRectSdf(sx, sy, rect);
       const cov = coverage(distance);
       if (cov <= 0) continue;
@@ -912,7 +980,7 @@ const overCoverage = (px, width, coverageMap, box, colour) => {
 
 /** Render one banner to opaque RGBA pixels. */
 const renderBanner = (options) => {
-  const { width, height, letters, stem, beam, pivot, cards, front, bars } = bannerLayout(options);
+  const { width, height, letters, stem, card, cards, front, bars } = bannerLayout(options);
   const px = Buffer.alloc(width * height * 4);
   for (let i = 0; i < width * height; i += 1) {
     px[i * 4] = INK[0];
@@ -944,15 +1012,24 @@ const renderBanner = (options) => {
   );
   overCoverage(px, width, rasterizeContours(contours, box.w, box.h), box, WHITE);
 
-  // Stem first, then the accent over it — the order `mark_locked.py` draws them.
+  // The stem, then the card with its bars cut through to the ink field — the
+  // order the mark is drawn in.
   overRoundedRect(px, width, height, stem, WHITE);
-  overRoundedRect(px, width, height, beam, BEAM_YELLOW, { angle: pivot.angle, pivot });
+  overRoundedRect(
+    px,
+    width,
+    height,
+    card.rect,
+    BEAM_YELLOW,
+    { angle: card.angle, pivot: card.pivot },
+    card.bars
+  );
   return px;
 };
 
 /** The same composition as SVG, from the same layout, for the committed source. */
 const buildBannerSvg = (options) => {
-  const { width, height, letters, stem, beam, pivot, cards, front, bars } = bannerLayout(options);
+  const { width, height, letters, stem, card, cards, front, bars } = bannerLayout(options);
   const rect = (r, colour) =>
     `  <rect x="${n(r.x)}" y="${n(r.y)}" width="${n(r.w)}" height="${n(r.h)}" ` +
     `rx="${n(r.r)}" fill="${hex(colour)}" />`;
@@ -974,9 +1051,10 @@ const buildBannerSvg = (options) => {
         `d="${letter.path}" fill="${hex(WHITE)}" />`
     ),
     rect(stem, WHITE),
-    `  <g transform="rotate(${pivot.angle} ${n(pivot.x)} ${n(pivot.y)})">`,
-    `  ${rect(beam, BEAM_YELLOW)}`,
-    '  </g>',
+    cardGroup(
+      { card: card.rect, bars: card.bars, pivot: card.pivot, angle: card.angle },
+      BEAM_YELLOW
+    ),
     '</svg>',
     ''
   ].join('\n');
@@ -1117,7 +1195,7 @@ if (check) {
   console.log(`✓ all ${artefacts.length} brand assets are in sync with the mark`);
 } else {
   console.log(
-    `\nmark bounding radius ${B.radius.toFixed(2)} of ${CANVAS} units · ` +
+    `\nmark drawn radius ${DRAWN_RADIUS.toFixed(2)} of ${CANVAS / 2} units · ` +
       `Android foreground scale ×${ANDROID_SCALE.toFixed(3)}`
   );
 }

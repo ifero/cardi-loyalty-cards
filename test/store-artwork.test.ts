@@ -2,6 +2,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { COLOR_TYPE_RGB, COLOR_TYPE_RGBA, decodeScanlines, readHeader } from './png-scanlines';
+import { silhouette } from './silhouette';
 
 /**
  * The Play Store artwork under `assets/store/` (Story 21.5).
@@ -44,9 +45,9 @@ const WHITE = [0xff, 0xff, 0xff] as const;
 
 /** Every colour the banners are allowed to contain, as `rrggbb`. */
 const PALETTE = new Set([
-  '181824', // ink — the field
+  '181824', // ink — the field, which also shows through the ì's card where its bars are cut
   'ffffff', // the wordmark's letters and stem
-  'fccc0c', // beam — the accent, and the yellow card
+  'fccc0c', // beam — the ì's card
   'e42424', // card red
   '0c3c84', // card deep blue
   '0c84cc', // card azure
@@ -92,6 +93,23 @@ const svgRects = (svg: string) =>
     };
   });
 
+/**
+ * The ì's card: the one even-odd `<path>`, inside the group that turns it. Its first subpath is the
+ * card and every other subpath one of its bars, cut through it — the shape `brand-mark.mjs` defines
+ * and the Lottie builder reads.
+ */
+const svgCard = (svg: string) => {
+  const match = svg.match(
+    /<g transform="rotate\((-?[\d.]+) [^"]*">\s*<path fill-rule="evenodd" d="([^"]*)" fill="([^"]*)"/
+  );
+  if (!match) throw new Error('No turned even-odd card path found in the banner SVG');
+  return {
+    angle: Number(match[1]),
+    subpaths: (match[2] ?? '').split('M').filter((subpath) => subpath.trim() !== '').length,
+    fill: (match[3] ?? '').replace('#', '').toLowerCase()
+  };
+};
+
 describe('Play Store artwork', () => {
   const feature = decodeScanlines(read(FEATURE), FEATURE);
   const svg = read(SOURCE).toString('utf8');
@@ -114,10 +132,11 @@ describe('Play Store artwork', () => {
 
     it('is FULLY OPAQUE despite carrying an alpha channel', () => {
       // ⚠️ The specific regression this exists to stop. The file this replaced was a transparent
-      // export — the mark with its field removed — and the mark's stem is WHITE, so Play would
-      // have composited white bars onto its own white surface and shown an empty tile. Google
-      // says it in as many words: "Transparent assets will display the background colour of
-      // Google Play UI."
+      // export — the mark with its field removed — and that mark's stem was white, so Play would
+      // have composited white bars onto its own white surface and shown an empty tile. The mark's
+      // stem is cream now and its bars are holes, so a transparent upload would still lose the
+      // stem and show Play's surface through the card. Google says it in as many words:
+      // "Transparent assets will display the background colour of Google Play UI."
       const decoded = decodeScanlines(read(ICON_ALPHA), ICON_ALPHA);
       expect(decoded.channels).toBe(4);
       let transparent = 0;
@@ -212,7 +231,9 @@ describe('Play Store artwork', () => {
       // whatever rendered it picked a typeface that is not the brand's.
       expect(svg).not.toMatch(/font-family/);
       expect(svg).not.toMatch(/<text/);
-      expect(svg.match(/<path /g) ?? []).toHaveLength(4);
+      // The four letters, placed by their own transforms, and the ì's card: five paths in all.
+      expect(svg.match(/<path transform="translate\(/g) ?? []).toHaveLength(4);
+      expect(svg.match(/<path /g) ?? []).toHaveLength(5);
     });
 
     it('uses no gradient and no filter, which the system forbids', () => {
@@ -226,9 +247,9 @@ describe('Play Store artwork', () => {
       // a back card's centre is behind the front one and sampling it would read
       // white. What must hold is that a colour the source declares actually
       // reaches the raster.
-      const declared = [...new Set(svgRects(svg).map((rect) => rect.fill))].filter(
-        (fill) => fill !== '181824' && fill !== 'ffffff'
-      );
+      const declared = [
+        ...new Set([...svgRects(svg).map((rect) => rect.fill), svgCard(svg).fill])
+      ].filter((fill) => fill !== '181824' && fill !== 'ffffff');
       expect(declared.sort()).toEqual(['0c3c84', '0c843c', 'e42424', 'fccc0c']);
       const counts = new Map<string, number>();
       for (let i = 0; i < feature.pixels.length; i += feature.channels) {
@@ -289,9 +310,9 @@ describe('Play Store artwork', () => {
      * different word. Every exploration sheet in `docs/design/cardi/frames/` was drawn with the
      * negative angle for months while the prose said "grave", because prose cannot catch a sign.
      * Asserting the markup would only re-read the same number the generator wrote, so this
-     * measures where the beam's ink actually IS.
+     * measures where the accent's ink actually IS: the ì's card is the banner's only beam.
      */
-    const beamPixels = () => {
+    const accentPixels = () => {
       const points: { x: number; y: number }[] = [];
       for (let y = 0; y < feature.height; y += 1) {
         for (let x = 0; x < feature.width; x += 1) {
@@ -305,7 +326,7 @@ describe('Play Store artwork', () => {
     };
 
     it('puts the accent’s high end on the LEFT and its low end on the RIGHT', () => {
-      const points = beamPixels();
+      const points = accentPixels();
       expect(points.length).toBeGreaterThan(100);
       const xs = points.map((p) => p.x);
       const middle = (Math.min(...xs) + Math.max(...xs)) / 2;
@@ -315,26 +336,82 @@ describe('Play Store artwork', () => {
       expect(topOf((x) => x < middle)).toBeLessThan(topOf((x) => x >= middle));
     });
 
-    it('states a POSITIVE rotation on the group that carries the beam', () => {
-      // Scoped to the beam's own group. The wallet cards are fanned and one of them
+    it('states a POSITIVE rotation on the group that carries the ì’s card', () => {
+      // Scoped to the card's own group. The wallet cards are fanned and one of them
       // legitimately carries `rotate(-5)` — the sign rule governs the ACCENT, where
-      // a negative angle spells a different word, and a card leaning either way is
-      // just a card. A blanket "no negative rotation anywhere" would forbid the fan
-      // and, worse, would pass for the wrong reason if the beam ever lost its group.
-      const beamGroup = svg.match(
-        /<g transform="rotate\((-?[\d.]+)[^"]*">\s*<rect[^>]*fill="#FCCC0C"/
-      );
-      expect(beamGroup).not.toBeNull();
-      expect(Number(beamGroup?.[1])).toBeGreaterThan(0);
+      // a negative angle spells a different word, and a wallet card leaning either way
+      // is just a card. A blanket "no negative rotation anywhere" would forbid the fan
+      // and, worse, would pass for the wrong reason if the accent ever lost its group.
+      expect(svgCard(svg).angle).toBeGreaterThan(0);
+    });
+
+    it('cuts the card’s five bars through it, rather than painting them', () => {
+      // The card is one even-odd path: its own subpath and one per bar. Painted ink bars would be
+      // a second colour on top of the accent; holes show the ink field through it instead.
+      expect(svgCard(svg).subpaths).toBe(6);
     });
 
     it('draws the accent in beam and the letters in white, never the other way round', () => {
       // "Beam … always pair with ink text, never white" — and the letters are the structure, so
       // they take white on the ink field. A swap would still look like a wordmark.
-      const rects = svgRects(svg);
-      const [stem, accent] = rects.slice(-2);
+      const stem = svgRects(svg).at(-1);
       expect(stem?.fill).toBe(hex([...WHITE]));
-      expect(accent?.fill).toBe(hex([...BEAM]));
+      expect(svgCard(svg).fill).toBe(hex([...BEAM]));
+    });
+  });
+
+  describe('the ì’s card, in the raster (Story 20.6)', () => {
+    // The card's pixels: the ì's card is the banner's only beam, and it sits in the upper half.
+    const card = () => {
+      const points: { x: number; y: number }[] = [];
+      for (let y = 0; y < feature.height / 2; y += 1) {
+        for (let x = 0; x < feature.width; x += 1) {
+          if (hex(at(feature, x, y)) === hex([...BEAM])) points.push({ x, y });
+        }
+      }
+      const xs = points.map((p) => p.x);
+      const ys = points.map((p) => p.y);
+      return { x0: Math.min(...xs), x1: Math.max(...xs), y0: Math.min(...ys), y1: Math.max(...ys) };
+    };
+
+    /** The `d`'s right edge, in device pixels: its glyph's widest x, placed by its transform. */
+    const dRightEdge = () => {
+      const letter = [
+        ...svg.matchAll(
+          /<path transform="translate\(([\d.]+) [\d.]+\) scale\(([\d.]+)\)" d="([^"]*)"/g
+        )
+      ][3];
+      const [, x = '0', scale = '1', d = ''] = letter ?? [];
+      // Every x in the glyph: each pair after M, L or Q, and each H.
+      const xs: number[] = [];
+      for (const [, command, args] of d.matchAll(/([MLQHVZ])([^MLQHVZ]*)/g)) {
+        const values = (args ?? '').trim().split(/\s+/).filter(Boolean).map(Number);
+        if (command === 'H') xs.push(...values);
+        else if (command !== 'V' && command !== 'Z')
+          xs.push(...values.filter((_, i) => i % 2 === 0));
+      }
+      return Number(x) + Math.max(...xs) * Number(scale);
+    };
+
+    it('sits above the stem’s top and clear of the `d`', () => {
+      const box = card();
+      const stem = svgRects(svg).at(-1);
+      expect(box.y1).toBeLessThan(stem?.y ?? 0);
+      expect(box.x0).toBeGreaterThan(dRightEdge());
+    });
+
+    it('reads as one card with its five bars cut through it', () => {
+      // A pixel is the card's when it is more beam than ink — red past half way, blue kept low so
+      // the white stem and letters never count.
+      const box = card();
+      const side = Math.max(box.x1 - box.x0, box.y1 - box.y0) + 5;
+      const left = Math.round((box.x0 + box.x1 - side) / 2);
+      const top = Math.round((box.y0 + box.y1 - side) / 2);
+      const shape = silhouette(side, (x, y) => {
+        const [r = 0, , b = 0] = at(feature, left + x, top + y);
+        return r > (INK[0] + BEAM[0]) / 2 && b < 100 ? 255 : 0;
+      });
+      expect(shape).toEqual({ pieces: 1, holes: 5 });
     });
   });
 });

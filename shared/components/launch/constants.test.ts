@@ -166,7 +166,8 @@ describe('launch constants', () => {
       // Continuity comes from shared GEOMETRY rather than from shared bytes:
       // `yarn icons:build` renders the splash mark, the app icon, the Android
       // foreground and the themed layer from one definition in
-      // `scripts/build-brand-icons.mjs`, and `yarn icons:check` regenerates them
+      // `scripts/lib/brand-mark.mjs`, rendered by `scripts/build-brand-icons.mjs`,
+      // and `yarn icons:check` regenerates them
       // in CI and compares hashes, so none of them can drift from the others.
       // They must still differ as FILES -- the icon is opaque and full-bleed
       // because the OS masks it itself, the splash is a transparent foreground

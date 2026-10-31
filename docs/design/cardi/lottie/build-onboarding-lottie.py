@@ -14,6 +14,10 @@ WHAT IT WRITES, into assets/animations/onboarding/
     onboarding-your-data-{light,dark}.json        280x190   2.22 s
     cardi-mark-intro.json                         100x100   0.84 s, one file for both schemes
 
+  The last is brand moment D on the Tessera mark: the stem alone, a beam as wide as the
+  card sweeping it top to bottom and drawing it in, then the card turning past the grave
+  and settling on it (Story 20.6). `mark_intro()` has the detail.
+
 WHERE EACH INPUT COMES FROM
 
   - The drawings: the <template> SVGs in onboarding-illustrations.source.html, the
@@ -22,7 +26,9 @@ WHERE EACH INPUT COMES FROM
     CSS is the reference; change both together.
   - The mark: assets/images/cardi-mark-inline.svg, which `yarn icons:build` writes from
     the one geometry the app icon and the launch screen share. It is READ, never
-    transcribed, so the intro cannot drift from the mark the app ships.
+    transcribed, so the intro cannot drift from the mark the app ships: one stem rect and
+    one even-odd card path turned about the card's centre, the card's subpath first and
+    then its bars. Anything else raises rather than being approximated.
   - The mark's size in its field: the app icon's, assets/images/cardi-mark.svg, written
     from that same geometry and READ the same way.
 
@@ -36,7 +42,8 @@ RENDERER SUBSET
 
   Only what lottie-ios and lottie-android both draw: one shape layer per file; groups;
   rect, ellipse and path shapes; solid fills; strokes, dashed or not; trim paths; group
-  transforms; eased and hold keyframes. No masks, mattes, expressions, images or text.
+  transforms; eased, linear and hold keyframes. No masks, mattes, expressions, images or
+  text.
 """
 import argparse
 import json
@@ -59,6 +66,9 @@ CYCLE_S = 6.0  # the canvas authors every animation in % of one 6 s cycle
 # cubic-bezier(.22,.8,.24,1), the canvas's one easing, as Lottie out/in tangents.
 EASE_OUT = {"x": [0.22], "y": [0.8]}
 EASE_IN = {"x": [0.24], "y": [1]}
+# A steady pace, for the scan: the tangents on the straight line from (0, 0) to (1, 1).
+LINEAR_OUT = {"x": [0], "y": [0]}
+LINEAR_IN = {"x": [1], "y": [1]}
 
 INK, BEAM, CREAM, BLACK = "#181824", "#FCCC0C", "#F0F0E8", "#000000"
 
@@ -83,11 +93,20 @@ ILLUSTRATIONS = [
 
 # The intro is an ink field 100 across with the mark centred in it at the app icon's
 # proportion (Story 22.10, decision 6): the mark's box takes the share of the field
-# that it takes of the icon's, 600.06 of 1024, so 58.6 here. `icon_share()` reads it
-# from the icon. (The adopted intro copied the old <BrandedIcon iconSize={34} />, where
-# the bars were a stub in their disc.)
+# that it takes of the icon's, 735.70 of 1024 for the Tessera mark, so 71.8 here.
+# `icon_share()` reads it from the icon, so it follows the mark. (The adopted intro
+# copied the old <BrandedIcon iconSize={34} />, where the mark was a stub in its disc.)
 MARK_FIELD = 100
 MARK_END = 14
+
+# Brand moment D's scan, in fractions of the card's height (Story 20.6): the beam is 18
+# of the card's 166 thick, and reaches 34 of them past each side of the card.
+SCAN_WEIGHT = 18 / 166
+SCAN_OVERHANG = 34 / 166
+# Its keyframes, in % of the 6 s cycle: the beam cuts on above the card, sweeps it at a
+# steady pace and cuts off below it; then the card turns past the angle and settles.
+SCAN_ON, SCAN_OFF = 2, 8.333
+TURN_FROM, TURN_TO, OVERSHOOT = 9, 12.333, 3.5
 
 
 # ---- keyframes ---------------------------------------------------------------
@@ -106,14 +125,18 @@ def static(value):
     return {"a": 0, "k": value}
 
 
-def animated(points, hold=False):
-    """[(pct, value), ...] -> an animated property, eased like the canvas or held."""
+def animated(points, hold=False, linear=False):
+    """[(pct, value), ...] -> an animated property, eased like the canvas, linear or held."""
     keys = []
     for n, (pct, value) in enumerate(points):
         key = {"t": frame(pct), "s": value if isinstance(value, list) else [value]}
-        if n < len(points) - 1:
-            if hold:
-                key["h"] = 1
+        if hold:
+            # The last key too: lottie-android drops a last keyframe that is not held, so the
+            # hold before it would never end.
+            key["h"] = 1
+        elif n < len(points) - 1:
+            if linear:
+                key["o"], key["i"] = LINEAR_OUT, LINEAR_IN
             else:
                 key["o"], key["i"] = EASE_OUT, EASE_IN
         keys.append(key)
@@ -133,11 +156,55 @@ def group(name, items):
 
 # ---- SVG geometry -> Lottie shapes -------------------------------------------
 
-TOKEN = re.compile(r"[MmLlHhVvCcZz]|-?\d*\.?\d+(?:e-?\d+)?")
+TOKEN = re.compile(r"[MmLlHhVvCcAaZz]|-?\d*\.?\d+(?:e-?\d+)?")
+
+
+def arc_segments(start, r, large, sweep, end):
+    """A CIRCULAR SVG arc -> cubic Béziers [(handle out, handle in, end point), ...].
+
+    The centre comes from SVG 1.1's endpoint parameterisation (F.6.5) with one radius and
+    no rotation, and a radius too short to span the endpoints grows until it does (F.6.6).
+    The arc is cut into pieces of at most 90°, each the standard cubic for a circular arc:
+    handles 4/3 tan(θ/4) of the radius long, along the tangents. Handles are rounded to
+    four places, so the trigonometry's last bits never reach the committed JSON.
+    """
+    (x0, y0), (x, y) = start, end
+    if math.dist(start, end) < 1e-9:
+        return []
+    if r == 0:
+        return [(start, end, end)]  # SVG draws a zero-radius arc as a straight line
+    hx, hy = (x0 - x) / 2, (y0 - y) / 2
+    half = hx * hx + hy * hy
+    r = max(abs(r), math.sqrt(half))
+    k = math.sqrt(max(0.0, r * r - half) / half) * (-1 if large == sweep else 1)
+    cx, cy = k * hy + (x0 + x) / 2, -k * hx + (y0 + y) / 2
+    a0 = math.atan2(y0 - cy, x0 - cx)
+    turn = math.atan2(y - cy, x - cx) - a0
+    if sweep and turn < 0:
+        turn += 2 * math.pi
+    elif not sweep and turn > 0:
+        turn -= 2 * math.pi
+    pieces = max(1, math.ceil(abs(turn) / (math.pi / 2) - 1e-9))
+    step = turn / pieces
+    h = 4 / 3 * math.tan(step / 4) * r
+    out = []
+    for n in range(pieces):
+        a1, a2 = a0 + step * n, a0 + step * (n + 1)
+        p1 = (cx + r * math.cos(a1), cy + r * math.sin(a1)) if n else start
+        p2 = (cx + r * math.cos(a2), cy + r * math.sin(a2)) if n < pieces - 1 else end
+        c1 = (p1[0] - h * math.sin(a1), p1[1] + h * math.cos(a1))
+        c2 = (p2[0] + h * math.sin(a2), p2[1] - h * math.cos(a2))
+        out.append((tuple(round(v, 4) for v in c1), tuple(round(v, 4) for v in c2),
+                    tuple(round(v, 4) for v in p2) if n < pieces - 1 else end))
+    return out
 
 
 def parse_path(d):
-    """An SVG path (M L H V C Z, absolute or relative) -> Lottie `sh` shapes, one per subpath."""
+    """An SVG path (M L H V C A Z, absolute or relative) -> Lottie `sh` shapes, one per subpath.
+
+    Arcs must be circular: an `A` whose two radii differ raises rather than being drawn as a
+    circle it is not.
+    """
     tokens = TOKEN.findall(d)
     i, cmd = 0, None
     subpaths, cur = [], None
@@ -190,6 +257,20 @@ def parse_path(d):
             cur["v"].append([x, y])
             cur["i"].append([c[2] - x, c[3] - y])
             cur["o"].append([0, 0])
+        elif cmd in "Aa":
+            rx, ry, _rotation, large, sweep, ex, ey = (num() for _ in range(7))
+            if abs(rx - ry) > 1e-9:
+                raise ValueError(f"unsupported elliptical arc: radii {rx} and {ry} differ")
+            if large not in (0, 1) or sweep not in (0, 1):
+                raise ValueError(f"arc flags must be 0 or 1, got {large:g} and {sweep:g}")
+            if cmd == "a":
+                ex, ey = ex + x, ey + y
+            for c1, c2, end in arc_segments((x, y), rx, int(large), int(sweep), (ex, ey)):
+                cur["o"][-1] = [round(c1[0] - x, 4), round(c1[1] - y, 4)]
+                x, y = end
+                cur["v"].append([x, y])
+                cur["i"].append([round(c2[0] - x, 4), round(c2[1] - y, 4)])
+                cur["o"].append([0, 0])
         else:
             raise ValueError(f"unsupported path command {cmd}")
 
@@ -426,46 +507,67 @@ def read_rect(el):
             "h": float(el.get("height")), "rx": float(el.get("rx", 0)), "fill": el.get("fill")}
 
 
-def read_mark(path):
-    """The shipped mark's bars and beam, in its own viewBox units.
+ROTATE = re.compile(r"rotate\(([-\d.]+) ([-\d.]+) ([-\d.]+)\)")
 
-    Strict on purpose, like build-brand-icons.mjs: bare rounded rects for the bars and
-    ONE rect turned about its own centre for the beam. Any other shape fails the
+
+def read_mark(path):
+    """The shipped mark's stem and card, in its own viewBox units: see `mark_from_svg`."""
+    return mark_from_svg(ET.parse(path).getroot(), path.name)
+
+
+def mark_from_svg(root, name):
+    """((viewBox width, height), stem, card) from the root of a generated mark SVG.
+
+    Strict on purpose, like build-brand-icons.mjs: ONE bare rounded rect for the stem, and
+    ONE group turned about the card's centre holding ONE even-odd path, whose first subpath
+    is the card and whose others are its bars, cut through it. Any other shape fails the
     build instead of being approximated.
     """
-    root = ET.parse(path).getroot()
     _, _, vb_w, vb_h = (float(v) for v in root.get("viewBox").split())
-    bars, beams = [], []
+    stems, cards = [], []
     for el in root:
         tag = el.tag.rsplit("}", 1)[-1]
         if tag == "rect":
-            bars.append(read_rect(el))
+            stems.append(read_rect(el))
             continue
-        m = re.fullmatch(r"rotate\(([-\d.]+) ([-\d.]+) ([-\d.]+)\)", el.get("transform", ""))
-        if tag != "g" or len(el) != 1 or not m:
-            raise ValueError(f"{path.name}: unexpected <{tag}>; the mark is rects and one rotated beam")
+        m = ROTATE.fullmatch(el.get("transform", ""))
+        if tag != "g" or len(el) != 1 or not m or el[0].tag.rsplit("}", 1)[-1] != "path":
+            raise ValueError(f"{name}: unexpected <{tag}>; the mark is a stem rect and one turned card path")
+        path = el[0]
+        if path.get("fill-rule") != "evenodd":
+            raise ValueError(f'{name}: the card\'s bars must be holes, cut with fill-rule="evenodd"')
+        shapes = parse_path(path.get("d"))
+        if len(shapes) < 2 or not all(sh["ks"]["k"]["c"] for sh in shapes):
+            raise ValueError(f"{name}: the card path must be closed subpaths, the card and then its bars")
+        # The card's level box. Its subpath starts and ends every corner arc on an edge, so
+        # its vertices span the box exactly.
+        xs = [v[0] for v in shapes[0]["ks"]["k"]["v"]]
+        ys = [v[1] for v in shapes[0]["ks"]["k"]["v"]]
+        x, y, w, h = min(xs), min(ys), max(xs) - min(xs), max(ys) - min(ys)
         angle, px, py = map(float, m.groups())
-        beam = read_rect(el[0])
-        if math.dist((beam["x"] + beam["w"] / 2, beam["y"] + beam["h"] / 2), (px, py)) > 1e-3:
-            raise ValueError(f"{path.name}: the beam must turn about its own centre")
-        beams.append({**beam, "angle": angle, "pivot": (px, py)})
-    if not bars or len(beams) != 1:
-        raise ValueError(f"{path.name}: expected bars and exactly one beam")
-    return (vb_w, vb_h), bars, beams[0]
+        # The vertices and the pivot are each rounded to 3 places, so their centres can
+        # disagree by up to about 1.4e-3 on a correct card.
+        if math.dist((x + w / 2, y + h / 2), (px, py)) > 2e-3:
+            raise ValueError(f"{name}: the card must turn about its own centre")
+        cards.append({"x": x, "y": y, "w": w, "h": h, "angle": angle, "pivot": (px, py),
+                      "body": shapes[0], "bars": shapes[1:], "fill": path.get("fill")})
+    if len(stems) != 1 or len(cards) != 1:
+        raise ValueError(f"{name}: expected one stem and one card, got {len(stems)} and {len(cards)}")
+    return (vb_w, vb_h), stems[0], cards[0]
 
 
-def mark_box(bars, beam):
+def mark_box(stem, card):
     """The mark's bounding box, (width, height), in its own units.
 
-    The bars, and the corners of the beam's rectangle turned about its centre: the
+    The stem, and the corners of the card's sharp rectangle turned about its centre: the
     extents build-brand-icons.mjs crops the inline mark's viewBox to.
     """
-    xs = [x for b in bars for x in (b["x"], b["x"] + b["w"])]
-    ys = [y for b in bars for y in (b["y"], b["y"] + b["h"])]
-    a = math.radians(beam["angle"])
-    px, py = beam["pivot"]
-    for cx in (beam["x"], beam["x"] + beam["w"]):
-        for cy in (beam["y"], beam["y"] + beam["h"]):
+    xs = [stem["x"], stem["x"] + stem["w"]]
+    ys = [stem["y"], stem["y"] + stem["h"]]
+    a = math.radians(card["angle"])
+    px, py = card["pivot"]
+    for cx in (card["x"], card["x"] + card["w"]):
+        for cy in (card["y"], card["y"] + card["h"]):
             dx, dy = cx - px, cy - py
             xs.append(px + dx * math.cos(a) - dy * math.sin(a))
             ys.append(py + dx * math.sin(a) + dy * math.cos(a))
@@ -474,39 +576,55 @@ def mark_box(bars, beam):
 
 def icon_share(path):
     """The share of the app icon's field the mark's box takes along its longer side."""
-    (vb_w, vb_h), bars, beam = read_mark(path)
-    return max(mark_box(bars, beam)) / max(vb_w, vb_h)
+    (vb_w, vb_h), stem, card = read_mark(path)
+    return max(mark_box(stem, card)) / max(vb_w, vb_h)
 
 
 def mark_intro(path, icon):
-    """Brand moment D, "scan, then settle", drawn on the real mark.
+    """Brand moment D, "scan, then settle", drawn on the real mark (Story 20.6).
 
-    The mark opens as a dotless ı of bars. The beam cuts on, full width, just above
-    them, sweeps down to their foot, returns to the accent's centre and turns into
-    the accent. Turning is all the settle needs: in the shipped mark the accent IS a
-    beam laid across the bars, so the scan line and the accent are one shape and
-    nothing hands over. The last frame is the static mark.
+    The mark opens as the stem alone. A scan beam, as wide as the card and a little more,
+    cuts on just above where the card lies LEVEL and sweeps down over it at a steady pace,
+    drawing the card in behind it; it cuts off just below. Then the card turns past the
+    grave's angle and settles on it. The last frame is the static mark.
+
+    The card is drawn whole from frame 0, its bars painted ink because the disc behind them
+    is always ink, and an ink cover hides it: the cover's top edge rides the beam's centre
+    line down, so the card appears exactly where the beam has been. It is the subset's way to
+    reveal a shape without a mask or a matte, and on the ink disc the cover cannot be seen.
     """
-    (vb_w, vb_h), bars, beam = read_mark(path)
+    (vb_w, vb_h), stem, card = read_mark(path)
     # The inline mark's viewBox is its box, so the box fills the icon's share of the field.
     k = icon_share(icon) * MARK_FIELD / max(vb_w, vb_h)
     offset = ((MARK_FIELD - vb_w * k) / 2, (MARK_FIELD - vb_h * k) / 2)
 
-    px, py = beam["pivot"]
-    above = min(b["y"] for b in bars) - beam["h"] / 2  # its lower edge on the bars' top
-    foot = max(b["y"] + b["h"] for b in bars)          # centred on the bars' foot
-    scan = transform(
-        p=animated([(0, [px, above]), (1.1, [px, above]), (7, [px, foot]), (10, [px, py])]),
-        a=(px, py),
-        r=animated([(0, 0), (10, 0), (MARK_END, beam["angle"])]),
-        o=animated([(0, 0), (1.1, 100)], hold=True))
-    beam_group = group("beam", [rounded_rect(beam["x"], beam["y"], beam["w"], beam["h"], beam["rx"]),
-                                fill(beam["fill"]), scan])
-    bar_groups = [group(f"bar#{n + 1}", [rounded_rect(b["x"], b["y"], b["w"], b["h"], b["rx"]),
-                                          fill(b["fill"]), transform()])
-                  for n, b in enumerate(bars)]
-    mark = group("mark", [beam_group] + list(reversed(bar_groups))
-                 + [transform(p=offset, s=(k * 100, k * 100))])
+    px, py = card["pivot"]
+    weight = card["h"] * SCAN_WEIGHT
+    width = card["w"] + 2 * card["h"] * SCAN_OVERHANG
+    above = card["y"] - weight / 2               # its lower edge on the card's top edge
+    below = card["y"] + card["h"] + weight / 2   # its upper edge on the card's bottom edge
+    sweep = [(0, above), (SCAN_ON, above), (SCAN_OFF, below)]
+
+    beam = group("beam", [
+        rounded_rect(-width / 2, -weight / 2, width, weight, weight / 2), fill(BEAM),
+        transform(p=animated([(t, [px, y]) for t, y in sweep], linear=True),
+                  o=animated([(0, 0), (SCAN_ON, 100), (SCAN_OFF, 0)], hold=True))])
+    cover = group("cover", [
+        {"ty": "rc", "nm": "Rect", "r": static(0),
+         "p": animated([(t, [px, (y + below) / 2]) for t, y in sweep], linear=True),
+         "s": animated([(t, [width, below - y]) for t, y in sweep], linear=True)},
+        fill(INK), transform()])
+    turned = group("card", [
+        group("bars", card["bars"] + [fill(INK), transform()]),
+        group("body", [card["body"], fill(card["fill"]), transform()]),
+        transform(p=(px, py), a=(px, py),
+                  r=animated([(0, 0), (TURN_FROM, 0), (TURN_TO, card["angle"] + OVERSHOOT),
+                              (MARK_END, card["angle"])]))])
+    stem_group = group("stem", [rounded_rect(stem["x"], stem["y"], stem["w"], stem["h"], stem["rx"]),
+                                fill(stem["fill"]), transform()])
+    # Lottie paints earlier items on top: the beam over the cover over the card.
+    mark = group("mark", [beam, cover, turned, stem_group,
+                          transform(p=offset, s=(k * 100, k * 100))])
     field = group("field", [{"ty": "el", "nm": "Ellipse", "p": static([MARK_FIELD / 2] * 2),
                              "s": static([MARK_FIELD] * 2)}, fill(INK), transform()])
     return composition("cardi-mark-intro", (MARK_FIELD, MARK_FIELD), [mark, field], MARK_END)

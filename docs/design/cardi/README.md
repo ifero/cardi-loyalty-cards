@@ -148,27 +148,37 @@ Wave B is blocked until the illustration set exists.
   real EAN-13 from the L/R code tables; treat the Stitch barcode as a placeholder and never as
   a reference.
 
-## The mark is decided, and it is now built
+## The mark, and how it is built
 
-**35°, grave, contained in the word; in the icon the beam crosses the bars high** — variant
-C of [`frames/cardi-icon-explore.html`](frames/cardi-icon-explore.html), chosen 2026-08-26
-over five alternatives. The square is allowed to differ from the word because it has no
-neighbouring letter to anchor the accent against; what settled it was the Android 13 themed
-layer, which redraws the icon in one wallpaper-derived colour. A floating tick is a speck
-once the hue is gone; a crossing beam survives, because it is a shape rather than a colour.
+**The shipped mark is the Tessera mark** (Story 20.6, chosen 2026-10-30): a cream capsule stem
+under a beam card turned to the grave's 35°, five bars cut through the card. See
+[_2026-10-30 — the Tessera mark_](#2026-10-30--the-tessera-mark) below and
+[`logo-concepts/`](logo-concepts/).
 
-Everything shipped is generated from one geometry definition:
+**Before it, 2026-08-26 to 2026-10-30:** 35°, grave, contained in the word; in the icon the
+beam crossed the bars high — variant C of
+[`frames/cardi-icon-explore.html`](frames/cardi-icon-explore.html), chosen over five
+alternatives. The square was allowed to differ from the word because it has no neighbouring
+letter to anchor the accent against; what settled it was the Android 13 themed layer, which
+redraws the icon in one wallpaper-derived colour. A floating tick is a speck once the hue is
+gone; a crossing beam survived, because it is a shape rather than a colour. The Tessera mark
+answers the same test with holes: its bars are cut through the card, so one colour keeps them.
+
+Everything shipped is generated from one geometry definition, `scripts/lib/brand-mark.mjs`:
 
 ```bash
 yarn icons:build     # write the assets
 yarn icons:check     # fail if any drifted (pre-push + CI)
 ```
 
-`scripts/build-brand-icons.mjs` renders eight artefacts — three SVGs and five PNGs — from
-the same constants, so the app icon, the launch mark, the Android foreground, the themed
-layer, the favicon and the in-app glyph cannot disagree with each other. The Android
-foreground scale is **derived** (`33 / bounding radius` = ×0.873), not hardcoded, so
-changing the artwork updates the export scale instead of silently invalidating it.
+`scripts/build-brand-icons.mjs` renders every brand artefact from it — the SVGs, the phone,
+watch and Wear icons, the splash, the favicon and the store artwork — so the app icon, the
+launch mark, the Android foreground, the themed layer and the in-app glyph cannot disagree
+with each other. The Android foreground scale is **derived**, not hardcoded, so changing the
+artwork updates the export scale instead of silently invalidating it: ×0.873 for the first
+mark, from 0.33 of the canvas (35.64dp) ÷ its box-corner radius; ×0.823 for the Tessera
+mark, from its furthest drawn point
+against the 66dp logo circle less one mdpi pixel, 1dp.
 
 Two constraints that are easy to get wrong and are now enforced by tests:
 
@@ -1294,6 +1304,76 @@ own unit**. One detail worth keeping: the square Wear frames carry a dashed "env
 showing the round layout's footprint, and the **barcode frame deliberately does not** — the guide
 would be a line drawn across the bars, and _nothing may overlay a barcode_ holds for a reference
 frame too.
+
+### 2026-10-30 — the Tessera mark
+
+Story 20.6. ifero found the barcode-stem mark of Story 20.3 unnatural — three bars crossed high by
+a beam stroke — and chose **3C Tessera** from a two-round exploration
+([`logo-concepts/`](logo-concepts/)): the ì's accent is a loyalty card. It overrules 20.3's
+"no card" rule.
+
+**One definition.** `scripts/lib/brand-mark.mjs` holds the mark on the 1024 grid of
+`logo-concepts/final/cardi-icon.svg`: the stem 156 × 400 at (456, 462), radius 78; the card
+264 × 166, radius 28, centred on (512, 270) and turned **+35°**; the bars 26 / 40 / 18 / 32 / 22
+wide, 18 apart, radius 3, under a 62 band with 26 below them, centred across the card (27 each
+side). `build-brand-icons.mjs` and
+`brand-wordmark.mjs` both read it. The generator centres the mark's box on each canvas, so the
+icons draw the reference moved down 17.85 units and nothing else.
+
+**The bars are holes**, in every SVG (`fill-rule="evenodd"`) and every raster (card coverage
+from `max(dCard, −min(dBar))`). That is what keeps the barcode on the one-colour surfaces — the
+Android themed layer and the complication's inline glyph — where painted bars would vanish, down
+to a floor: on the phone from xhdpi, after prebuild's resizing (at mdpi and hdpi the slots break
+into fragments); on Wear from hdpi, where one slot holds only if a pixel of alpha 1 is read as
+clear; in the glyph files from @2x, though at the 76 px the widget draws them the slots break up
+as on the phone at mdpi and hdpi. `android-phone-icons.test.ts`, `wear-icons.test.ts` and
+`watch-icons.test.ts` count the five holes in the alpha at those sizes.
+
+**Derived numbers that moved:**
+
+| what                               | before                  | Tessera                         |
+| ---------------------------------- | ----------------------- | ------------------------------- |
+| Android foreground scale           | ×0.873, box-corner rule | ×0.823, furthest drawn point    |
+| worst Wear ink circle (hdpi)       | 64.55dp                 | 64.68dp, of 66                  |
+| worst phone ink radius (mdpi)      | 32.80dp                 | 32.56dp, of 33                  |
+| worst splash ink radius (mdpi)     | 88.41dp                 | 94.53dp, of 96                  |
+| watch icon ink, of the circle      | 0.672                   | 0.722                           |
+| mark's box on the 1024 canvas      | 489.04 × 600.06         | 311.47 × 735.70 (aspect 0.4234) |
+| box share of Welcome's 100 field   | 58.6                    | 71.8                            |
+| `AppIconHeader` mark (40 tall)     | about 33 × 40           | about 17 × 40                   |
+| docs badge glyph (`--badge-glyph`) | 0.586                   | 0.718                           |
+
+The old rule took 0.33 of the canvas, 35.64dp, ÷ the box-corner radius (×0.846 here). It aimed
+outside the 66dp logo circle, so it held only while a mark's ink stayed far enough inside its
+box's corners. No ink reaches this mark's box corners either (the stem's foot is 368.7 units from
+the centre, the corners 399.5), but not far enough: the rule would have put the foot at about
+33.3dp of ink, outside the circle. The scale now comes from the true rounded shapes, less a margin of one mdpi pixel, 1dp, for the ink that antialiasing spills past
+the drawn edge. The phone sets that margin, not Wear: the generator draws Wear's mipmaps itself
+from hdpi up, but Expo's prebuild resizes the phone's adaptive layers down to mdpi, and the
+resizing spreads the edge by most of a pixel. The first pass took one hdpi pixel (×0.832), and
+the mdpi foreground and monochrome reached 33.24dp, past the 66dp guideline (amended 2026-10-31).
+`test/android-phone-icons.test.ts` now runs Expo's resizing and measures the phone's layers and
+its Android 12 splash icon, which must stay inside a 192dp circle.
+
+On the watch the box overshoots the inscribed square by 5.8 units at each end
+(0.57 % of the canvas). At the top that is an empty corner of the turned card's box; at the bottom
+it is ink, the stem's round foot, which reaches y 879.85 against the square's 874.04. What the
+circular mask clips at is the circle, and the ink stays within 0.72 of it, so
+`cardi-watch-grammar.md` states that figure instead.
+
+**The wordmark's ì** carries the same card, scaled by 12⁄156 to the word's stem, centred 22⁄156
+stem widths left of the stem's centre, its turned box 3 units above the stem's top. The store
+banners are regenerated with it.
+
+**Brand moment D** is redrawn as "scan, then settle" for the new mark, in the same 0.84 s, so the
+Welcome drawing keeps its timing: the stem alone; a horizontal beam a little wider than the card
+sweeps the level card **top to bottom** and draws it in; the card turns past the grave to 38.5°
+and settles on 35°. ifero kept the design system's motion rule as written ("a scan beam appears full width and
+sweeps top to bottom"), replacing the left-to-right sweep of the exploration's prototype. The
+builder reads the new mark from `cardi-mark-inline.svg` and learned circular arcs to do it.
+
+**Not done:** `tools/_watch_shared.py` and `watch_complication_frames.py` still restate the old
+icon, so the watch frames draw it and `frames:check` still passes. That is a follow-up.
 
 ### Still open
 

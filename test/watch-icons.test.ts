@@ -9,6 +9,7 @@ import {
   readHeader,
   type Header
 } from './png-scanlines';
+import { silhouette } from './silhouette';
 import { IDENTITY_COLORS } from '../shared/theme/tokens.generated';
 
 /**
@@ -186,11 +187,11 @@ describe('watchOS icon artefacts (Story 21.3)', () => {
     });
 
     it('leaves real margin rather than grazing the mask', () => {
-      // Measured 0.672 of the radius. That is comfortably BELOW the 0.756 the generator's
-      // own bounding-box figure implies (corner radius 37.798 of the canvas's 50), and the
-      // gap is not an error in either number: the bounding box is a rectangle whose corners
-      // the artwork never reaches, so it is an upper bound on a rotated mark rather than a
-      // measurement of one.
+      // Measured 0.722 of the radius for the Tessera mark (Story 20.6): its furthest drawn point,
+      // the stem's foot, is 0.720 of it, and antialiasing adds the rest. That is BELOW the 0.780
+      // the mark's bounding box implies (corner radius 399.46 of the canvas's 512), and the gap
+      // is not an error in either number: the box is a rectangle whose corners the turned card
+      // never reaches, so it is an upper bound on the mark rather than a measurement of one.
       //
       // A regression that merely GREW the mark would keep passing the containment check
       // above right up to the moment it clipped. This fails first, while there is still
@@ -227,20 +228,91 @@ describe('watchOS icon artefacts (Story 21.3)', () => {
     });
 
     it.each(GLYPH)('%s is not clipped by its tight frame', (relative) => {
-      // Framed on the mark's own box with a one-unit margin, so no inked pixel touches an edge.
+      // Framed on the mark's own box with a 16-unit margin, so no inked pixel touches an edge.
       const { size, x0, y0, x1, y1 } = inkedBox(relative);
       expect(Math.min(x0, y0)).toBeGreaterThan(0);
       expect(Math.max(x1, y1)).toBeLessThan(size - 1);
     });
 
-    it.each(GLYPH)('%s fills its height, which the padded icon canvas would halve', (relative) => {
+    it.each(GLYPH)('%s fills its height, which the padded icon canvas would shrink', (relative) => {
       // watchOS sizes the inline image to the line of text, so the mark's height is the glyph's.
       const { size, y0, y1 } = inkedBox(relative);
       expect((y1 - y0 + 1) / size).toBeGreaterThan(0.9);
     });
 
+    it.each(GLYPH.slice(1))(
+      '%s reads as a card with five bars cut through it, the stem apart',
+      (relative) => {
+        // Story 20.6. A template is drawn from the alpha alone, so the barcode survives only as
+        // HOLES through the card: five enclosed alpha-zero regions, and the stem as a second piece
+        // of ink. @1x is left out: at 64 px the bars are 1.5 to 3.4 px wide, so the transparent
+        // pixels inside a turned bar break into separate runs and count as more than five holes.
+        // watchOS picks @2x, which is what the 76 px downsample starts from.
+        const { width: size, channels, pixels } = decodeScanlines(read(relative), relative);
+        expect(silhouette(size, (x, y) => at(pixels, (y * size + x) * channels + 3))).toEqual({
+          pieces: 2,
+          holes: 5
+        });
+      }
+    );
+
     it.each(GLYPH)('%s is listed in the generator', (relative) => {
       expect(readText('scripts/build-brand-icons.mjs')).toContain(`'${relative}'`);
+    });
+  });
+
+  describe('the mark is a cream stem under a beam card (Story 20.6)', () => {
+    /**
+     * The geometry, from `cardi-mark.svg`: the same padded 1024 canvas as `icon.png` and the
+     * watch icon, so its numbers are pixel positions there. The card is the first subpath of the
+     * turned even-odd path; its box comes from the endpoints, which all lie on its edges.
+     */
+    const geometry = () => {
+      const svg = readText('assets/images/cardi-mark.svg');
+      const attr = (name: string) =>
+        Number(svg.match(new RegExp(`<rect[^>]*\\s${name}="([\\d.]+)"`))?.[1]);
+      const turn = svg.match(/rotate\(([\d.]+) ([\d.]+) ([\d.]+)\)/);
+      const card = (svg.match(/ d="([^"]*)"/)?.[1] ?? '').split('Z')[0] ?? '';
+      // M and A end on a point, V on a y; H moves along x only.
+      const ys: number[] = [];
+      for (const [, command, args] of card.matchAll(/([MHVA])([^MHVAZ]*)/g)) {
+        const values = (args ?? '').trim().split(/\s+/).map(Number);
+        if (command === 'V') ys.push(values[0] ?? NaN);
+        else if (command !== 'H') ys.push(values[values.length - 1] ?? NaN);
+      }
+      return {
+        stem: { x: attr('x'), y: attr('y'), w: attr('width'), h: attr('height') },
+        angle: Number(turn?.[1]),
+        pivot: { x: Number(turn?.[2]), y: Number(turn?.[3]) },
+        card: { top: Math.min(...ys), bottom: Math.max(...ys) }
+      };
+    };
+
+    it('fills the in-app mark’s stem cream and its card beam', () => {
+      const svg = readText('assets/images/cardi-mark-inline.svg');
+      expect(svg.match(/<rect [^>]*fill="([^"]+)"/)?.[1]).toBe(IDENTITY_COLORS.cream);
+      expect(svg.match(/<path fill-rule="evenodd" [^>]*fill="([^"]+)"/)?.[1]).toBe(
+        IDENTITY_COLORS.beam
+      );
+    });
+
+    it('paints cream at the stem’s centre and beam in the card’s plain band, in the app icon', () => {
+      const { size, rgb } = decode('assets/icon.png');
+      const sample = (x: number, y: number) => {
+        const i = (Math.round(y) * size + Math.round(x)) * 3;
+        return hex(at(rgb, i), at(rgb, i + 1), at(rgb, i + 2));
+      };
+      const { stem, angle, pivot, card } = geometry();
+      expect(sample(stem.x + stem.w / 2, stem.y + stem.h / 2)).toBe(IDENTITY_COLORS.cream);
+
+      // Half way down the band above the bars (62 of the card's 166), on the card's centre line,
+      // turned with the card about its centre.
+      const height = card.bottom - card.top;
+      const down = -height / 2 + (height * 31) / 166;
+      const a = (angle * Math.PI) / 180;
+      expect(sample(pivot.x - down * Math.sin(a), pivot.y + down * Math.cos(a))).toBe(
+        IDENTITY_COLORS.beam
+      );
     });
   });
 

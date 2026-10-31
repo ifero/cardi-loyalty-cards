@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { COLOR_TYPE_RGBA, decodeScanlines, readHeader, type Header } from './png-scanlines';
+import { silhouette } from './silhouette';
 import { IDENTITY_COLORS } from '../shared/theme/tokens.generated';
 
 /**
@@ -39,6 +40,7 @@ const MIPMAP_XML = `${RES}/mipmap-anydpi-v26/ic_launcher.xml`;
 const COLORS_XML = `${RES}/values/colors.xml`;
 const MANIFEST = 'watch-android/app/src/main/AndroidManifest.xml';
 const PHONE_FOREGROUND = 'assets/adaptive-icon.png';
+const PHONE_MONOCHROME = 'assets/adaptive-icon-monochrome.png';
 
 /**
  * The density buckets, with their pixel sizes written out rather than derived.
@@ -192,8 +194,12 @@ describe('Wear OS launcher icon (Story 21.4)', () => {
       // The stricter of the two rules, and the one that matters on a watch: the 72dp viewport
       // is what a circular mask CLIPS at, while 66dp is what Android asks the logo to stay
       // within so it survives masking plus the parallax and pulse effects a launcher may add.
-      // Measured worst case is 64.55dp of ink at hdpi, where one pixel of antialiasing buys
-      // the most dp — inside, with the least room of the four.
+      // Measured worst case is 64.68dp of ink at hdpi, where one pixel of antialiasing buys
+      // the most dp — inside, with the least room of the four. The generator derives
+      // `ANDROID_SCALE` from the drawn mark against 66dp less one mdpi pixel, 1dp, so the mark is
+      // as large as this rule allows rather than shrunk by a guess. That margin is set by the
+      // phone's mdpi mipmaps, which Expo's prebuild resizes and `android-phone-icons.test.ts`
+      // measures; Wear starts at hdpi, so here it leaves room to spare.
       expect(extentOf(relative).radiusDp).toBeLessThan(MAX_LOGO_DP / 2);
     });
   });
@@ -268,14 +274,83 @@ describe('Wear OS launcher icon (Story 21.4)', () => {
       expect([...hues]).toEqual(['255,255,255']);
     });
 
+    /** The opaque colours of a layer, and the shape its alpha draws above `clearUpTo`. */
+    const coloursAndSilhouette = (relative: string, clearUpTo = 0) => {
+      const { size, rgba } = decode(relative);
+      const hues = new Set<string>();
+      for (let i = 0; i < size * size; i += 1) {
+        if (at(rgba, i * 4 + 3) < 255) continue;
+        hues.add(`${at(rgba, i * 4)},${at(rgba, i * 4 + 1)},${at(rgba, i * 4 + 2)}`);
+      }
+      return {
+        hues: [...hues],
+        shape: silhouette(size, (x, y) => {
+          const alpha = at(rgba, (y * size + x) * 4 + 3);
+          return alpha > clearUpTo ? alpha : 0;
+        })
+      };
+    };
+
+    it.each([
+      PHONE_MONOCHROME,
+      ...DENSITIES.filter(([bucket]) => bucket !== 'hdpi').map(
+        ([bucket]) => `${RES}/mipmap-${bucket}/ic_launcher_monochrome.png`
+      )
+    ])('%s is one colour, with the five bars cut through the card as holes', (relative) => {
+      // Story 20.6. With one colour there is no ink left to paint bars in, so the barcode survives
+      // only as HOLES: five alpha-zero regions enclosed by the card. The stem stands apart from the
+      // card, so the ink is exactly two pieces. Painted bars would leave one solid card here, which
+      // this would read as zero holes.
+      const { hues, shape } = coloursAndSilhouette(relative);
+      expect(hues).toEqual(['255,255,255']);
+      expect(shape).toEqual({ pieces: 2, holes: 5 });
+    });
+
+    it(`${RES}/mipmap-hdpi/ic_launcher_monochrome.png is one colour, with five bar holes once alpha 1 counts as clear`, () => {
+      // hdpi is the one density where the raster does not resolve the barcode into exactly five
+      // holes. At 162 px and ×0.823 the narrowest bar is a slot 2.3 px wide at 35°, and one pixel
+      // inside it carries an alpha of 1 (0.4%), which splits that slot in two. ifero accepted that
+      // pixel on 2026-10-31 (Story 20.6, Review Triage Log #35): nobody can see it, and the glyph's
+      // @1x is left out of `watch-icons.test.ts` for the same reason. Read with alpha 1 as clear,
+      // the layer is still exactly the matrix's shape, so a slot painted shut or split by visible
+      // ink fails here.
+      const { hues, shape } = coloursAndSilhouette(
+        `${RES}/mipmap-hdpi/ic_launcher_monochrome.png`,
+        1
+      );
+      expect(hues).toEqual(['255,255,255']);
+      expect(shape).toEqual({ pieces: 2, holes: 5 });
+    });
+
+    it.each([
+      PHONE_FOREGROUND,
+      ...DENSITIES.map(([bucket]) => `${RES}/mipmap-${bucket}/ic_launcher_foreground.png`)
+    ])('%s paints a cream stem and a beam card, and nothing else', (relative) => {
+      // Story 20.6. Where the foreground is opaque it is one of the mark's two colours; the
+      // antialiased edges are partly transparent and the bars are holes, so neither shows up here.
+      const { size, rgba } = decode(relative);
+      const colours = new Set<string>();
+      for (let i = 0; i < size * size; i += 1) {
+        if (at(rgba, i * 4 + 3) < 255) continue;
+        const hexOf = (offset: number) =>
+          at(rgba, i * 4 + offset)
+            .toString(16)
+            .padStart(2, '0');
+        colours.add(`#${hexOf(0)}${hexOf(1)}${hexOf(2)}`.toUpperCase());
+      }
+      expect([...colours].sort()).toEqual(
+        [IDENTITY_COLORS.cream, IDENTITY_COLORS.beam].map((c) => c.toUpperCase()).sort()
+      );
+    });
+
     it.each(DENSITIES)(
       'is a separate asset from the %s foreground for a reason visible in the bytes',
       (bucket) => {
         // Why `<monochrome>` does not simply point at `@mipmap/ic_launcher_foreground`: the two
         // files have IDENTICAL alpha and differ only in RGB, so a launcher that tints by alpha
         // renders them the same and the separate asset costs nothing. A launcher that does NOT
-        // tint renders the foreground's beam in yellow — two colours, and therefore not a
-        // monochrome icon. This pins both halves of that argument.
+        // tint renders the foreground's card in beam yellow and its stem in cream — two colours,
+        // and therefore not a monochrome icon. This pins both halves of that argument.
         //
         // Counted rather than compared with `toEqual`: these are up to 186k pixels, so a Jest
         // diff over them is both slow and unreadable, while "how many bytes disagree" is a

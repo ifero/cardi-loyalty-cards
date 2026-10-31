@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Cardì — La ì, monochrome">
+  <defs>
+    <mask id="m" maskUnits="userSpaceOnUse" x="0" y="0" width="1024" height="1024">
+      <rect width="1024" height="1024" fill="#000"/>
+      <g transform="rotate(35 500 268)">
+        <rect x="374" y="188" width="252" height="160" rx="28" fill="#fff"/>
+        <rect x="374" y="222" width="252" height="34" fill="#000"/>
+      </g>
+      <rect x="434" y="430" width="156" height="430" rx="78" fill="#fff"/>
+    </mask>
+  </defs>
+  <rect width="1024" height="1024" fill="#23402F" mask="url(#m)"/>
+</svg>

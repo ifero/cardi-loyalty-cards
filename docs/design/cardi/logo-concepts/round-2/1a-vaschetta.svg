@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024" role="img" aria-label="Cardì — Scatola A, Vaschetta">
+  <rect width="1024" height="1024" fill="#181824"/>
+  <rect x="381" y="240" width="262" height="420" rx="38" fill="#181824" stroke="#181824" stroke-width="22" stroke-linejoin="round" transform="rotate(-21 512 900)"/>
+  <rect x="381" y="240" width="262" height="420" rx="38" fill="#0C84CC" transform="rotate(-21 512 900)"/>
+  <rect x="381" y="240" width="262" height="420" rx="38" fill="#181824" stroke="#181824" stroke-width="22" stroke-linejoin="round" transform="rotate(19 512 900)"/>
+  <rect x="381" y="240" width="262" height="420" rx="38" fill="#E42424" transform="rotate(19 512 900)"/>
+  <rect x="381" y="168" width="262" height="460" rx="38" fill="#181824" stroke="#181824" stroke-width="22" stroke-linejoin="round" transform="rotate(-2 512 900)"/>
+  <rect x="381" y="168" width="262" height="460" rx="38" fill="#F0F0E8" transform="rotate(-2 512 900)"/>
+  <rect x="431" y="232" width="14" height="96" rx="3" fill="#181824" transform="rotate(-2 512 900)"/>
+  <rect x="457" y="232" width="26" height="96" rx="3" fill="#181824" transform="rotate(-2 512 900)"/>
+  <rect x="495" y="232" width="10" height="96" rx="3" fill="#181824" transform="rotate(-2 512 900)"/>
+  <rect x="517" y="232" width="22" height="96" rx="3" fill="#181824" transform="rotate(-2 512 900)"/>
+  <rect x="551" y="232" width="10" height="96" rx="3" fill="#181824" transform="rotate(-2 512 900)"/>
+  <rect x="573" y="232" width="22" height="96" rx="3" fill="#181824" transform="rotate(-2 512 900)"/>
+  <path d="M270 540 L754 540 Q798 540 791.7 583.5 L762.3 784.5 Q756 828 712 828 L312 828 Q268 828 261.7 784.5 L232.3 583.5 Q226 540 270 540Z" fill="#181824" stroke="#181824" stroke-width="60" stroke-linejoin="round"/>
+  <path d="M270 540 L754 540 Q798 540 791.7 583.5 L762.3 784.5 Q756 828 712 828 L312 828 Q268 828 261.7 784.5 L232.3 583.5 Q226 540 270 540Z" fill="#FCCC0C"/>
+</svg>

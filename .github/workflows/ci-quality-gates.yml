@@ -89,10 +89,10 @@ jobs:
       - name: Check design tokens are in sync
         run: yarn tokens:check
 
-      # Re-renders every brand asset from the single geometry definition in
-      # scripts/build-brand-icons.mjs and fails on any mismatch, so the app icon, the
-      # launch mark, the Android foreground, the themed layer, the favicon and the
-      # in-app glyph can never drift apart. It also holds the two constraints that are
+      # Re-renders every brand asset with scripts/build-brand-icons.mjs, from the single
+      # geometry definition in scripts/lib/brand-mark.mjs, and fails on any mismatch, so
+      # the app icon, the launch mark, the Android foreground, the themed layer, the
+      # favicon and the in-app glyph can never drift apart. It also holds the two constraints that are
       # easy to break by hand: `assets/icon.png` is opaque and full-bleed with NO alpha
       # channel (iOS rejects an icon that carries one, and the OS masks icons itself),
       # while the splash and adaptive foreground are transparent because the platform

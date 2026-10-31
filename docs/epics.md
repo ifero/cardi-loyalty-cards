@@ -12,7 +12,7 @@ project_name: 'myLoyaltyCards'
 user_name: 'Ifero'
 date: '2025-01-03'
 totalEpics: 23
-totalStories: 206 # counted from `### Story` headings on 2026-09-20
+totalStories: 207 # counted from `### Story` headings on 2026-10-30
 aligned_with_tracker: '2026-08-02'
 authoritative_source: 'docs/sprint-artifacts/sprint-status.yaml'
 ---
@@ -3712,7 +3712,7 @@ Establish **Cardì** as an identity: a design system, a mark, and a reference dr
 screen the phone app has — so that Epics 21–23 implement against a decided thing rather than
 negotiating taste per screen.
 
-**Phase:** 3 · **Epic Type:** Design/Enabling · **Status:** done (written up retroactively 2026-09-01)
+**Phase:** 3 · **Epic Type:** Design/Enabling · **Status:** in progress: 20.1–20.5 done (written up retroactively 2026-09-01), 20.6 added 2026-10-30
 
 This epic is documented after the fact. The work was done on `docs/cardi-redesign-carry-over`
 across August 2026 and is complete; it simply never had an epic around it, which left Epics
@@ -3844,6 +3844,42 @@ artwork.
   directory separator.
 - The frames with no working generator are named in `tools/README.md` with the reason, rather
   than left to be rediscovered.
+
+### Story 20.6: The Tessera Mark
+
+**As a** user, **I want** the Cardì icon to look like what the app holds, a loyalty card,
+**So that** it reads naturally on my home screen instead of as an abstract barcode crossed by a
+stroke.
+
+Added 2026-10-30. ifero rejected the barcode-stem mark of Story 20.3 as unnatural and chose
+**3C Tessera** from a two-round exploration: the ì of Cardì, whose accent is a loyalty card with a
+barcode. The reference is `docs/design/cardi/logo-concepts/final/`, with the rounds beside it.
+
+**Acceptance Criteria:**
+
+- The mark is a cream capsule stem under a beam ID-1 card turned **+35°** (a grave, descending
+  left to right), the card carrying five ink bars set low under a plain band. In the 1024 icon
+  space: stem 156 × 400 at (456, 462), fully rounded; card 264 × 166, radius 28, centred on
+  (512, 270); bars 26 / 40 / 18 / 32 / 22 wide with 18 between, under a 62 band and inside a 26
+  margin. It replaces the three bars and the beam everywhere the mark is drawn.
+- `scripts/build-brand-icons.mjs` draws it from one set of constants and regenerates every
+  artefact it owns: app icon, Android adaptive foreground and themed layer, favicon, splash,
+  watchOS app icon and complication, Wear OS foreground and themed layers, and the in-app SVGs.
+  In every transparent artefact the bars are **holes** through the card, not ink paint. The
+  Android scale stays derived from the artwork, and `yarn icons:check` passes.
+- The drawn ì in the wordmark (`scripts/lib/brand-wordmark.mjs`) takes the same card as its
+  accent, scaled to its 12-unit stem with the same five bars, and everything drawn from the
+  wordmark is regenerated.
+- Brand moment D on Welcome becomes "scan, then settle" for this mark: the stem stands alone; a
+  horizontal beam as wide as the card cuts on above it at 0.12 s and sweeps it top to bottom at a
+  steady pace to 0.50 s while the card is drawn in behind it, as the design system's motion rule
+  asks (ifero, 2026-10-30); the card turns to 38.5° and settles at 35° by 0.84 s. The length is
+  unchanged, so the Welcome drawing keeps its timing; the file stays inside the Lottie subset
+  both platforms draw, and `build-onboarding-lottie.py --check` passes.
+- The design system's mark section and the brand docs describe the new mark, and every test that
+  pins the old geometry is updated rather than deleted.
+- Welcome, the launch screen and the authentication header show the new mark on iOS and Android,
+  in light and dark.
 
 ---
 

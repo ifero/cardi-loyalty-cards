@@ -918,6 +918,13 @@ simulator offers) and 46 mm (Series 11), on the watchOS 26.5 simulator, with the
   bought no room.
 - In the 40 mm corner disc the full mark's bars start to merge. That was accepted.
 
+**The full mark is now the Tessera mark (Story 20.6, 2026-10-30).** The choice above still holds —
+the complication draws the whole mark, not a reduction of it — but the mark it draws changed: a
+cream stem under a beam card turned to 35°, with five bars cut through the card. The numbers above
+are the barcode-and-beam mark's. The Tessera mark measures **0.725** of the circle's radius at @3x
+and **0.722** on the 1024 icon; its farthest inked point is the stem's foot. It has not yet been
+seen on a watch face: the 40 mm corner disc, where the old bars merged, is the place to look.
+
 The artwork comes from `scripts/build-brand-icons.mjs` and from nowhere else, and `yarn icons:check`
 gates it: `OpenAppIcon` (opaque, the mark on ink, 64/128/192 px, sizes that must not grow) for every
 disc, and `OpenAppIconGlyph` for the inline family (below).
@@ -942,12 +949,12 @@ draws only the mark and names no card, opens the **card list**, as every family 
 - A card removed before the tap is not opened: the app's route waits for a card with that id, so
   the list stays on screen.
 
-| family                     | what it is                                 | design                                                                                                                                                                                                                                                                                                |
-| -------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **`accessoryCircular`**    | a circle on the face                       | **the mark alone**, beam on ink, in the inscribed square of a round disc (§7.2). The artwork's own canvas puts it there, so the disc adds no reduction. No text — at this size a word is a smudge                                                                                                     |
-| **`accessoryCorner`**      | a small circle plus a curved text arc      | the **same mark** in the disc; the arc carries the **top card's name** in cream, truncated by the system with "…". The tightest image budget of the four, so the disc carries the mark alone                                                                                                          |
-| **`accessoryRectangular`** | the mark beside **two lines**              | the mark in a **30 pt round disc** — "same avatar rules" means the Cardì mark, not the card's brand logo — beside the app name "CARDÌ" (beam, 10 pt, 600, uppercase, tracked 0.06 em) over the **top card's name** (cream, 15 pt, 600). **No third line**: no store and no card number reach the face |
-| **`accessoryInline`**      | **one row of text plus an optional image** | the mark's **glyph** as the image, the **top card's name** as the text. Apple's own definition of the family — _"a flat widget that contains a single row of text and an optional image"_ — is the whole constraint                                                                                   |
+| family                     | what it is                                 | design                                                                                                                                                                                                                                                                                                              |
+| -------------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`accessoryCircular`**    | a circle on the face                       | **the mark alone**, a cream stem under a beam card on ink, on a round disc. Its ink sits within 0.72 of the radius, where the mask clips; its box passes §7.2's inscribed square by 0.57 % of the canvas: an empty card corner at the top, the stem's foot at the bottom. No text — at this size a word is a smudge |
+| **`accessoryCorner`**      | a small circle plus a curved text arc      | the **same mark** in the disc; the arc carries the **top card's name** in cream, truncated by the system with "…". The tightest image budget of the four, so the disc carries the mark alone                                                                                                                        |
+| **`accessoryRectangular`** | the mark beside **two lines**              | the mark in a **30 pt round disc** — "same avatar rules" means the Cardì mark, not the card's brand logo — beside the app name "CARDÌ" (beam, 10 pt, 600, uppercase, tracked 0.06 em) over the **top card's name** (cream, 15 pt, 600). **No third line**: no store and no card number reach the face               |
+| **`accessoryInline`**      | **one row of text plus an optional image** | the mark's **glyph** as the image, the **top card's name** as the text. Apple's own definition of the family — _"a flat widget that contains a single row of text and an optional image"_ — is the whole constraint                                                                                                 |
 
 **Two lines, not three (decision 2, ifero, 2026-10-25).** The rectangular family shows the mark,
 the app name and the card's name. This section's first draft gave it a third line, the store
@@ -965,12 +972,12 @@ open-app strings:
 the alpha channel alone, on every face, so the opaque `OpenAppIcon` rendered there as a solid square.
 The glyph is the same full mark, **transparent and framed tight** on the mark's own box. It ships
 at 64/128/192 px and is downsampled at runtime to the 76 px budget, as the mark is. Framed tight,
-it fills the line's height, which the icon
-canvas's padding would halve. As a template it reads as the mark's silhouette, because the beam
-crosses the bars and extends past them on both sides.
+it fills the line's height, which the icon canvas's padding would shrink to about seven tenths. As
+a template it reads as the mark's silhouette, because the card's five bars are holes cut through
+it, which the alpha keeps, and the stem stands apart below it.
 
 **Colour.** Ink `#181824` grounds the widget (`containerBackground`), and the disc is the artwork's
-own ink field. Beam `#FCCC0C` is the mark's beam and the "CARDÌ" label. Cream `#F0F0E8` is the
+own ink field. Beam `#FCCC0C` is the mark's card and the "CARDÌ" label. Cream `#F0F0E8` is the
 rectangular family's text (the card's name, or "Open app") and the corner arc. The inline family's
 text carries no colour of its own and takes the face's style. **No system fill stands in for
 ink**: the old `.fill.tertiary` ground is gone.
@@ -984,8 +991,11 @@ rectangular; inline as the last bullet says:
 
 - The mark is opaque artwork, ink field included, so it must not be tinted as one block. On
   watchOS 11 and later it takes `.widgetAccentedRenderingMode(.accentedDesaturated)`, and its
-  luminance becomes the tint's alpha. That was seen in circular and rectangular: the bars and the
-  beam carry the face's tint and the ink field falls away. The corner is different: on the tinted
+  luminance becomes the tint's alpha. That was seen in circular and rectangular, with the mark
+  before Story 20.6: the bars and the beam carried the face's tint and the ink field fell away.
+  The Tessera mark reads the same way by construction — its cream stem and beam card are light,
+  and its bars are cut through to the ink field, which falls away with it — but it has not yet
+  been seen on a tinted face. The corner is different: on the tinted
   Infograph face the system draws the corner's mark desaturated, white and grey on a dark grey disc,
   not in the tint. It still reads by its shape. On watchOS 10 the mark takes `.widgetAccentable()`
   instead, and that path is **unverified**: no watchOS 10 runtime was available.

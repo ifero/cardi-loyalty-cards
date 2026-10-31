@@ -108,8 +108,11 @@ checkout, someone is waiting behind them, and the right barcode must be on scree
 scannable in under three seconds. Everything in this system serves that moment or gets cut.
 
 The name is _card_ + the Italian **ì**. The grave accent on that ì is the brand's only
-ornament: at rest it is a dot, in motion it is a **scan beam** passing over a barcode.
-That single idea — _you hold it up, and it is seen_ — is the whole identity.
+ornament, and it is a **loyalty card**: a beam card carrying a five-bar barcode, turned to the
+grave's 35° above a cream stem (the Tessera mark, Story 20.6). In motion a **scan beam** passes
+over it before it settles. That single idea — _you hold it up, and it is seen_ — is the whole
+identity. The mark's numbers live in one place, `scripts/lib/brand-mark.mjs`, which every icon,
+the launch mark and the wordmark's drawn ì are generated from.
 
 **The accent descends.** A grave falls left to right: its high end is on the **left**, like
 a backslash. An acute rises, and `Cardí` is a different word — so this is spelling, not
@@ -122,9 +125,9 @@ SVG and CSS the y-axis points **down**, so a _positive_ rotation is the correct 
 
 Every exploration sheet in `frames/` was drawn with the negative angle until 2026-08-25,
 while this document said "grave" throughout. Prose naming the accent did not prevent it;
-only the sign does. If the shape is sheared rather than round-capped, flipping the sign is
-also not sufficient on its own — mirror the outline, or the beam silently changes length
-(at 24 × 9 units and 35°, a naive negation grows it to 30.3 and breaks containment).
+only the sign does. The card is a rounded rectangle turned about its own centre, so the sign
+is the whole fix: never mirror the drawing to correct a lean, because a mirrored card also
+reverses its barcode.
 
 **The ì sits on the baseline, and the anchoring ships with the glyph.** When the mark
 replaces the letter inside live type, it is an inline SVG in a box exactly `1em` tall whose
@@ -133,13 +136,20 @@ its **box bottom** to the text baseline, which floats the glyph by the remaining
 `(100 − 70) / 100 = 0.30em` — 15.6px at 52px, and unmistakable. The correction is therefore
 not a tuned nudge but a derived one:
 
-    vertical-align: -0.30em      /* = (100 − BASELINE) / 100 */
+    vertical-align: -0.30em;     /* = (100 − BASELINE) / 100 */
+    overflow: visible;           /* the card overhangs the 1em box, below */
 
-Carry it as an **inline `style` on the `<svg>`**, never as a stylesheet rule. This has been
+Carry both as an **inline `style` on the `<svg>`**, never as a stylesheet rule. This has been
 wrong twice: first as a guessed `translateY(size * 0.28)`, then because a new sheet reused
 the glyph markup without copying the `.wglyph` CSS. An `<svg>` missing its `vertical-align`
 does not look broken in review — it looks like an `<svg>` — so the only reliable fix is to
 make the anchoring inseparable from the markup it corrects.
+
+**The card overhangs that box.** The Tessera card sits higher than the old accent:
+`layoutWordmark` (`scripts/lib/brand-wordmark.mjs`) puts the turned card's top 73.86 units above
+the baseline, so at `y = −3.86` in this 100-unit box, 3.86 units above its top. A `1em` box
+clips it. The fix is the recipe's `overflow: visible`: the card draws whole outside the box,
+and the box, and so the `vertical-align`, stays exactly as derived.
 
 The visual language is **warm, flat and structural**. Paper, not glass. No gradients, no
 drop shadows, no glassmorphism, no neon. Depth comes from tonal layers and hairline
@@ -249,8 +259,9 @@ because in light `primary` is ink and an ink wash is a grey.
 
 ### Card accents — CUSTOM CARDS ONLY
 
-Five colours, taken directly from the logo's five bars:
+Five colours, first taken from the five bars of an earlier logo:
 `#E42424` red · `#0C3C84` deep blue · `#0C84CC` azure · `#0C843C` green · `#FCCC0C` yellow.
+The shipped mark's own five bars carry none of them: they are holes cut through its card.
 
 These are the **fallback fill for a card with no catalogue brand**, chosen by the user from
 a 5-colour picker. A card that _has_ a brand uses the brand's hex instead — the five
@@ -1085,8 +1096,8 @@ noise — and keeps its error haptic and its log.
 
 **The colour picker (`ColorPicker`)** — the app's only one; card edit's copy is gone.
 
-- **Order.** The logo's bars, as the frame and _Card accents_ list them: red, deep blue, azure, green,
-  yellow — the frozen keys `red`, `blue`, `grey`, `green`, `orange`.
+- **Order.** As the _Card accents_ list orders them: red, deep blue, azure, green, yellow — the
+  frozen keys `red`, `blue`, `grey`, `green`, `orange`.
 - **Swatch.** A 48px disc in its accent, the five spread across the width, with the 0.98× press.
 - **Selected.** A 2px ring in `primary`, held off the disc by a 2px gap in `background`. It sits
   outside the disc, so the disc stays 48px. Lucide `check` at 20 with a 3 stroke, in the accent's
@@ -1702,8 +1713,9 @@ and the centred `InfoTooltipModal` are gone.
 
 **Welcome** (frame A, the canvas). A body that scrolls without bouncing, padded 24, holds the mark's
 intro (`cardi-mark-intro.json`, 100 × 100) 64px below the top inset, with the mark at the app icon's
-proportion: its box takes 58.6 of the field, as it takes 600.06 of 1024 in `cardi-mark.svg`
-(**decided 2026-10-26, ifero**), where the adopted intro fitted it into a 34 box. "Cardì" sits 32px
+proportion: its box takes 71.8 of the field, as it takes 735.70 of 1024 in `cardi-mark.svg`
+(**decided 2026-10-26, ifero**; 58.6 for the mark before the Tessera mark), where the adopted
+intro fitted it into a 34 box. "Cardì" sits 32px
 below it in `display-lg` `on-surface`; the subtitle 8px below in `body-lg` muted; and the welcome
 drawing (280 × 190) 40px below that. Both animations start together once Welcome's entrance has
 ended (_Motion_, below), so the drawing's fan opens as the accent settles. The primary-action footer
@@ -1979,10 +1991,12 @@ being made for one screen.
 - **Motion** plays once and rests on exactly the static drawing, so Reduce Motion shows that
   frame and loses nothing. The beam never fades: it cuts on, then draws, sweeps or scales. A
   scan beam appears full width and sweeps top to bottom.
-- **The Welcome brand moment** is the accent arriving as the scan beam it is in motion ("scan,
-  then settle"): the beam sweeps the mark's bars, comes back, and turns 35° into the accent
-  (`cardi-mark-intro.json`). It belongs to onboarding alone; the launch surface stays
-  anti-spectacle.
+- **The Welcome brand moment** is the card arriving as the scan reads it ("scan, then settle";
+  `cardi-mark-intro.json`, 0.84 s, Story 20.6). The stem stands alone; a horizontal scan beam a
+  little wider than the card cuts on above where the card lies level, sweeps it top to bottom at a steady
+  pace and draws it in behind it, and cuts off below it; then the card turns past the grave to
+  38.5° and settles on 35°, the static mark. The beam follows the rule above: full width, top to
+  bottom, never faded. It belongs to onboarding alone; the launch surface stays anti-spectacle.
 
 ## Dark mode
 

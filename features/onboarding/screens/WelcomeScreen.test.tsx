@@ -159,7 +159,7 @@ describe('WelcomeScreen', () => {
     });
   });
 
-  it("draws the mark in its intro at the app icon's proportion: its box 58.6 of the 100 field, centred (decision 6)", () => {
+  it("draws the mark in its intro at the app icon's proportion: its box 71.8 of the 100 field, centred (decision 6)", () => {
     const intro = markIntro as unknown as {
       w: number;
       h: number;
@@ -170,14 +170,15 @@ describe('WelcomeScreen', () => {
     const mark = intro.layers[0]?.shapes.find((shape) => shape.nm === 'mark');
     const placement = mark?.it.find((item) => item.ty === 'tr');
     // The mark is drawn in the units of `cardi-mark-inline.svg`, whose viewBox is the mark's box:
-    // 834.556 × 1024.
+    // 433.525 × 1024 for the Tessera mark (Story 20.6). Its box takes 735.70 of the app icon's
+    // 1024, so the same share of this field: 735.7 / 1024 of 100, 71.85.
     const [scaleX = 0, scaleY = 0] = placement?.s?.k ?? [];
     const [left = 0, top = 0] = placement?.p?.k ?? [];
-    const boxWidth = (834.556 * scaleX) / 100;
+    const boxWidth = (433.525 * scaleX) / 100;
     const boxHeight = (1024 * scaleY) / 100;
 
     expect([intro.w, intro.h]).toEqual([100, 100]);
-    expect(boxHeight).toBeCloseTo(58.6, 1);
+    expect(boxHeight).toBeCloseTo((735.7 / 1024) * 100, 2);
     expect(left + boxWidth / 2).toBeCloseTo(50, 3);
     expect(top + boxHeight / 2).toBeCloseTo(50, 3);
   });
