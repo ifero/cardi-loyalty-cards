@@ -1,5 +1,5 @@
 # generated: 2026-01-03
-# last_updated: 2026-10-30
+# last_updated: 2026-11-03
 # project: myLoyaltyCards
 # project_key: NOKEY
 # tracking_system: file-system
@@ -47,7 +47,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-01-03
-last_updated: 10-30-2026 16:32
+last_updated: 11-03-2026 10:00
 project: myLoyaltyCards
 project_key: NOKEY
 tracking_system: file-system
@@ -185,16 +185,115 @@ last_sprint:
 # ============================================
 current_sprint:
   # OPENED EMPTY 2026-10-30 at the Sprint 22 -> 23 roll-over, per ifero: Sprint 22 left the next
-  # sprint unstaged, so this block holds only the candidate list. Commit it at the next planning.
+  # sprint unstaged, so this block held only the candidate list.
+  # COMMITTED 2026-11-03 at sprint planning, per ifero: the first public store release, on all four
+  # platforms. Committed BEFORE refinement, like Sprints 21 and 22: none of the seven new Epic 24
+  # stories has a story file, so the waves below are PROVISIONAL until their Code Maps exist.
   number: 23
-  name: 'Sprint 23: not yet planned'
-  goal: 'Not chosen yet.'
-  status: proposed # UNSTAGED 2026-10-30: no epic or story chosen. Before committing it, apply `epic-23-retro-item-4`: every open `action_items` entry is either placed in this sprint's waves or re-parked with a written reason.
-  epics: []
-  stories: []
-  waves: {}
+  name: 'Sprint 23: Cardì 1.0 — The First Store Release (Epic 24)'
+  goal: "Put Cardì 1.0 in the App Store and on Google Play — phone, Apple Watch, Android and Wear OS together. Clear what store review rejects first (the privacy copy and the store disclosures, the iOS privacy manifest, Play's target SDK), then fix what is wrong on a device today (the watch deep link, the Wear round barcode, the UPC-E mapping, the fatal Android screens crash) and get Android crashes reporting, and close on the store listings and the four-platform device pass that 21-7 closed without."
+  status: planned # COMMITTED 2026-11-03, per ifero. Scope decided in three answers: all four platforms (Android and Wear OS are already on Play testing tracks with internal testers), email sign-in as built, SDK 57 after launch. `epic-23-retro-item-4` applied here: every open action item is placed in a wave below or re-parked with a reason in the notes.
+  planning_date: 2026-11-03
+  epics: [24, 16, 18]
+  stories:
+    - 24-1-privacy-copy-and-store-disclosures
+    - 24-2-store-platform-requirements
+    - 24-3-watch-deep-link-handler
+    - 24-4-android-screens-crash-fix
+    - 24-5-android-crash-reporting
+    - 16-25-map-upce-instead-of-storing-as-code128
+    - 16-38-wear-os-barcode-uses-the-whole-screen
+    - 18-1-spike-european-hosting-custom-domain
+    - 18-9-migrate-public-site-to-custom-domain
+    - 24-6-store-listings-and-screenshots
+    - 24-7-release-device-pass
+  waves:
+    wave_1:
+      stories: [24-1, 24-2, 18-1]
+      action_items:
+        [
+          epic-22-retro-item-3-correct-guest-visible-privacy-copy,
+          epic-23-retro-item-3-gate-merge-on-hardware-acs
+        ]
+      note: "THE CONTACT ADDRESSES FIRST (see notes: the app points users at a domain someone else owns), inside 24-1, after ifero registers the domain or picks an interim mailbox. Then WHAT STORE REVIEW REJECTS, because a failure here blocks every later upload. PROVISIONAL (no Code Maps yet). Parallel by area: 24-1 writes user copy (`shared/i18n/locales/`, the What We Collect screen, the public privacy policy) and the App Store Connect / Play Data safety answers; 24-2 writes build config (`app.json` `ios.privacyManifests`, the Android target SDK through expo-build-properties). The hardware merge gate is process, not app code, and goes in before wave 3's device pass so 24-7 cannot merge with a hardware box unticked."
+    wave_2:
+      stories: [24-3, 16-38, 16-25, 24-4, 24-5]
+      action_items:
+        [
+          epic-23-retro-item-6-fix-watch-deep-link-handler,
+          epic-23-retro-item-1-wear-round-barcode-module-width
+        ]
+      note: "WHAT IS WRONG ON A DEVICE TODAY. PROVISIONAL. Parallel by platform: 24-3 is watchOS Swift (`targets/watch/`, `CardListView.swift`), 16-38 is Wear Kotlin (`BarcodeLayoutMetrics.kt`) and ABSORBS `epic-23-retro-item-1` (the 1 px round EAN-13 is the same file and the same sizing decision), 16-25 is `core/` barcode mapping (option (b) recommended; query Sentry for `unmappedFormat: 'UPC_E'` first). 24-4 and 24-5 BOTH touch `package.json` / `yarn.lock` and Android native config, so 24-5 starts after 24-4 merges. 24-5 also discharges Epic 10's Wear OS field-observability item (a Wear crash reaching a dashboard), with the phone's Android telemetry first. 24-4 opens with a spike: does react-native-screens >= 4.25 (the #4311 fix) run on SDK 55, and what does expo-doctor need excluded."
+    wave_3:
+      stories: [18-9, 24-6, 24-7]
+      action_items:
+        [
+          epic-22-retro-item-7-android-pass-wave-a-screens,
+          epic-23-retro-item-2-record-apple-watch-accepted-risk
+        ]
+      note: "THE RELEASE GATE, last. 18-9 first: the public site (privacy policy, index) moves from GitHub Pages to OVHcloud on cardiapp.eu, so the store listings can carry cardiapp.eu URLs. 24-6 after 18-9, after 24-1 (the listing copy must match the corrected disclosures) and after 16-38 (the Wear screenshots show the barcode): it is 21-5's AC5 (the Wear store screenshots, whose palette blocker 23-3 removed) plus the store listings. 24-7 closes the sprint: 21-7's AC8 table on all four platforms on one release candidate, a short Android pass (TalkBack and the Android-only keyboard path in FormScreen.tsx, the parts internal testing does not reach), and a confirmation of the real-Apple-Watch pass on the RC (ifero verified the nightlies on hardware as of 2026-11-02, see notes)."
   notes: |
-    CANDIDATES, in no committed order. The first three come from the Epic 23 retrospective
+    COMMITTED 2026-11-03, per ifero, from the 2026-10-30 candidate list below. Three scope answers:
+      - PLATFORMS: all four. First proposed as iOS + watchOS only; ifero widened it ("let's include
+        android and wear too, they are already been tested by internal testers"), and both are on
+        Play testing tracks, so the Play listing and Wear signing already exist.
+      - SIGN-IN: email sign-in as built. Account deletion (App Store 5.1.1(v)) is already built in
+        DeleteAccountSheet and is checked in 24-7, not rebuilt.
+      - SDK 57: after launch. 1.0 ships on SDK 55, which the testers already run. The one piece of
+        the thread pulled forward is the react-native-screens bump (24-4), because the current pin
+        carries a known FATAL Android crash on this project's navigation config.
+
+    NEW EPIC: Epic 24 holds the release work, so the gate has its own keys instead of reopening
+    21-7 (done) or 21-5 (done, AC5 owed). 16-25 and 16-38 stay in Epic 16 under their own keys.
+
+    THE REAL-APPLE-WATCH PASS IS NO LONGER AN OPEN RISK: ifero uses the Apple Watch nightly builds
+    daily and reported on 2026-11-03 that everything works as of 2026-11-02. That supersedes the
+    2026-10-30 accepted risk (23-2 AC4, 23-4's Apple Watch list), and `epic-23-retro-item-2` now
+    records this verification rather than the risk. 24-7 confirms it on the release candidate;
+    ifero ruled on 2026-11-03 that no separate exposure checklist is needed.
+
+    CONTACT ADDRESSES — FOUND 2026-11-03, RELEASE BLOCKER, FIRST IN THE SPRINT. The app and the
+    privacy policy send users to `myloyaltycards.app`, a domain ifero does NOT own: it is registered
+    by a third party on OVH, with live OVH mail (MX) records and a site that resets every connection.
+    Mail a user sends to support@ or privacy@ there goes to someone else, and the feedback link is
+    dead. Five files: features/help/HelpScreen.tsx:27-28 (support mailto, feedback URL),
+    assets/legal/privacy-policy.ts:109 and privacy-policy.it.ts:85, docs/privacy-policy.html:226 and
+    :383, plus their tests. Fixed in 24-1. The replacement needs an address ifero controls: the
+    Cardì domain (Epic 18's registration action item, pulled forward) with registrar email
+    forwarding for support@ and privacy@, or an interim dedicated mailbox. ifero's personal email
+    was considered and rejected (public on the Play listing, scraped, not separable).
+    DOMAIN CHOSEN 2026-11-03 by ifero: `cardiapp.eu` (EU registry, matches the EU/EEA-only rule;
+    accented and bare `cardi` names rejected: accents break email addresses, and `cardi.app`,
+    `cardi.it` and `cardi.eu` are taken). Registration and the forwarding of support@cardiapp.eu
+    and privacy@cardiapp.eu are ifero's, at an EU registrar (OVHcloud or Netsons); 24-1 starts
+    once both deliver mail. `cardiapp.it` optional as a defensive registration.
+    HOSTING DECIDED 2026-11-03 by ifero: the public site moves from GitHub Pages
+    (ifero.github.io/myLoyaltyCards) to OVHcloud with the domain, keeping the EU/EEA-only rule. This
+    answers 18-1's question ahead of its spike (18-1 now only writes the ADR) and pulls 18-9 into
+    wave 3. The rest of Epic 18 (share links, 18-10's app links) stays after launch.
+    The in-app half is JS and can reach testers as an OTA update before the store release.
+
+    ACTION ITEMS NOT PLACED IN A WAVE, re-parked with a reason (`epic-23-retro-item-4`). Their
+    `status` is left as it was; this list is the written reason.
+      - Epic 16 (re-home SM items, `in-progress`): process; this commit is its follow-through.
+      - Epic 9 and Epic 10 (draft the Wear complication story): the trigger fired 2026-09-08 and it
+        is overdue, but it is a feature, not a release blocker. First candidate after launch.
+      - (PLACED, 2026-11-03) Epic 18 (register the share-page domain): pulled into wave 1, see
+        CONTACT ADDRESSES below. Only the registration and the mail forwarding move; 18-9 does not.
+      - Epic 10 (widen the Wear CI trigger paths; the Swift catalogue skip deadlock; the watchOS
+        `updatedAt` gap): tech debt with no user-visible effect at launch.
+      - `epic-22-retro-item-1`, `-2`, `epic-23-retro-item-5` (file and triage follow-up issues):
+        housekeeping; run alongside the sprint if there is room, not as a gate.
+      - `epic-22-retro-item-4`, `-5`, `-6`, `-12`, `epic-23-retro-item-11` (project-context and
+        bmad-build rules, the AGENTS.md sign-off gate): process changes, not release work.
+      - `epic-22-retro-item-8` (22-9's OTP field at the largest text sizes), `-9` (the iOS 26 hero
+        drop), `epic-23-retro-item-8` (rulings on the watch deviations): rulings and records for
+        ifero, none of which blocks a submission; take them up at the 24-7 device pass if seen.
+      - `epic-22-retro-item-10`, `epic-23-retro-item-7`, `-9` (consolidation chores, the Epic 23 docs
+        pass): no user-visible effect; after launch.
+      - `epic-23-retro-item-10` (worktree environment): local setup, outside the sprint.
+
+    CANDIDATES AS OF 2026-10-30, kept for the record. The first three come from the Epic 23 retrospective
     (docs/sprint-artifacts/epic-23-retro-2026-10-30.md); the rest are Sprint 22's NOT CHOSEN list,
     carried with its reasons so they do not have to be re-derived.
       - The Wear OS round barcode (`epic-23-retro-item-1`): an EAN-13 draws at 1 px per module on a
@@ -505,7 +604,7 @@ development_status:
   #                   (3) 18-7, 18-8 · (4) 18-9 then 18-10.
   # Only 18-9/18-10 depend on the hosting spike; everything else builds without a domain.
   epic-18: backlog
-  18-1-spike-european-hosting-custom-domain: backlog # Evaluate Netsons / Namecheap / Spaceship / OVHcloud (Infomaniak EXCLUDED — Switzerland-only, and ifero set the rule to EU/EEA ONLY on 2026-08-02). Namecheap + Spaceship need their Amsterdam region explicitly pinned and carry a US-parent CLOUD Act caveat. Score the PLAN TIER's SLA, not the vendor's best number. Output = ADR; domain registration is an ifero action item. GATES 18-9 and 18-10 ONLY.
+  18-1-spike-european-hosting-custom-domain: backlog # DECIDED 2026-11-03 by ifero, ahead of the spike: OVHcloud hosts the site and registers cardiapp.eu. The story reduces to writing the ADR (incl. the SBG2 caveat) in Sprint 23 wave 1. Was: Evaluate Netsons / Namecheap / Spaceship / OVHcloud (Infomaniak EXCLUDED — Switzerland-only, and ifero set the rule to EU/EEA ONLY on 2026-08-02). Namecheap + Spaceship need their Amsterdam region explicitly pinned and carry a US-parent CLOUD Act caveat. Score the PLAN TIER's SLA, not the vendor's best number. Output = ADR; domain registration is an ifero action item. GATES 18-9 and 18-10 ONLY.
   18-2-share-link-payload-codec: backlog # core/sharing/ — versioned encode/decode + CRC-32. NOT SHA-256: Hermes has no WebCrypto and expo-crypto is not a dependency (the 16-15 lesson). Contract story — 18-4, 18-5 and 18-8 all depend on it.
   18-3-ux-design-share-import-web-page: backlog # Design prerequisite — BLOCKS 18-4, 18-5, 18-8. Mirrors the 14-5a pattern.
   18-4-share-a-card-from-the-app: backlog # Sender side. Uses RN Share.share({message,url}) — expo-sharing shares FILES and is the wrong API here.
@@ -513,7 +612,7 @@ development_status:
   18-6-tolerate-unknown-brand-ids: backlog # Mostly already free — brand_id is unconstrained TEXT in SQLite AND Supabase, and useBrandLogo re-resolves per render. Real work = fix CardSetupScreen.tsx (unknown brand ⇒ empty name + DROPPED brandId) and lock the auto-upgrade with tests. NO migration; if one seems needed, stop and re-scope.
   18-7-tolerate-unknown-barcode-formats: backlog # Twin of 18-6 but the opposite side of the type system: barcodeFormat is z.enum feeding Record<BarcodeFormat,string>, so this relaxes the CORE SCHEMA. Widest blast radius in the epic — ARCHITECT SIGN-OFF REQUIRED before implementation.
   18-8-public-share-page-renders-barcode: backlog # docs/card/index.html — vendored bwip-js, no CDN, no build step (Epic 15 AC1). NOTE .prettierignore covers docs/*.html only, which does NOT match docs/card/index.html.
-  18-9-migrate-public-site-to-custom-domain: backlog # Depends on 18-1. Byte-identical content, no build step; + uptime monitoring on / and /.well-known/apple-app-site-association.
+  18-9-migrate-public-site-to-custom-domain: backlog # PULLED INTO SPRINT 23 (2026-11-03, wave 3) for the 1.0 store listings. The /.well-known/apple-app-site-association monitor waits for 18-10, which stays in Epic 18. Decide at refinement whether docs/ux-design-directions.html is published (byte-identical AC). Was: Depends on 18-1. Byte-identical content, no build step; + uptime monitoring on / and /.well-known/apple-app-site-association.
   18-10-universal-links-and-app-links: backlog # Depends on 18-9. NATIVE change — runtimeVersion.policy is appVersion, so this CANNOT ship as an OTA update; plan it against a release.
   epic-18-retrospective: optional
 
@@ -561,7 +660,7 @@ development_status:
   # an epic around it, which left 21-23 referencing artefacts from nowhere.
   # Artefacts: docs/design/cardi/ (system doc, 41 frames, 9 prompt sets, tools/)
   # and scripts/build-brand-icons.mjs (8 artefacts, gated by `yarn icons:check`).
-  epic-20: in-progress # REOPENED 2026-10-30 for 20-6, at ifero's direction.
+  epic-20: done # completed again 2026-11-03 (20-6 merged as #290); REOPENED 2026-10-30 for 20-6, at ifero's direction.
   20-1-cardi-design-system: done
   20-2-nine-screen-patterns-drawn: done
   20-3-the-mark-35-grave-contained: done
@@ -620,6 +719,21 @@ development_status:
   23-4-watch-widget-and-complication: done # READY FOR REVIEW 2026-10-30. Decision 3 (ifero, 2026-10-30, mid-build): a tap on a family that names the top card opens its barcode (circular and no card open the list); the watch app also publishes topCardId. PICKED UP 2026-10-29 (bmad-build, branch feature/23-4-watch-widget-and-complication). REFINED 2026-10-25 through bmad-build, approved by ifero ("Approve and stop"); full spec kept at ~3,400 tokens by ifero's choice; decision 1: the full mark and a one-bar reduction (the middle bar, the beam crossing it) are rendered in all four families, full colour and tinted, and the build HALTS for ifero's pick; decision 2: the rectangular family has two lines, no store and no card number on the face; ends on ifero's Apple Watch, inline placed on a face; spec at docs/sprint-artifacts/stories/23-4-watch-widget-and-complication.md
   epic-23-retrospective: done
 
+  # --- Epic 24: Cardì 1.0 — The First Store Release -------------------------
+  # PLANNED 2026-11-03 (Sprint 23), per ifero: phone, Apple Watch, Android and Wear OS
+  # together. 21-7 closed on 2026-09-30 with its AC8 device and store table unperformed;
+  # 24-7 is where that table is filled. Most of this epic is native or store-side, and
+  # runtimeVersion.policy is appVersion, so it ships as one store release, not OTA.
+  epic-24: backlog
+  24-1-privacy-copy-and-store-disclosures: backlog # FIRST: replace every myloyaltycards.app contact (a third party's domain, see current_sprint notes) with support@ / privacy@cardiapp.eu. Then epic-22-retro-item-3: user copy may say only no ads, no advertising identifiers; the App Store privacy answers and the Play Data safety form match it
+  24-2-store-platform-requirements: backlog # iOS privacy manifest (no `ios.privacyManifests` in app.json today, ITMS-91053) + Play's required target SDK on SDK 55
+  24-3-watch-deep-link-handler: backlog # epic-23-retro-item-6 (CardListView.swift:620-645): cardi://watch pops to the list; a parked pendingDeepLinkCardId is cleared on other navigation
+  24-4-android-screens-crash-fix: backlog # react-native-screens #4311 (fatal on the ~4.23 pin, fixed in 4.25); spike first: does the bump run on SDK 55 ahead of the 16-18 thread
+  24-5-android-crash-reporting: backlog # phone Android Sentry (10 events/90d, all iOS) then Wear OS; discharges Epic 10's field-observability item. After 24-4 (package.json)
+  24-6-store-listings-and-screenshots: backlog # both store listings + 21-5's owed AC5 (the Wear store screenshots). After 24-1 and 16-38
+  24-7-release-device-pass: backlog # THE GATE: 21-7's AC8 table on all four platforms on one RC, a short Android TalkBack/keyboard pass, and the Apple Watch confirmed on the RC (verified on hardware by ifero, nightlies, 2026-11-02)
+  epic-24-retrospective: optional
+
 # ============================================
 # ACTION ITEMS
 # ============================================
@@ -672,7 +786,7 @@ action_items:
     status: done
   # --- Epic 18 creation (2026-08-02) ---
   - epic: 18
-    action: 'Register the custom domain for the share page once Story 18-1 reports back. Purchase and ownership sit with ifero (payment + registrar account), so the spike can recommend but cannot complete this. Blocks 18-9 (site migration) and therefore 18-10 (Universal Links) — the whole rest of Epic 18 builds without it. Constraints agreed 2026-08-02: European servers, maximum reliability; candidates Netsons / Namecheap / Spaceship / Infomaniak / OVHcloud.'
+    action: '[DOMAIN CHOSEN 2026-11-03: cardiapp.eu, pulled into Sprint 23 wave 1 for the 1.0 contact addresses; 18-1 still owes the hosting ADR] Register the custom domain for the share page once Story 18-1 reports back. Purchase and ownership sit with ifero (payment + registrar account), so the spike can recommend but cannot complete this. Blocks 18-9 (site migration) and therefore 18-10 (Universal Links) — the whole rest of Epic 18 builds without it. Constraints agreed 2026-08-02: European servers, maximum reliability; candidates Netsons / Namecheap / Spaceship / Infomaniak / OVHcloud.'
     owner: 'ifero'
     category: 'critical-path'
     status: open
