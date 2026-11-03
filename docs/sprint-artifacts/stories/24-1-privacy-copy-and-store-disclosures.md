@@ -20,11 +20,11 @@ context:
 
 ## Boundaries & Constraints
 
-**Always:** The only "we do not" claims allowed are ones the code proves; "no ads, no advertising identifiers" is proven. The true picture: Sentry crash reports from every release build, guests included (EU region, `sendDefaultPii: false`, user and request scrubbed); EAS Update sends a per-install identifier on update checks; the local SQLite database is not encrypted; signed-in users' cards (including usage count and last-used time), email and consent records go to Supabase; the watch apps send nothing off the phone. The four surfaces and the store answers say the same thing. Italian matches English in substance.
+**Always:** The only "we do not" claims allowed are ones the code proves; "no ads, no advertising identifiers" is proven. The true picture: Sentry crash and error diagnostics from every release build, guests included (crashes plus handled-failure warnings such as a failed update check; EU region, `sendDefaultPii: false`, user and request scrubbed, and after decision 1 no IP-derived location and no install identifier: device model and OS only); EAS Update sends a per-install identifier on update checks; the local SQLite database is not encrypted; signed-in users' cards (including usage count and last-used time), email and consent records go to Supabase; the watch apps send nothing off the phone. The four surfaces and the store answers say the same thing. Italian matches English in substance.
 
 **Decisions (ifero, 2026-11-04):**
 
-1. **Crash reports only.** Release builds stop sending performance traces (`tracesSampleRate` 0 outside `__DEV__`); the copy discloses crash reports only; NFR-S6 is amended to allow crash diagnostics while still forbidding tracking, analytics and advertising.
+1. **Crash and error diagnostics, trimmed** (amended by ifero 2026-11-04, replacing "crash reports only"; see Spec Change Log). Release builds stop sending performance traces (`tracesSampleRate` 0 outside `__DEV__`). Crash and handled-error events (`logger.notify`, `logger.error`) stay. `scrubEvent` also removes install and device identifiers (`contexts.app.device_app_hash`, `contexts.device.id`, any `app.device` tag), and ifero turns on the Sentry project's "Prevent Storing of IP Addresses" setting, so no location is derived. The copy discloses crash and error diagnostics with device model and OS. NFR-S6 is amended to allow crash and error diagnostics while still forbidding tracking, analytics and advertising.
 2. **No re-consent.** `PRIVACY_POLICY_VERSION` stays 1.0.0; only the last-updated date changes, so no signed-in user is prompted.
 3. **Feedback mails support.** Submit feedback opens `mailto:support@cardiapp.eu` with the subject "Cardì feedback" (URL-encoded); no `feedback@` mailbox.
 
@@ -32,12 +32,12 @@ context:
 
 ## I/O & Edge-Case Matrix
 
-| Scenario                               | Input / State           | Expected Output / Behavior                                           | Error Handling             |
-| -------------------------------------- | ----------------------- | -------------------------------------------------------------------- | -------------------------- |
-| Contact support                        | Help → Contact support  | Opens `mailto:support@cardiapp.eu`                                   | Existing unavailable alert |
-| Feedback                               | Help → Submit feedback  | Opens `mailto:support@cardiapp.eu` with subject "Cardì feedback"     | Existing unavailable alert |
-| Guest reads What We Collect            | No account              | Says crash reports leave the device; no "everything stays on device" | N/A                        |
-| Signed-in user after the policy update | Consent stored at 1.0.0 | No re-consent prompt; the policy shows the new last-updated date     | N/A                        |
+| Scenario                               | Input / State           | Expected Output / Behavior                                                         | Error Handling             |
+| -------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------- | -------------------------- |
+| Contact support                        | Help → Contact support  | Opens `mailto:support@cardiapp.eu`                                                 | Existing unavailable alert |
+| Feedback                               | Help → Submit feedback  | Opens `mailto:support@cardiapp.eu` with subject "Cardì feedback"                   | Existing unavailable alert |
+| Guest reads What We Collect            | No account              | Says crash and error diagnostics leave the device; no "everything stays on device" | N/A                        |
+| Signed-in user after the policy update | Consent stored at 1.0.0 | No re-consent prompt; the policy shows the new last-updated date                   | N/A                        |
 
 </frozen-after-approval>
 
@@ -62,11 +62,11 @@ context:
 **Execution:**
 
 - [ ] `features/help/HelpScreen.tsx` + test -- new support address; feedback per decision 3 -- the third-party domain must not receive user mail
-- [ ] `shared/i18n/locales/en.ts`, `it.ts` + `DataSummaryScreen.tsx` + test -- true description (crash reports for everyone, cloud data only with an account); Device ID row says an install identifier is used only to deliver app updates -- the screen guests read
-- [ ] `assets/legal/privacy-policy.ts`, `.it.ts` + `PrivacyPolicyScreen.test.tsx` -- rewrite sections 2, 4, 5, 6, 7 to the true picture; processors Supabase, Sentry (crash diagnostics, EU), Expo (app updates); replace "revoke consent in Settings" with account deletion and guest mode; new contact; version unchanged, new last-updated date (decision 2)
+- [ ] `shared/i18n/locales/en.ts`, `it.ts` + `DataSummaryScreen.tsx` + test -- true description (crash and error diagnostics for everyone, cloud data only with an account); Device ID row says an install identifier is used only to deliver app updates -- the screen guests read
+- [ ] `assets/legal/privacy-policy.ts`, `.it.ts` + `PrivacyPolicyScreen.test.tsx` -- rewrite sections 2, 4, 5, 6, 7 to the true picture; processors Supabase, Sentry (crash and error diagnostics, EU, device model and OS only), Expo (app updates); replace "revoke consent in Settings" with account deletion and guest mode; new contact; version unchanged, new last-updated date (decision 2)
 - [ ] `docs/privacy-policy.html` -- mirror both languages and the date
 - [ ] `docs/index.html` -- replace the tracking claim with "no ads, no advertising identifiers" (EN/IT)
-- [ ] `core/observability/sentry.ts`, `docs/prd.md` -- release `tracesSampleRate` 0, and NFR-S6 amended (decision 1), with a test pinning the release value
+- [ ] `core/observability/sentry.ts`, `docs/prd.md` -- release `tracesSampleRate` 0; `scrubEvent` strips the install and device identifiers; NFR-S6 amended (decision 1); tests pin the release value and the stripped fields. Then confirm on one new production event in Sentry that it carries no `app.device` tag and no `user.geo`, after ifero has enabled the IP setting
 - [ ] `docs/store/privacy-disclosures.md` (new) -- App Store privacy-label answers and Play Data safety answers derived from the same picture, with the privacy-policy URL `https://cardiapp.eu/privacy-policy.html` noted as live only after 18-9
 - [ ] `test/privacy-copy.test.ts` (new) -- no locale or policy file, and neither HTML page, contains `myloyaltycards.app` or the retired claims (encrypted database, no device identifiers, no analytics or tracking)
 
@@ -80,6 +80,8 @@ context:
 ## Implementation Notes
 
 ## Spec Change Log
+
+- **2026-11-04, decision 1 amended by ifero before implementation.** Trigger: a Sentry read for Story 16.25 showed 330 of 339 events in 90 days were non-crash `logger.notify` warnings ("Wear OS card snapshot publish failed" 177, "Expo update check failed" 149, "Camera permission denied" 4), and every event carried an `app.device` install hash and an IP-derived `user.geo` city. "Crash reports only" would have been false copy. Amended: keep crash and error diagnostics, strip the identifiers in `scrubEvent`, stop IP storage in the Sentry project, disclose accordingly. KEEP: tracing off in release, no re-consent, feedback to support.
 
 ## Review Triage Log
 
