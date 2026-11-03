@@ -96,7 +96,3 @@ context:
 
 - Scratch `npx expo prebuild --no-install` for each platform: inspect `ios/*/PrivacyInfo.xcprivacy` and the Android app module's SDK values, then delete the generated folders.
 - Build each watch target once (simulator) and list the product bundle for `PrivacyInfo.xcprivacy`.
-  </content>
-  </invoke>
-  <invoke name="Bash">
-  <parameter name="command">cd /Users/ifero/Developer/cardi-loyalty-cards/.claude/worktrees/bmad-sprint-planning-33e20f && f=docs/sprint-artifacts/stories/24-2-store-platform-requirements.md; npx prettier --write $f >/dev/null; wc -c $f | awk '{print "~"int($1/4)" tokens"}'

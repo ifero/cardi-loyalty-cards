@@ -101,5 +101,3 @@ context:
 **Manual checks (if no CLI):**
 
 - Device check on the watchOS simulator, in light and dark: open each route with `simctl openurl` from the list, from a barcode and with the sort sheet open, and capture each result.
-  </content>
-  </invoke>

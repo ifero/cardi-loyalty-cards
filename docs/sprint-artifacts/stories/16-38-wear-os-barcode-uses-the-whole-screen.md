@@ -123,7 +123,3 @@ Paths under `watch-android/app/src/main/kotlin/com/iferoporefi/myloyaltycards/we
 
 - Device check on the round and square AVDs, in light and dark: the three symbologies, with title and value on and off, captured.
 - Not OTA-eligible (native Kotlin).
-  </content>
-  </invoke>
-  <invoke name="Bash">
-  <parameter name="command">cd /Users/ifero/Developer/cardi-loyalty-cards/.claude/worktrees/bmad-sprint-planning-33e20f && f=docs/sprint-artifacts/stories/16-38-wear-os-barcode-uses-the-whole-screen.md; npx prettier --write $f >/dev/null; wc -c $f | awk '{print "~"int($1/4)" tokens"}'

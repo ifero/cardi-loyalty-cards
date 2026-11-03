@@ -95,5 +95,3 @@ context:
 **Manual checks (if no CLI):**
 
 - Device check: Help, What We Collect and the privacy policy on the iOS simulator and an Android emulator, light and dark, both languages; a signed-in user with consent at 1.0.0 sees no prompt.
-  </content>
-  </invoke>

@@ -78,5 +78,3 @@ context:
 **Manual checks (if no CLI):**
 
 - Every vendor claim in the ADR carries a source URL and a read date.
-  </content>
-  </invoke>
