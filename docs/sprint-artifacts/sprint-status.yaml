@@ -273,6 +273,12 @@ current_sprint:
     wave 3. The rest of Epic 18 (share links, 18-10's app links) stays after launch.
     The in-app half is JS and can reach testers as an OTA update before the store release.
 
+    PLAY CLOSED TEST — LEAD TIME, IFERO'S FIRST ACTION (2026-11-04). Google Play will not publish
+    this personal developer account (created after 2023-11-13) to production until a closed test
+    has run with at least 12 opted-in testers for 14 consecutive days. It is the longest item in
+    the sprint, so ifero starts it now on the current nightly or RC; it does not wait for 24-7.
+    24-7 records the start date, the tester count and the date production access was granted.
+
     ACTION ITEMS NOT PLACED IN A WAVE, re-parked with a reason (`epic-23-retro-item-4`). Their
     `status` is left as it was; this list is the written reason.
       - Epic 16 (re-home SM items, `in-progress`): process; this commit is its follow-through.
@@ -731,7 +737,7 @@ development_status:
   24-4-android-screens-crash-fix: ready-for-dev # REFINED 2026-11-04 through bmad-build, approved by ifero ("Approve and stop"): spike confirms the fix in 4.25.x, then the newest 4.25 patch (peer RN >= 0.82; 4.26 needs 0.84, ruled out) in expo.install.exclude; Android phone + iOS simulator proof. react-native-screens #4311 (fatal on the ~4.23 pin, fixed in 4.25); spike first: does the bump run on SDK 55 ahead of the 16-18 thread
   24-5-android-crash-reporting: ready-for-dev # REFINED 2026-11-04 through bmad-build, approved by ifero ("Approve and stop", full spec kept): premise corrected (Sentry already has 276 phone-Android events in 90 days); prove one symbolicated phone crash; Wear OS gets Sentry in its own EU project (ifero: create it, WEAR_SENTRY_DSN secret, IP storage off), trimmed like the phone, R8 mapping uploaded; 24-1 amended to disclose it. phone Android Sentry (10 events/90d, all iOS) then Wear OS; discharges Epic 10's field-observability item. After 24-4 (package.json)
   24-6-store-listings-and-screenshots: ready-for-dev # REFINED 2026-11-04 through bmad-build, approved by ifero ("Approve and stop", full spec kept): iPhone only (supportsTablet false); no third-party brands in screenshots or copy (fictional demo set); Wear captured from a debug build with a demo seed (closes 21-5 AC5); copy in docs/store/listing.md. both store listings + 21-5's owed AC5 (the Wear store screenshots). After 24-1 and 16-38
-  24-7-release-device-pass: backlog # THE GATE: 21-7's AC8 table on all four platforms on one RC, a short Android TalkBack/keyboard pass, and the Apple Watch confirmed on the RC (verified on hardware by ifero, nightlies, 2026-11-02)
+  24-7-release-device-pass: ready-for-dev # REFINED 2026-11-04 through bmad-build, approved by ifero ("Keep, approve and stop", full spec kept): the Play closed test (12+ testers, 14 consecutive days) is required for this personal account and ifero starts it ASAP on the current nightly or RC; 24-7 ends by publishing the v1.0.0 GitHub Release (store-upload.yml), submitting for review stays ifero's click. THE GATE: 21-7's AC8 table on all four platforms on one RC, a short Android TalkBack/keyboard pass, and the Apple Watch confirmed on the RC (verified on hardware by ifero, nightlies, 2026-11-02)
   epic-24-retrospective: optional
 
 # ============================================
