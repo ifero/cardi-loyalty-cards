@@ -47,7 +47,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-01-03
-last_updated: 11-04-2026 10:00
+last_updated: 11-04-2026 12:00
 project: myLoyaltyCards
 project_key: NOKEY
 tracking_system: file-system
@@ -189,11 +189,14 @@ current_sprint:
   # COMMITTED 2026-11-03 at sprint planning, per ifero: the first public store release, on all four
   # platforms. Committed BEFORE refinement, like Sprints 21 and 22: none of the seven new Epic 24
   # stories has a story file, so the waves below are PROVISIONAL until their Code Maps exist.
+  # REFINED AND STARTED 2026-11-04, per ifero: all eleven specs approved at checkpoint 1; the waves
+  # below are re-derived from their Code Maps.
   number: 23
   name: 'Sprint 23: Cardì 1.0 — The First Store Release (Epic 24)'
   goal: "Put Cardì 1.0 in the App Store and on Google Play — phone, Apple Watch, Android and Wear OS together. Clear what store review rejects first (the privacy copy and the store disclosures, the iOS privacy manifest, Play's target SDK), then fix what is wrong on a device today (the watch deep link, the Wear round barcode, the UPC-E mapping, the fatal Android screens crash) and get Android crashes reporting, and close on the store listings and the four-platform device pass that 21-7 closed without."
-  status: planned # COMMITTED 2026-11-03, per ifero. Scope decided in three answers: all four platforms (Android and Wear OS are already on Play testing tracks with internal testers), email sign-in as built, SDK 57 after launch. `epic-23-retro-item-4` applied here: every open action item is placed in a wave below or re-parked with a reason in the notes.
+  status: in-progress # STARTED 2026-11-04 by ifero, after all eleven stories were refined and approved (every spec `ready-for-dev`). COMMITTED 2026-11-03, per ifero. Scope decided in three answers: all four platforms (Android and Wear OS are already on Play testing tracks with internal testers), email sign-in as built, SDK 57 after launch. `epic-23-retro-item-4` applied here: every open action item is placed in a wave below or re-parked with a reason in the notes.
   planning_date: 2026-11-03
+  start_date: 2026-11-04 # sprint started after refinement; no story in progress yet
   epics: [24, 16, 18]
   stories:
     - 24-1-privacy-copy-and-store-disclosures
@@ -215,7 +218,7 @@ current_sprint:
           epic-22-retro-item-3-correct-guest-visible-privacy-copy,
           epic-23-retro-item-3-gate-merge-on-hardware-acs
         ]
-      note: "THE CONTACT ADDRESSES FIRST (see notes: the app points users at a domain someone else owns), inside 24-1, after ifero registers the domain or picks an interim mailbox. Then WHAT STORE REVIEW REJECTS, because a failure here blocks every later upload. PROVISIONAL (no Code Maps yet). Parallel by area: 24-1 writes user copy (`shared/i18n/locales/`, the What We Collect screen, the public privacy policy) and the App Store Connect / Play Data safety answers; 24-2 writes build config (`app.json` `ios.privacyManifests`, the Android target SDK through expo-build-properties). The hardware merge gate is process, not app code, and goes in before wave 3's device pass so 24-7 cannot merge with a hardware box unticked."
+      note: "THE CONTACT ADDRESSES FIRST (see notes: the app points users at a domain someone else owns), inside 24-1, after ifero registers the domain or picks an interim mailbox. Then WHAT STORE REVIEW REJECTS, because a failure here blocks every later upload. RE-DERIVED 2026-11-04 from the Code Maps: no file is written by two wave-1 stories (24-2 only reads `targets/watch/CardListView.swift` and `watch-android/app/build.gradle.kts`; 18-1 writes only its ADR), so all three run in parallel. Parallel by area: 24-1 writes user copy (`shared/i18n/locales/`, the What We Collect screen, the public privacy policy) and the App Store Connect / Play Data safety answers; 24-2 writes build config (`app.json` `ios.privacyManifests`, the Android target SDK through expo-build-properties). The hardware merge gate is process, not app code, and goes in before wave 3's device pass so 24-7 cannot merge with a hardware box unticked."
     wave_2:
       stories: [24-3, 16-38, 16-25, 24-4, 24-5]
       action_items:
@@ -223,7 +226,7 @@ current_sprint:
           epic-23-retro-item-6-fix-watch-deep-link-handler,
           epic-23-retro-item-1-wear-round-barcode-module-width
         ]
-      note: "WHAT IS WRONG ON A DEVICE TODAY. PROVISIONAL. Parallel by platform: 24-3 is watchOS Swift (`targets/watch/`, `CardListView.swift`), 16-38 is Wear Kotlin (`BarcodeLayoutMetrics.kt`) and ABSORBS `epic-23-retro-item-1` (the 1 px round EAN-13 is the same file and the same sizing decision), 16-25 is `core/` barcode mapping (option (b) recommended; query Sentry for `unmappedFormat: 'UPC_E'` first). 24-4 and 24-5 BOTH touch `package.json` / `yarn.lock` and Android native config, so 24-5 starts after 24-4 merges. 24-5 also discharges Epic 10's Wear OS field-observability item (a Wear crash reaching a dashboard), with the phone's Android telemetry first. 24-4 opens with a spike: does react-native-screens >= 4.25 (the #4311 fix) run on SDK 55, and what does expo-doctor need excluded."
+      note: "WHAT IS WRONG ON A DEVICE TODAY. RE-DERIVED 2026-11-04 from the Code Maps: 24-3, 16-38 and 16-25 write disjoint files (16-38 and 16-25 only read `targets/watch/BarcodeGenerator.swift`), so they run in parallel with 24-4; 24-5 waits for 24-4 (below) and for 24-1 (it amends 24-1's disclosure copy). Parallel by platform: 24-3 is watchOS Swift (`targets/watch/`, `CardListView.swift`), 16-38 is Wear Kotlin (`BarcodeLayoutMetrics.kt`) and ABSORBS `epic-23-retro-item-1` (the 1 px round EAN-13 is the same file and the same sizing decision), 16-25 is `core/` barcode mapping (option (b) recommended; query Sentry for `unmappedFormat: 'UPC_E'` first). 24-4 and 24-5 BOTH touch `package.json` / `yarn.lock` and Android native config, so 24-5 starts after 24-4 merges. 24-5 also discharges Epic 10's Wear OS field-observability item (a Wear crash reaching a dashboard), with the phone's Android telemetry first. 24-4 opens with a spike: does react-native-screens >= 4.25 (the #4311 fix) run on SDK 55, and what does expo-doctor need excluded."
     wave_3:
       stories: [18-9, 24-6, 24-7]
       action_items:
@@ -231,7 +234,7 @@ current_sprint:
           epic-22-retro-item-7-android-pass-wave-a-screens,
           epic-23-retro-item-2-record-apple-watch-accepted-risk
         ]
-      note: "THE RELEASE GATE, last. 18-9 first: the public site (privacy policy, index) moves from GitHub Pages to OVHcloud on cardiapp.eu, so the store listings can carry cardiapp.eu URLs. 24-6 after 18-9, after 24-1 (the listing copy must match the corrected disclosures) and after 16-38 (the Wear screenshots show the barcode): it is 21-5's AC5 (the Wear store screenshots, whose palette blocker 23-3 removed) plus the store listings. 24-7 closes the sprint: 21-7's AC8 table on all four platforms on one release candidate, a short Android pass (TalkBack and the Android-only keyboard path in FormScreen.tsx, the parts internal testing does not reach), and a confirmation of the real-Apple-Watch pass on the RC (ifero verified the nightlies on hardware as of 2026-11-02, see notes)."
+      note: "THE RELEASE GATE, last. RE-DERIVED 2026-11-04 from the Code Maps: strictly sequential. 18-9 needs 18-1's ADR, and 24-1, 18-9 and 24-6 all write `docs/index.html` (contacts, `og:url`, badge links); 24-6 also writes `app.json` after 24-2. 18-9 first: the public site (privacy policy, index) moves from GitHub Pages to OVHcloud on cardiapp.eu, so the store listings can carry cardiapp.eu URLs. 24-6 after 18-9, after 24-1 (the listing copy must match the corrected disclosures) and after 16-38 (the Wear screenshots show the barcode): it is 21-5's AC5 (the Wear store screenshots, whose palette blocker 23-3 removed) plus the store listings. 24-7 closes the sprint: 21-7's AC8 table on all four platforms on one release candidate, a short Android pass (TalkBack and the Android-only keyboard path in FormScreen.tsx, the parts internal testing does not reach), and a confirmation of the real-Apple-Watch pass on the RC (ifero verified the nightlies on hardware as of 2026-11-02, see notes)."
   notes: |
     COMMITTED 2026-11-03, per ifero, from the 2026-10-30 candidate list below. Three scope answers:
       - PLATFORMS: all four. First proposed as iOS + watchOS only; ifero widened it ("let's include
