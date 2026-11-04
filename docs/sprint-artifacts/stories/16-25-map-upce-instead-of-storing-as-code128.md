@@ -1,271 +1,114 @@
-# Story 16.25: Map UPC-E so a UPC-E barcode is not stored as Code 128
+---
+title: 'Map UPC-E so a UPC-E barcode is not stored as Code 128'
+type: 'bugfix'
+created: '2026-11-04'
+status: 'ready-for-dev'
+route: 'dispatch'
+review_loop_iteration: 0
+context:
+  - '{project-root}/AGENTS.md'
+  - '{project-root}/docs/project-context.md'
+---
 
-Status: ready-for-dev
+<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
 
-Epic: 16 — Platform & Tech Debt
+## Intent
 
-> **Not urgent, and not blocking anything.** This is a latent data-correctness defect found while
-> implementing Story 16.23, deliberately scoped out of it. Nothing is on fire.
->
-> **Check Sentry before sizing this.** Story 16.23 shipped the telemetry that measures how often this
-> actually happens — query `unmappedFormat: 'UPC_E'`. If the answer is "never", option (b) below is a
-> ten-line change; if it is "often", it justifies the wider option (a). **Do not skip this step**: the
-> frequency was unknown when the story was written, and it is knowable now.
->
-> **There is an open decision for ifero — see [Decision required](#decision-required-pick-the-approach-before-writing-code).**
-> Do not start coding until it is made. Option (b) is recommended and needs no protocol change; option
-> (a) is a cross-platform sync-contract change touching seven files plus two native apps.
+**Problem:** Scanning a UPC-E barcode from an image stores the card as `CODE128` for good, with no error. `useImageScan` always requests `UPC_A`, so the iOS decoder also registers `.upce` and reports `"UPC_E"`. `BARCODE_FORMAT_MAP` has no `upc_e` key, so `mapFormat` falls back to `'CODE128'`. `normalizeBarcode` cannot rescue an 8-digit payload, because all three of its rules need 12 or 13 digits.
 
-## Story
+**Approach:** In `useImageScan`, before `mapFormat`, a `UPC_E` result is expanded losslessly to its 12-digit UPC-A form (GS1 zero-suppression). The hook then hands `{ value, 'UPCA' }` to the unchanged `normalizeBarcode`, whose Rule 1 turns UPC-A into EAN-13.
 
-As a user adding a loyalty card whose barcode is UPC-E,
-I want the card stored with its real format,
-so that it renders and scans correctly instead of being silently relabelled as Code 128.
+## Boundaries & Constraints
 
-## Context
+**Decision (ifero, 2026-11-04):** UPC-E is stored as EAN-13: no new schema member, no sync-contract change, no watch work. The card shows EAN-13 bars, which a checkout scanner reads as the same product code.
 
-### The defect
+**Evidence (Sentry, read 2026-11-04):** zero "Barcode format fell back to CODE128" events in the last 90 days, across all 339 events in the project. UPC-E has never been seen in the field. The fix is a latent-defect repair, which confirms the decision.
 
-A UPC-E barcode detected by **scan-from-image** is stored with `barcodeFormat: 'CODE128'`. The card is
-then re-rendered as Code 128 for the rest of its life. No error, no warning to the user.
+**Always:**
 
-This is **reachable in production, not hypothetical** — the chain was traced in source, not inferred:
+- **`expandUpcE(raw)` in `core/utils/expandUpcE.ts`** is pure and exported from `core/utils/index.ts`. It trims its input. It accepts exactly 8 digits whose first digit (the number system) is 0 or 1, and returns `null` otherwise. Its output is the 12-digit UPC-A.
+  - **Expansion.** Let the number system be N, the body d1..d6 and the check digit C.
 
-1. `features/add-card/hooks/useImageScan.ts` always requests `UPC_A` as part of
-   `SUPPORTED_IMAGE_SCAN_FORMATS`.
-2. The iOS decoder maps a requested `"UPC_A"` to **two** Vision symbologies:
-   `symbologies.append(contentsOf: [.ean13, .upce])`
-   (`node_modules/react-native-image-code-scanner/ios/ImageCodeScanner.swift:273`). So `.upce` is
-   registered with Vision whenever `UPC_A` is requested — which is always.
-3. When Vision detects `.upce`, the same file reports the format back to JS as the string `"UPC_E"`
-   (`:361`).
-4. `BARCODE_FORMAT_MAP` in `useImageScan.ts` has **no `upc_e` key**, so `mapFormat` falls through to
-   `?? 'CODE128'`.
-5. `normalizeBarcode` does not rescue it: its three rules cover UPC-A→EAN-13 (12-digit), UPC-A→EAN-13
-   (13-digit relabel), and CODE128-carrying-valid-EAN-13. A UPC-E payload is **8 digits**, so none apply.
+    | d6        | UPC-A                      | Cases |
+    | --------- | -------------------------- | ----- |
+    | 0, 1 or 2 | N d1 d2 d6 0000 d3 d4 d5 C | three |
+    | 3         | N d1 d2 d3 00000 d4 d5 C   | one   |
+    | 4         | N d1 d2 d3 d4 00000 d5 C   | one   |
+    | 5 to 9    | N d1 d2 d3 d4 d5 0000 d6 C | one   |
 
-⚠️ Line numbers above are for the **patched** `ImageCodeScanner.swift` (Story 16.23 adds ~50 lines via
-`patches/react-native-image-code-scanner+1.1.3.patch`). Grep for the symbol, not the line.
+  - **Check digit.** The UPC-A check digit (3/1 weighting) of the expanded first 11 digits must equal C; otherwise `null`. Rule 1's EAN-13 checksum then holds by construction.
 
-### What Story 16.23 already did — do NOT redo it
+- **Hook behaviour.** When the decoder label lowercases to `upc_e` and `expandUpcE` returns a value, `mapFormat` is skipped and its fallback notify does not fire. When it returns `null`, today's path runs unchanged, CODE128 fallback and notify included. The same rule applies per code in a multi-code scan.
+- **`normalizeBarcode` is untouched**, and so are its tests (Conad included). `selectCode`'s second `normalizeBarcode` pass stays safe, because its input is already a 13-digit EAN-13.
+- **PII:** no barcode value reaches a log or Sentry.
+- **Layering:** `core/` imports nothing from `features/`. Tests sit beside their files; no `__tests__/` folders.
 
-The fallback is now **observable**. `mapFormat` emits
-`logger.notify('Barcode format fell back to CODE128')` with `context: [{ unmappedFormat }]`, so a UPC-E
-detection shows up in Sentry as `unmappedFormat: 'UPC_E'`. 16.23 deliberately shipped only the telemetry
-and scoped the fix out, because the fix is a schema question and the report that triggered 16.23 was
-about a format we already support.
+**Never:**
 
-The camera path has the same gap (`mapBarcodeFormat` in `features/cards/hooks/useBarcodeScanner.ts`),
-also already instrumented. Note `expo-camera`'s `barcodeTypes` lists do **not** include `upc_e`, so the
-camera is less exposed — but `expo-camera` may still report a UPC-E detection when `upc_a` is requested,
-which is worth confirming on device rather than assuming.
+- Touch `core/schemas/card.ts`, the format picker, `BarcodeRenderer`, the locales or the watch apps.
+- Change the camera path (`useBarcodeScanner`). UPC-E cannot reach it: both `barcodeTypes` lists request only `code128, ean13, ean8, qr, code39, upc_a`, and expo-camera registers only the requested types.
+- Widen the six supported formats.
+- Fix 16-24's `exhaustive-deps` warnings.
+- Commit, push, or change sprint-status.yaml or any other tracker file: the orchestrator owns all three.
 
-### Why this was out of scope for 16.23
+## I/O & Edge-Case Matrix
 
-Adding `UPCE` to `barcodeFormatSchema` (`core/schemas/card.ts`) is a **cross-platform sync-contract
-change**, not a local edit. watchOS (Swift) and Wear OS (Kotlin) serialise the same string values, so a
-new member is a protocol change. Per 16.23's Defect 2 analysis, it would have to move in **one** change:
+| Scenario            | Input / State                                       | Expected Output / Behavior                        | Error Handling       |
+| ------------------- | --------------------------------------------------- | ------------------------------------------------- | -------------------- |
+| Valid UPC-E         | `{ content: '01234565', format: 'UPC_E' }`          | Stored EAN-13 `0012345000065`; no fallback notify | N/A                  |
+| Each expansion case | d6 = 0, 1, 2, 3, 4, and one of 5–9                  | The tabled UPC-A, then EAN-13                     | N/A                  |
+| Number system 1     | A valid `1…` UPC-E                                  | EAN-13 starting `01`                              | N/A                  |
+| Whitespace          | `'01234565\n'`                                      | Same as the valid case                            | N/A                  |
+| Invalid UPC-E       | 7 or 9 digits, first digit 2, non-digits, bad check | Kept as today (CODE128)                           | Fallback notify once |
+| Multi-code          | UPC_E beside EAN-13 and QR                          | UPC_E entry becomes EAN-13; the others unchanged  | N/A                  |
+| Other formats       | UPC-A 12/13, EAN-13, CODE128 carrying EAN-13, Conad | Unchanged                                         | N/A                  |
 
-| File                                              | What changes                                          |
-| ------------------------------------------------- | ----------------------------------------------------- |
-| `core/schemas/card.ts`                            | `barcodeFormatSchema` gains `UPCE`                    |
-| `features/cards/components/BarcodeRenderer.tsx`   | `BWIPJS_FORMAT_MAP` gains a verified `bcid`           |
-| `features/cards/components/FormatPicker.tsx`      | `formatLabels` + `FORMAT_OPTIONS`                     |
-| `features/add-card/components/ScannerOverlay.tsx` | `barcodeTypes`                                        |
-| `features/cards/components/BarcodeScanner.tsx`    | `barcodeTypes`                                        |
-| `features/add-card/hooks/useImageScan.ts`         | `SUPPORTED_IMAGE_SCAN_FORMATS` + `BARCODE_FORMAT_MAP` |
-| `shared/i18n/locales/en.ts` + `it.ts`             | `addCard.multiCode.formats.UPCE`                      |
+</frozen-after-approval>
 
-Two of these are **compile-enforced**, which is a genuine safety net: `BWIPJS_FORMAT_MAP` is
-`Record<BarcodeFormat, string>` and `FormatPicker`'s `formatLabels` is `Record<BarcodeFormat, string>`,
-so adding a schema member is a **type error** until both are updated. The locale files are **not**
-enforced (no i18next module augmentation — see 16.23's correction on this), so those are manual.
+## Code Map
 
-## Decision required: pick the approach before writing code
+- `features/add-card/hooks/useImageScan.ts`
+  - `:27`: `BARCODE_FORMAT_MAP`.
+  - `:68-88`: `mapFormat`, with its per-scan `reportedFormats` dedupe (keep it).
+  - `:346-347`: single code, `mapFormat` then `normalizeBarcode`.
+  - `:352-353`: the multi-code loop (cap 6).
+  - `:248`: `selectCode` re-normalizes.
+  - Keep the cancel path.
+- `core/utils/normalizeBarcode.ts:80-100` -- trims; Rule 1 (UPC-A 12 → EAN-13) is the precedent. Read-only.
+- `core/utils/index.ts:10-14` -- file-by-file re-exports. Add `expandUpcE`.
+- `features/add-card/hooks/useImageScan.test.ts`
+  - `:808-831`: asserts today's wrong UPC_E fallback. Change it to the valid case.
+  - `:858-915`: telemetry dedupe tests using UPC_E with the invalid contents `'A'`/`'B'`/`'C'`. They stay valid as the invalid-UPC-E path; keep them, and add a comment saying why.
+  - `:833-856`: untouched.
+- `node_modules/react-native-image-code-scanner/ios/ImageCodeScanner.swift` (patched) -- the `UPC_A` → `[.ean13, .upce]` registration and the `"UPC_E"` report. Grep for the symbol; line numbers shift with the patch.
+- `docs/sprint-artifacts/stories/10-4-*.md` -- its note that EAN8/UPCA/CODE39 render nothing on the watch is stale (`targets/watch/BarcodeGenerator.swift:57-59` falls back to Code 128). Record this under Found, not fixed.
 
-### ✅ (b) Normalise UPC-E → EAN-13 — RECOMMENDED, evaluate first
+## Tasks & Acceptance
 
-Expand the 8-digit UPC-E to its 12-digit UPC-A form, then let the **existing** `normalizeBarcode` Rule 1
-carry it to EAN-13. **No schema change. No protocol change. No native app work. No new locale keys.**
+**Execution:**
 
-Why this fits this codebase:
+- [ ] `core/utils/expandUpcE.ts` + `expandUpcE.test.ts` + `core/utils/index.ts` -- the table, the check digit, every invalid case. Rationale: a pure, lossless step.
+- [ ] `features/add-card/hooks/useImageScan.ts` + test -- the hook behaviour above, at the single and multi-code sites. Rationale: the reachable path.
 
-- **It is the precedent already set.** `normalizeBarcode` Rule 1 exists to do exactly this for UPC-A:
-  _"A UPC-A barcode is structurally identical to an EAN-13 barcode whose first digit is 0 … prepending
-  `0` and labelling it as EAN-13 is always safe and reversible."_ UPC-E is a **compressed UPC-A**, so
-  UPC-E → UPC-A → EAN-13 is the same argument applied one step earlier.
-- **It is lossless.** UPC-E zero-suppression is a defined, reversible GS1 encoding — the 8-digit form
-  carries exactly the information of its 12-digit UPC-A parent.
-- **It shrinks rather than grows the format surface**, which every other consumer benefits from.
+**Acceptance Criteria:**
 
-Cost: one well-tested pure function (the expansion has six defined cases keyed on the last digit of the
-6-digit body) plus a `upc_e: 'EAN13'`-style entry or a pre-normalisation step. Add `upc_e` to
-`BARCODE_FORMAT_MAP` only if you route through the format map; otherwise handle it in `normalizeBarcode`
-so **both** scanner hooks get it for free.
+- Given a valid `UPC_E` image result, when it is mapped, then `logger.notify('Barcode format fell back to CODE128')` is not called. Given an invalid one, it is called once.
+- Given a UPC-E card of known expansion, scanned from an image on a real iPhone, when its rendered barcode is scanned by a second device, then the decoded value equals the expanded UPC-A (or its 13-digit EAN-13 form). Record the device, the OS, the build type and the payload length Vision returned.
 
-### (a) Add `UPCE` as a full schema member
+## Implementation Notes
 
-Truthful to the source symbology, and the right answer if UPC-E cards turn out to be common enough that
-users care about seeing "UPC-E" in the format picker. Cost: the seven-file table above, plus watchOS and
-Wear OS.
+## Spec Change Log
 
-✅ **`bwip-js` support is verified, not assumed.** `toSVG({ bcid: 'upce', text: '04252614' })` and
-`text: '01234565'` both render successfully against the installed `@bwip-js/react-native`. So this option
-would not hit the `invalidA11y` fallback (`BarcodeRenderer.tsx:164`, shown when the render errors).
+## Review Triage Log
 
-### ❌ (c) Stop requesting `UPC_A` — rejected
+## Verification
 
-It would stop `.upce` being registered, but also break genuine UPC-A scanning, which real cards use.
-Not viable.
+**Commands:**
 
-## Acceptance Criteria
+- `yarn typecheck`, `yarn lint`, `yarn format:check`, `yarn tokens:check` -- expected: clean
+- `yarn test` -- expected: all pass, coverage at or above 80%, `normalizeBarcode` tests unchanged
+- `yarn check:native-patches`, `yarn check:native-strings` -- expected: pass
 
-1. **The decision above is recorded in this story before implementation starts**, with the Sentry
-   `unmappedFormat: 'UPC_E'` frequency noted as evidence.
-2. **A UPC-E detection is no longer stored as `CODE128`.** Whichever option is chosen, scanning a UPC-E
-   barcode from an image produces a card whose stored value and format render and re-scan correctly.
-3. **The chosen path is unit-tested at the seam that failed.** For option (b): the expansion function
-   covers all six UPC-E zero-suppression cases plus an invalid input; `useImageScan.test.ts` asserts a
-   `UPC_E` decoder result resolves to the expected value and format. For option (a): the schema, both
-   format maps, both `barcodeTypes` lists and both locale files are updated together, with a test
-   asserting `BWIPJS_FORMAT_MAP` renders the new member without error.
-4. **The 16.23 telemetry stops firing for `UPC_E`.** `mapFormat` must no longer reach its
-   `'Barcode format fell back to CODE128'` branch for a `UPC_E` label — assert this in a test, since it
-   is the observable proof the gap is closed.
-5. **No regression to existing formats.** `normalizeBarcode` / `applyExpectedFormat` semantics for
-   UPC-A, EAN-13, CODE128-carrying-EAN-13 and the Conad leading-zero case are unchanged; their existing
-   tests still pass untouched.
-6. **Round-trip verified on a real device.** Render a UPC-E card in the app and scan it back with a
-   second device or a physical scanner. Bars that a decoder rejects are invisible to a unit test — this
-   is the Story 16.15 / 16.23 lesson, and it is the only evidence that matters for a rendering change.
-7. **Regression-safe.** `yarn lint`, `typecheck`, `test`, `tokens:check`, `format:check`,
-   `check:native-patches` and `check:native-strings` all pass.
+**Manual checks (if no CLI):**
 
-## Tasks / Subtasks
-
-- [ ] **Task 1 — Size it from real data (AC: 1)**
-  - [ ] Query Sentry for `unmappedFormat: 'UPC_E'` on the `Barcode format fell back to CODE128` issue
-  - [ ] Confirm on a device whether `expo-camera` also reports `UPC_E` when only `upc_a` is requested
-  - [ ] Record the decision (a or b) and the evidence in this story before writing code
-- [ ] **Task 2 — Implement the chosen option (AC: 2, 3)**
-  - [ ] Option (b): a pure UPC-E → UPC-A expansion in `core/utils/`, wired so **both** scanner hooks
-        benefit — prefer `normalizeBarcode` over a per-hook map entry
-  - [ ] Option (a): all seven files in the table, in one change; do not land a partial schema
-- [ ] **Task 3 — Prove the gap is closed (AC: 4)**
-  - [ ] Assert `mapFormat` no longer falls back for `UPC_E`
-- [ ] **Task 4 — Non-regression (AC: 5, 7)**
-  - [ ] Existing `normalizeBarcode` tests untouched and passing; run the full gate set
-- [ ] **Task 5 — Device round-trip (AC: 6)**
-  - [ ] Render a UPC-E card and scan it back; record device, iOS/Android version and build type
-
-## Dev Notes
-
-### Files to touch — current state and what must survive
-
-| File                                        | Change            | What must be preserved                                                                                                                                                    |
-| ------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `core/utils/normalizeBarcode.ts`            | UPDATE (option b) | All three existing rules are documented as **idempotent** and called from three surfaces plus `selectCode`. Their tests encode the Conad regression — add, never rewrite. |
-| `features/add-card/hooks/useImageScan.ts`   | UPDATE            | `mapFormat` now takes a per-scan `reportedFormats` Set (Story 16.23) — keep the dedupe. Do not disturb the cancel / single / multi-code-capped-at-6 paths.                |
-| `features/cards/hooks/useBarcodeScanner.ts` | UPDATE            | `mapBarcodeFormat` takes a per-instance Set. `handleBarcodeScanned` guards re-entry via `hasScanned` + a 2 s reset and fires haptics **before** `onScan`.                 |
-| `core/schemas/card.ts`                      | Option (a) ONLY   | Cross-platform contract. If option (b) is chosen, **do not touch this file at all.**                                                                                      |
-
-### watchOS: correcting a stale claim in story 10-4
-
-Story 10-4's notes state that `EAN8`, `CODE39` and `UPCA` _"fall through leaving `modules` nil and
-generateImage returns nil"_, so an EAN-8 card shows nothing on Apple Watch. **That is no longer true of
-the current code.** `targets/watch/BarcodeGenerator.swift:57-59` reads:
-
-```swift
-case .EAN8, .UPCA, .CODE39:
-  // pragmatic fallback: render as Code128 so scanners can still read it
-  modules = encodeCode128(value: value)
-```
-
-So those three formats **do** render on the watch, as Code 128 bars carrying the same digits — readable
-by a scanner, just not the declared symbology. Two consequences for this story:
-
-- Option (a) would inherit that same fallback for `UPCE` unless watchOS is also updated. Acceptable, but
-  it should be a conscious choice rather than a surprise.
-- **Option (b) sidesteps it entirely**, since an EAN-13 value renders natively on the watch.
-
-Worth correcting 10-4's note separately so the next reader is not misled.
-
-### Guardrails
-
-- **Never `console.*`** — use `core/utils/logger.ts`. `info`/`warn` are `__DEV__`-only no-ops; only
-  `notify` and `error` reach production. `notify`'s message and every tag **value** must be a string
-  literal (compile-enforced), and tag values are **not** scrubbed.
-- **A barcode number is PII.** It must never reach Sentry as a message, tag or context value. Note the
-  scrubber matches by **key name**, and its pattern includes `barcode` — so a context key containing
-  that word is redacted to `[Redacted]`, losing the signal. Story 16.23 named its key `unmappedFormat`
-  for exactly this reason.
-- **Do not widen the symbology set as a side effect.** If option (b) is chosen, the six supported formats
-  stay six.
-- **Layer boundaries** (ESLint-enforced): `core/` must not import React or from `features/`.
-  `add-card → cards` is a sanctioned exception; the reverse is not.
-
-### Testing
-
-- Co-locate tests beside the subject; `__tests__/` folders are banned (CI-enforced), and `app/` holds no
-  tests. Coverage gate is **80 % global** over `features/**`, `core/**`, `shared/**`.
-- `useImageScan.test.ts` already mocks `expo-image-picker` and `react-native-image-code-scanner`
-  (including the `BarcodeFormat` enum) and stubs `logger.notify` while keeping `normalizeBarcode` real —
-  reuse that shape. It already contains a `UPC_E` fallback test from Story 16.23; **that test asserts the
-  current wrong behaviour and must be updated, not deleted.**
-- ⚠️ **A green suite does not prove a rendering change works.** Jest never runs bwip-js against a real
-  scanner. AC6's device round-trip is the only evidence that counts.
-
-### Previous story intelligence
-
-- **Story 16.23** — the direct parent; found this defect and shipped its telemetry. Read its Dev Agent
-  Record: it documents the `logger.notify` tag conventions, the PII key-name trap, and three factual
-  corrections worth knowing (a fabricated native error string, a false claim that a
-  `Record<BarcodeFormat, …>` forces locale parity, and a mid-implementation baseline test count). Its
-  lesson for this story: **verify claims against source before writing them into a spec.**
-- **Story 16.24** — landed immediately before this one; enabled `eslint-plugin-react-hooks` and left a
-  small backlog of pre-existing `exhaustive-deps` warnings in `app/_layout.tsx`,
-  `features/auth/CreateAccountScreen.tsx` and `features/cards/components/BarcodeScanner.tsx`. Do not
-  "fix" those here — 16.24 owns them. Note `BarcodeScanner.tsx` is on that list **and** in option (a)'s
-  file table, so an option-(a) implementation should expect to touch a file with a known open warning.
-- **Story 2.9** — introduced `normalizeBarcode` for the Conad "EAN-13 reported as 12-digit UPC-A" bug,
-  and is the precedent option (b) builds on. It also removed `defaultFormat` from 11 brands where
-  CODE-128 had been guessed wrongly: the standing lesson is **don't guess a brand's format**.
-
-### Project structure notes
-
-- Story files live in `docs/sprint-artifacts/stories/` (not flat) — required by
-  `scripts/lib/story-refs.mjs` and `.github/workflows/mark-story-done.yml`.
-- Branch prefix is **`feature/`**, not `feat/`.
-- ⚠️ Any bare `N.M` in a PR body or title marks that story done on merge. A `chore:`-titled PR is exempt
-  from the spec-first story requirement.
-
-### References
-
-- `node_modules/react-native-image-code-scanner/ios/ImageCodeScanner.swift:273,361` — the `UPC_A` →
-  `[.ean13, .upce]` registration and the `"UPC_E"` report (line numbers are for the **patched** file)
-- `features/add-card/hooks/useImageScan.ts` — `BARCODE_FORMAT_MAP`, `mapFormat`
-- `features/cards/hooks/useBarcodeScanner.ts` — `mapBarcodeFormat`
-- `core/utils/normalizeBarcode.ts` — the three existing rules, Rule 1 being the precedent
-- `core/schemas/card.ts` — `barcodeFormatSchema`, the cross-platform contract
-- `targets/watch/BarcodeGenerator.swift:57-59` — the Code 128 fallback that corrects 10-4's note
-- `docs/sprint-artifacts/stories/16-23-fix-silent-barcode-scan-failures.md` — parent story, Defect 2 and
-  Defect 3
-
-### Out of scope — flag, don't fix
-
-- The pre-existing `exhaustive-deps` warnings (Story 16.24 owns them).
-- Any other unmapped decoder format. `CODE_93`, `ITF`, `CODABAR`, `PDF_417`, `DATA_MATRIX` and `AZTEC`
-  are never requested, so they cannot be returned. Only `UPC_E` is reachable-but-unmapped.
-- Widening the symbology set generally — that needs its own story and a real user need.
-
-## Dev Agent Record
-
-### Agent Model Used
-
-### Debug Log References
-
-### Completion Notes List
-
-### File List
-
-### Change Log
+- The device round-trip above. JS only, so it can reach testers by OTA update.

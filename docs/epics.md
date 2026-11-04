@@ -11,8 +11,8 @@ completedDate: '2025-01-03'
 project_name: 'myLoyaltyCards'
 user_name: 'Ifero'
 date: '2025-01-03'
-totalEpics: 23
-totalStories: 207 # counted from `### Story` headings on 2026-10-30
+totalEpics: 24
+totalStories: 214 # counted from `### Story` headings on 2026-11-03
 aligned_with_tracker: '2026-08-02'
 authoritative_source: 'docs/sprint-artifacts/sprint-status.yaml'
 ---
@@ -3374,6 +3374,9 @@ Adding a card today means scanning a physical card or typing a barcode by hand; 
 
 ### Story 18.1: Spike — European Hosting & Custom Domain for the Share Page
 
+> **Decided 2026-11-03 by ifero, ahead of the spike:** OVHcloud, on `cardiapp.eu`. This story now
+> only records the ADR, in Sprint 23.
+
 **As a** developer, **I want** a decided European host and registered domain, **So that** Universal Links and App Links can be verified at a domain root we control, on infrastructure we trust to stay up.
 
 Vendors to evaluate, specified by ifero: **Netsons**, **Namecheap**, **Spaceship**, **Infomaniak**, **OVHcloud**. The incumbent (GitHub Pages) is scored as the baseline to beat, not as a candidate — it structurally cannot serve `/.well-known/` from a project page.
@@ -3527,6 +3530,9 @@ This is the same defect as 18.6 one layer down, but it lands on the opposite sid
 ### Story 18.9: Migrate the Public Site to the Custom Domain (Enabling)
 
 **As a** developer, **I want** the site on the domain chosen in 18.1, **So that** `/.well-known/` is under our control.
+
+> **Pulled into Sprint 23 (2026-11-03)** for the 1.0 store listings: OVHcloud on `cardiapp.eu`. The
+> `/.well-known/apple-app-site-association` monitor waits for Story 18.10.
 
 **Acceptance Criteria:**
 
@@ -4556,3 +4562,116 @@ brand is right at the one size where only the mark fits.
 - The complication uses the mark at complication sizes, where the reduction rather than the full
   mark may be required — the decision is made against a rendered complication, not asserted.
 - The `OpenAppIcon` imageset is consistent with the icon set delivered in 21.3.
+
+## Epic 24: Cardì 1.0 — The First Store Release
+
+Put Cardì 1.0 in the App Store and on Google Play: the phone app, the Apple Watch app and widget,
+and the Wear OS app, in one release.
+
+**Phase:** 3 · **Epic Type:** Release
+
+Story 21.7 closed on 2026-09-30 by decision, with its AC8 device and store table still at "not yet
+performed", and every build since has reached testers only. Android and Wear OS are already on Play
+testing tracks. This epic holds what stands between those builds and a public listing: what store
+review rejects, what is wrong on a device today, and the device pass itself. Stories 16.25 and 16.38
+ship in the same sprint under their own keys. Most of the work is native or store-side, and
+`runtimeVersion.policy` is `appVersion`, so it ships as a store release, not an OTA update.
+
+### Story 24.1: Privacy Copy and Store Disclosures
+
+**As a** user reading what Cardì collects, **I want** the app, the privacy policy and the store
+listings to say the same true thing, **So that** I can trust it, and store review has no claim to
+reject.
+
+**Acceptance Criteria:**
+
+- The What We Collect screen and the public privacy policy drop the no-analytics, device-ID and
+  encrypted-database claims (Story 22.8, issue #273 item 10); user copy may say only "no ads, no
+  advertising identifiers".
+- The App Store Connect privacy answers and the Play Data safety form match the corrected copy,
+  including what Sentry and cloud sync send.
+- Every locale is updated, not only English.
+- **First:** no contact points at `myloyaltycards.app`, which is a third party's domain with live
+  mail. The support and privacy addresses and the feedback link (`HelpScreen.tsx`, both
+  `assets/legal/privacy-policy` files, `docs/privacy-policy.html`) move to `support@cardiapp.eu` and
+  `privacy@cardiapp.eu` (chosen 2026-11-03), and the feedback link is either replaced or removed.
+- Ships to testers as an OTA update as soon as the in-app half is ready, ahead of the store release.
+
+### Story 24.2: Store Platform Requirements
+
+**As the** release owner, **I want** the builds to meet each store's current technical rules, **So
+that** an upload is not refused or flagged.
+
+**Acceptance Criteria:**
+
+- The iOS build declares a privacy manifest (`ios.privacyManifests` in `app.json`) covering the
+  required-reason APIs the app and its dependencies use; an upload raises no ITMS-91053 warning.
+- The Android phone and Wear OS builds target the API level Google Play currently requires for new
+  apps and updates, on SDK 55. If SDK 55 cannot reach it, stop and re-scope, because that pulls the
+  SDK 57 thread (16.18 to 16.21) in front of the release.
+
+### Story 24.3: Watch Deep-Link Handler
+
+**As an** Apple Watch user, **I want** the complication and the app's links to open what I tapped,
+**So that** the watch never resumes on a barcode, or opens a card, I did not ask for.
+
+**Acceptance Criteria:**
+
+- `cardi://watch` is handled explicitly and pops to the card list, so a warm app no longer resumes
+  on a barcode (Story 23.4 SD1).
+- A parked `pendingDeepLinkCardId` is cleared on any other navigation, so a card that arrives late
+  cannot open unasked.
+- Covered by the watch contract suites.
+
+### Story 24.4: Android Screens Crash Fix
+
+**As an** Android user, **I want** the app not to crash while navigating, **So that** it can be
+trusted on its first day on Play.
+
+**Acceptance Criteria:**
+
+- Opens with a spike: does `react-native-screens` at 4.25 or later (the upstream #4311 fix for the
+  fatal `DecorView is required` crash) build and run on SDK 55, and what does `expo-doctor` need
+  excluded to accept a version outside Expo's pin.
+- If it does, the bump lands with the exclusion recorded; if it does not, stop and report rather
+  than pulling the SDK 57 thread forward inside this story.
+- Verified on an Android phone build, not only in Jest.
+
+### Story 24.5: Android Crash Reporting
+
+**As the** release owner, **I want** Android and Wear OS crashes to reach a dashboard, **So that**
+the first public users' failures are seen, not silent.
+
+**Acceptance Criteria:**
+
+- A crash from a release Android phone build reaches Sentry, symbolicated.
+- A crash from a release Wear OS build reaches a dashboard (Epic 10's field-observability item).
+- The `SENTRY_DISABLE_AUTO_UPLOAD` guard and the release workflows stay correct.
+
+### Story 24.6: Store Listings and Screenshots
+
+**As a** person browsing the stores, **I want** the Cardì listing to show the app as it is, **So
+that** I know what I am installing.
+
+**Acceptance Criteria:**
+
+- The App Store and Play listings carry the Cardì name, copy and artwork (`assets/store/`).
+- The Wear OS store screenshots are captured on the Cardì palette, which closes Story 21.5's AC5.
+- Screenshots that show a barcode are taken after Story 16.38 lands.
+- The listing copy matches Story 24.1's disclosures.
+
+### Story 24.7: Release Device Pass [Gate]
+
+**As the** release owner, **I want** one release candidate checked on every platform it ships to,
+**So that** 1.0 goes out on a result, not a decision.
+
+**Acceptance Criteria:**
+
+- Story 21.7's AC8 device and store table is filled on one release candidate for iOS, watchOS,
+  Android and Wear OS, with every row a result.
+- A short Android pass covers TalkBack and the Android-only keyboard path in `FormScreen.tsx`, the
+  parts internal testing does not reach.
+- Account deletion is checked end to end (App Store guideline 5.1.1(v)).
+- The real-Apple-Watch pass is confirmed on the release candidate. ifero verified the nightly
+  builds on a real Apple Watch as of 2026-11-02, which supersedes the 2026-10-30 accepted risk.
+- Nothing is submitted for public release until every row is filled.
