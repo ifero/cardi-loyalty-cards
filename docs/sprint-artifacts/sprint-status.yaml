@@ -1,5 +1,5 @@
 # generated: 2026-01-03
-# last_updated: 2026-11-04
+# last_updated: 2026-11-05
 # project: myLoyaltyCards
 # project_key: NOKEY
 # tracking_system: file-system
@@ -47,7 +47,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-01-03
-last_updated: 11-04-2026 12:00
+last_updated: 11-05-2026 12:00
 project: myLoyaltyCards
 project_key: NOKEY
 tracking_system: file-system
@@ -733,8 +733,8 @@ development_status:
   # together. 21-7 closed on 2026-09-30 with its AC8 device and store table unperformed;
   # 24-7 is where that table is filled. Most of this epic is native or store-side, and
   # runtimeVersion.policy is appVersion, so it ships as one store release, not OTA.
-  epic-24: backlog
-  24-1-privacy-copy-and-store-disclosures: ready-for-dev # REFINED 2026-11-04 through bmad-build, approved by ifero ("Approve and stop"): crash and error diagnostics kept, trimmed (release tracing off, install/device IDs stripped, Sentry IP storage off; amended 2026-11-04 after a Sentry read), NFR-S6 amended, no re-consent (policy stays 1.0.0), feedback mails support. Implementation starts once support@ and privacy@cardiapp.eu deliver mail. FIRST: replace every myloyaltycards.app contact (a third party's domain, see current_sprint notes) with support@ / privacy@cardiapp.eu. Then epic-22-retro-item-3: user copy may say only no ads, no advertising identifiers; the App Store privacy answers and the Play Data safety form match it
+  epic-24: in-progress
+  24-1-privacy-copy-and-store-disclosures: review # REFINED 2026-11-04 through bmad-build, approved by ifero ("Approve and stop"): crash and error diagnostics kept, trimmed (release tracing off, install/device IDs stripped, Sentry IP storage off; amended 2026-11-04 after a Sentry read), NFR-S6 amended, no re-consent (policy stays 1.0.0), feedback mails support. Implementation starts once support@ and privacy@cardiapp.eu deliver mail. FIRST: replace every myloyaltycards.app contact (a third party's domain, see current_sprint notes) with support@ / privacy@cardiapp.eu. Then epic-22-retro-item-3: user copy may say only no ads, no advertising identifiers; the App Store privacy answers and the Play Data safety form match it
   24-2-store-platform-requirements: ready-for-dev # REFINED 2026-11-04 through bmad-build, approved by ifero ("Approve and stop", full spec kept): phone manifest in app.json + PrivacyInfo.xcprivacy for both watch bundles (UserDefaults); phone Android SDK pinned to 36; Wear's 35 already meets Play's Wear rule, so no SDK 57 pull-forward. iOS privacy manifest (no `ios.privacyManifests` in app.json today, ITMS-91053) + Play's required target SDK on SDK 55
   24-3-watch-deep-link-handler: ready-for-dev # REFINED 2026-11-04 through bmad-build, approved by ifero ("Approve and stop", full spec kept): cardi://watch pops to the list, a parked id clears on user navigation, any deep link closes the sort sheet (23-4 SD1, SR4, SR5); routing as a pure type the macOS harness runs. epic-23-retro-item-6 (CardListView.swift:620-645): cardi://watch pops to the list; a parked pendingDeepLinkCardId is cleared on other navigation
   24-4-android-screens-crash-fix: ready-for-dev # REFINED 2026-11-04 through bmad-build, approved by ifero ("Approve and stop"): spike confirms the fix in 4.25.x, then the newest 4.25 patch (peer RN >= 0.82; 4.26 needs 0.84, ruled out) in expo.install.exclude; Android phone + iOS simulator proof. react-native-screens #4311 (fatal on the ~4.23 pin, fixed in 4.25); spike first: does the bump run on SDK 55 ahead of the 16-18 thread
