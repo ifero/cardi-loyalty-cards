@@ -1046,7 +1046,7 @@ _Key decisions recorded (2026-08-02):_
 **Privacy & Compliance:**
 
 - **NFR-S5:** System must comply with GDPR requirements for EU users
-- **NFR-S6:** No user tracking, analytics, or advertising is permitted
+- **NFR-S6:** No user tracking, analytics, or advertising is permitted. Crash and error diagnostics are allowed (amended by Story 24.1): crashes and handled errors only, carrying the error, app version and build, device model and OS and nothing that identifies the user: no performance traces, no session tracking, no install or device identifier, no stored IP address, no locale or timezone, no console or touch breadcrumbs, and no account or record ID (UUIDs masked, URL query strings stripped; native crashes trimmed by the Sentry project's server-side scrubbing rules). They must be disclosed in the privacy policy and the store privacy answers
 - **NFR-S7:** User data export must be available in machine-readable JSON format
 - **NFR-S8:** User account deletion must remove all associated data from cloud storage within 30 days
 - **NFR-S9:** Privacy policy must be accessible before and after account creation
