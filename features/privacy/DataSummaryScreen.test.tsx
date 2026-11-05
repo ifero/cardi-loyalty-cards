@@ -51,12 +51,46 @@ jest.mock('@/shared/supabase/useAuthState', () => ({
 
 /** The six rows, in order, as frame C and the strings name them. */
 const ROWS = [
-  ['account', 'Account', 'Email address'],
-  ['cards', 'Cards', 'Card names, barcodes, timestamps'],
-  ['app', 'App', 'App version, locale (for catalogue)'],
+  ['account', 'Account', 'Email address, account ID and your consent record, only with an account'],
+  [
+    'cards',
+    'Cards',
+    'Card names, barcodes, colours, favourites, usage count and last-used time, only with an account'
+  ],
+  [
+    'diagnostics',
+    'Diagnostics',
+    'Crash and error reports with app version and build, device model and OS, for everyone'
+  ],
   ['location', 'Location', 'Not collected'],
   ['contacts', 'Contacts', 'Not collected'],
-  ['deviceid', 'Device ID', 'Not collected']
+  ['deviceid', 'Device ID', 'An install identifier, used only to deliver app updates']
+] as const;
+
+/** The same six rows in Italian, in the same order. */
+const ROWS_IT = [
+  [
+    'account',
+    'Account',
+    "Indirizzo email, ID dell'account e il tuo registro del consenso, solo con un account"
+  ],
+  [
+    'cards',
+    'Carte',
+    'Nomi delle carte, codici a barre, colori, preferiti, numero di utilizzi e ultimo utilizzo, solo con un account'
+  ],
+  [
+    'diagnostics',
+    'Diagnostica',
+    "Segnalazioni di crash ed errori con versione e build dell'app, modello del dispositivo e sistema operativo, per tutti"
+  ],
+  ['location', 'Posizione', 'Non raccolti'],
+  ['contacts', 'Contatti', 'Non raccolti'],
+  [
+    'deviceid',
+    'ID dispositivo',
+    "Un identificativo dell'installazione, usato solo per distribuire gli aggiornamenti dell'app"
+  ]
 ] as const;
 
 const ROW_IDS = ROWS.map(([id]) => `data-row-${id}`);
@@ -172,7 +206,7 @@ describe('DataSummaryScreen', () => {
       mockIsDark = s === 'dark';
       render(<DataSummaryScreen />);
       const description = screen.getByText(
-        'This is a summary of the data Cardì collects when you have an account. Guest users have no cloud data — everything stays on device.'
+        'Crash and error diagnostics leave your device for everyone, guests included. Your email and cards go to the cloud only when you have an account.'
       );
       // Pinned whole, so no margin, padding or fill can join it.
       expect(flat(description)).toEqual({
@@ -184,13 +218,17 @@ describe('DataSummaryScreen', () => {
         color: roles.textSecondary
       });
       const tree = JSON.stringify(screen.toJSON());
-      expect(tree.indexOf('This is a summary')).toBeLessThan(tree.indexOf('"data-summary-table"'));
+      expect(tree.indexOf('Crash and error diagnostics leave')).toBeLessThan(
+        tree.indexOf('"data-summary-table"')
+      );
     });
 
     // Under large text the description wraps and grows: nothing clips it.
     it('lets the description wrap, with no line limit', () => {
       render(<DataSummaryScreen />);
-      expect(screen.getByText(/^This is a summary/).props.numberOfLines).toBeUndefined();
+      expect(
+        screen.getByText(/^Crash and error diagnostics leave/).props.numberOfLines
+      ).toBeUndefined();
     });
 
     it('goes back from its header’s back', async () => {
@@ -434,7 +472,7 @@ describe('DataSummaryScreen', () => {
       });
       // Still read as one row: its category, then its data.
       expect(screen.getByTestId('data-row-account').props.accessibilityLabel).toBe(
-        'Account, Email address'
+        'Account, Email address, account ID and your consent record, only with an account'
       );
     });
   });
@@ -472,9 +510,25 @@ describe('DataSummaryScreen', () => {
       expect(screen.getByTestId('data-summary-table-head').props.accessibilityLabel).toBe(
         'Categoria, Dati raccolti'
       );
-      expect(screen.getByTestId('data-row-deviceid').props.accessibilityLabel).toBe(
-        'ID dispositivo, Non raccolti'
-      );
+      expect(ROWS_IT.map(([id]) => `data-row-${id}`)).toEqual(ROW_IDS);
+      ROWS_IT.forEach(([id, category, detail]) => {
+        expect(partsOf(`data-row-${id}`).map((cell) => (cell.children ?? []).join(''))).toEqual([
+          category,
+          detail
+        ]);
+        expect(screen.getByTestId(`data-row-${id}`).props.accessibilityLabel).toBe(
+          `${category}, ${detail}`
+        );
+      });
+    });
+
+    it('describes the data in Italian', () => {
+      render(<DataSummaryScreen />);
+      expect(
+        screen.getByText(
+          'La diagnostica di crash ed errori lascia il tuo dispositivo per tutti, ospiti inclusi. La tua email e le tue carte vanno nel cloud solo se hai un account.'
+        )
+      ).toBeTruthy();
     });
   });
 });

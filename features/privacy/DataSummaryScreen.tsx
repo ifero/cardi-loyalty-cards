@@ -40,9 +40,9 @@ const DATA_ROWS: DataRow[] = [
     detailKey: 'privacy.dataSummary.rows.cards.detail'
   },
   {
-    id: 'app',
-    categoryKey: 'privacy.dataSummary.rows.app.category',
-    detailKey: 'privacy.dataSummary.rows.app.detail'
+    id: 'diagnostics',
+    categoryKey: 'privacy.dataSummary.rows.diagnostics.category',
+    detailKey: 'privacy.dataSummary.rows.diagnostics.detail'
   },
   {
     id: 'location',

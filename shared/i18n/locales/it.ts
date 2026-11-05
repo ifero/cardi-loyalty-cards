@@ -232,7 +232,7 @@ export const it = {
     dataSummary: {
       title: 'Cosa raccogliamo',
       description:
-        'Questa è una sintesi dei dati che Cardì raccoglie quando hai un account. Gli utenti ospite non hanno dati cloud: tutto resta sul dispositivo.',
+        'La diagnostica di crash ed errori lascia il tuo dispositivo per tutti, ospiti inclusi. La tua email e le tue carte vanno nel cloud solo se hai un account.',
       table: {
         categoryHeader: 'Categoria',
         dataCollectedHeader: 'Dati raccolti'
@@ -240,15 +240,18 @@ export const it = {
       rows: {
         account: {
           category: 'Account',
-          detail: 'Indirizzo email'
+          detail:
+            "Indirizzo email, ID dell'account e il tuo registro del consenso, solo con un account"
         },
         cards: {
           category: 'Carte',
-          detail: 'Nomi carte, codici a barre, timestamp'
+          detail:
+            'Nomi delle carte, codici a barre, colori, preferiti, numero di utilizzi e ultimo utilizzo, solo con un account'
         },
-        app: {
-          category: 'App',
-          detail: 'Versione app, lingua (per catalogo)'
+        diagnostics: {
+          category: 'Diagnostica',
+          detail:
+            "Segnalazioni di crash ed errori con versione e build dell'app, modello del dispositivo e sistema operativo, per tutti"
         },
         location: {
           category: 'Posizione',
@@ -260,7 +263,8 @@ export const it = {
         },
         deviceId: {
           category: 'ID dispositivo',
-          detail: 'Non raccolti'
+          detail:
+            "Un identificativo dell'installazione, usato solo per distribuire gli aggiornamenti dell'app"
         }
       }
     }
@@ -278,8 +282,8 @@ export const it = {
     contactSupportA11y: 'Contatta supporto',
     submitFeedbackA11y: 'Invia feedback',
     openFailedTitle: 'Impossibile aprire',
-    contactSupportUnavailable: 'Nessuna app email disponibile. Riprova piu tardi.',
-    submitFeedbackUnavailable: 'Pagina feedback non disponibile. Riprova piu tardi.'
+    contactSupportUnavailable: 'Nessuna app email disponibile. Riprova più tardi.',
+    submitFeedbackUnavailable: 'Nessuna app email disponibile. Riprova più tardi.'
   },
   sharedUi: {
     bottomSheet: {

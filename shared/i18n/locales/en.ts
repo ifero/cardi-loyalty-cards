@@ -231,7 +231,7 @@ export const en = {
     dataSummary: {
       title: 'What We Collect',
       description:
-        'This is a summary of the data Cardì collects when you have an account. Guest users have no cloud data — everything stays on device.',
+        'Crash and error diagnostics leave your device for everyone, guests included. Your email and cards go to the cloud only when you have an account.',
       table: {
         categoryHeader: 'Category',
         dataCollectedHeader: 'Data Collected'
@@ -239,15 +239,17 @@ export const en = {
       rows: {
         account: {
           category: 'Account',
-          detail: 'Email address'
+          detail: 'Email address, account ID and your consent record, only with an account'
         },
         cards: {
           category: 'Cards',
-          detail: 'Card names, barcodes, timestamps'
+          detail:
+            'Card names, barcodes, colours, favourites, usage count and last-used time, only with an account'
         },
-        app: {
-          category: 'App',
-          detail: 'App version, locale (for catalogue)'
+        diagnostics: {
+          category: 'Diagnostics',
+          detail:
+            'Crash and error reports with app version and build, device model and OS, for everyone'
         },
         location: {
           category: 'Location',
@@ -259,7 +261,7 @@ export const en = {
         },
         deviceId: {
           category: 'Device ID',
-          detail: 'Not collected'
+          detail: 'An install identifier, used only to deliver app updates'
         }
       }
     }
@@ -278,7 +280,7 @@ export const en = {
     submitFeedbackA11y: 'Submit feedback',
     openFailedTitle: 'Unable to open',
     contactSupportUnavailable: 'No email app available. Please try again later.',
-    submitFeedbackUnavailable: 'Feedback page unavailable. Please try again later.'
+    submitFeedbackUnavailable: 'No email app available. Please try again later.'
   },
   sharedUi: {
     bottomSheet: {
