@@ -620,12 +620,14 @@ describe('HelpScreen', () => {
 
       await userEvent.press(screen.getByTestId('help-contact-support'));
       await waitFor(() => {
-        expect(openURL).toHaveBeenCalledWith('mailto:support@myloyaltycards.app');
+        expect(openURL).toHaveBeenCalledWith('mailto:support@cardiapp.eu');
       });
 
       await userEvent.press(screen.getByTestId('help-submit-feedback'));
       await waitFor(() => {
-        expect(openURL).toHaveBeenCalledWith('https://myloyaltycards.app/feedback');
+        expect(openURL).toHaveBeenCalledWith(
+          'mailto:support@cardiapp.eu?subject=Card%C3%AC%20feedback'
+        );
       });
     });
 
@@ -712,25 +714,27 @@ describe('HelpScreen', () => {
   });
 
   describe('the actions', () => {
-    it('opens mail to support, and the feedback page', async () => {
+    it('opens mail to support, and feedback as mail to support with its subject', async () => {
       jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(true);
       const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
       render(<HelpScreen />);
 
       await userEvent.press(screen.getByTestId('help-contact-support'));
       await waitFor(() => {
-        expect(openURL).toHaveBeenCalledWith('mailto:support@myloyaltycards.app');
+        expect(openURL).toHaveBeenCalledWith('mailto:support@cardiapp.eu');
       });
 
       await userEvent.press(screen.getByTestId('help-submit-feedback'));
       await waitFor(() => {
-        expect(openURL).toHaveBeenCalledWith('https://myloyaltycards.app/feedback');
+        expect(openURL).toHaveBeenCalledWith(
+          'mailto:support@cardiapp.eu?subject=Card%C3%AC%20feedback'
+        );
       });
     });
 
     it.each([
       ['help-contact-support', 'No email app available. Please try again later.'],
-      ['help-submit-feedback', 'Feedback page unavailable. Please try again later.']
+      ['help-submit-feedback', 'No email app available. Please try again later.']
     ])('alerts when %s cannot open', async (testID, message) => {
       jest.spyOn(Linking, 'canOpenURL').mockResolvedValue(false);
       const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);

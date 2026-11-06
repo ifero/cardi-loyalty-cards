@@ -71,58 +71,89 @@
             <span class="lang-it">Versione 1.0.0</span>
           </p>
           <p class="legal-meta">
-            <span class="lang-en">Last updated: 2026-03-06</span>
-            <span class="lang-it">Ultimo aggiornamento: 2026-03-06</span>
+            <span class="lang-en">Last updated: 2026-11-05</span>
+            <span class="lang-it">Ultimo aggiornamento: 2026-11-05</span>
           </p>
 
           <div class="legal-copy lang-en">
             <section>
               <h3>1. Introduction</h3>
               <p>
-                Cardì ("we", "us", "our") is committed to protecting your privacy. This Privacy
-                Policy explains what data we collect, how we use it, and your rights under the General Data
+                Cardì ("we", "us", "our") is committed to protecting your privacy. This Privacy Policy
+                explains what data we collect, how we use it, and your rights under the General Data
                 Protection Regulation (GDPR) and other applicable laws.
               </p>
               <p>
-                By using Cardì you agree to the collection and use of information in accordance with
-                this policy. You may use the app in guest mode without providing any personal data.
+                By using Cardì you agree to the collection and use of information in accordance with this
+                policy. You may use the app in guest mode, without an account: you give us no email address
+                and your cards are never uploaded: they stay on your device, and on your own watch if you pair
+                one.
               </p>
             </section>
 
             <section>
               <h3>2. Data We Collect</h3>
-              <p>
-                When you use Cardì without an account (guest mode), we do not collect or transmit any
-                personal data. All card data is stored locally on your device.
-              </p>
+              <p>For everyone, guests included:</p>
+              <ul>
+                <li>
+                  Crash and error diagnostics — when the app crashes or an operation fails (for example, a
+                  check for an app update), a report is sent to Sentry. It holds the error and where it
+                  happened, the app version and build, and your device model and operating system. It holds
+                  nothing that identifies you: no name, email address, account ID, card data, device or
+                  install identifier, or location.
+                </li>
+                <li>
+                  App update checks — when the app checks for an update, Expo receives an identifier kept for
+                  this installation of the app, with the app version and platform. It is used only to deliver
+                  app updates.
+                </li>
+              </ul>
               <p>When you create an account, we collect:</p>
               <ul>
-                <li>Email address: used for authentication and account recovery.</li>
                 <li>
-                  Loyalty card data: card names, barcode values, barcode formats, brand references, and usage
-                  metadata such as favourite status, usage count, and timestamps.
+                  Email address — used for authentication and account recovery, together with an account ID
+                  assigned when you sign up.
                 </li>
-                <li>Consent records: whether and when you accepted this Privacy Policy.</li>
+                <li>
+                  Loyalty card data — card names, barcode values, barcode formats, brand references, colours,
+                  and usage metadata (favourite status, usage count, last-used time, and when each card was
+                  created and changed).
+                </li>
+                <li>Consent records — whether and when you accepted this Privacy Policy.</li>
               </ul>
+              <p>
+                Without an account, your cards are never uploaded: they are stored on your device, and on your
+                own watch if you pair one.
+              </p>
+              <p>
+                Watches: the Apple Watch app exchanges cards only with your iPhone and sends nothing to any
+                server. The Wear OS app sends crash diagnostics to Sentry, limited in the same way as the
+                phone's.
+              </p>
               <p>We do not collect:</p>
               <ul>
                 <li>Location data</li>
-                <li>Device identifiers or advertising IDs</li>
-                <li>Analytics or tracking data</li>
-                <li>Contacts, photos, or other sensitive device data</li>
+                <li>Advertising identifiers</li>
+                <li>
+                  Contacts, or photos (an image you scan for a barcode is read on your device and never
+                  uploaded)
+                </li>
               </ul>
+              <p>Cardì shows no ads and uses no advertising identifiers.</p>
             </section>
 
             <section>
               <h3>3. How We Use Your Data</h3>
               <p>We use your data exclusively for the following purposes:</p>
               <ul>
-                <li>Authentication: to identify you and secure your account.</li>
-                <li>Cloud backup: to store your loyalty cards so they sync across your devices.</li>
+                <li>Authentication — to identify you and secure your account.</li>
+                <li>Cloud backup — to store your loyalty cards so they sync across your devices.</li>
                 <li>
-                  Audit trail: to record when you gave or withdrew consent, which is a legal obligation under
-                  GDPR.
+                  Consent records — to keep proof of when you accepted this policy (legal obligation under
+                  GDPR).
                 </li>
+                <li>Diagnostics — to find and fix crashes and errors.</li>
+                <li>App updates — to deliver updates to the app.</li>
               </ul>
               <p>We do not use your data for advertising, profiling, or selling to third parties.</p>
             </section>
@@ -131,12 +162,18 @@
               <h3>4. Data Storage &amp; Security</h3>
               <ul>
                 <li>
-                  Local storage: card data is stored on-device using an encrypted SQLite database. Session
-                  tokens are stored in the device Keychain (iOS) or Keystore (Android) via expo-secure-store.
+                  Local storage: card data is stored on your device in an SQLite database inside the app's
+                  private storage. The database itself is not encrypted; it is protected by your device's app
+                  sandbox and, where it is enabled, your device's own encryption. Session tokens are stored in
+                  the device Keychain (iOS) or Keystore (Android) via expo-secure-store.
                 </li>
                 <li>
                   Cloud storage: if you create an account, your data is stored in Supabase (PostgreSQL) with
                   Row-Level Security (RLS) ensuring only you can access your own data.
+                </li>
+                <li>
+                  Diagnostics: crash and error reports are stored by Sentry in its EU region. Sentry does not
+                  store the IP address a report arrives from.
                 </li>
                 <li>
                   Encryption: data in transit is protected by TLS 1.2+. Data at rest in the cloud is encrypted
@@ -148,37 +185,50 @@
             <section>
               <h3>5. Data Sharing</h3>
               <p>
-                We do not share, sell, or rent your personal data to any third party. Your data is only
-                processed by:
+                We do not sell or rent your personal data, and we do not share it for advertising. Your data
+                is processed only by these service providers, on our behalf:
               </p>
               <ul>
                 <li>
-                  Supabase: our cloud database and authentication provider, with a data processing agreement in
-                  place.
+                  Supabase — our cloud database and authentication provider, for account holders (data
+                  processing agreement in place).
                 </li>
+                <li>
+                  Sentry — crash and error diagnostics, for everyone, stored in the EU, with the app version
+                  and build, your device model and operating system, and nothing that identifies you.
+                </li>
+                <li>Expo — delivers app updates, and receives the update identifier described in section 2.</li>
               </ul>
+              <p>Like any server, Supabase and Expo also receive the IP address each request comes from.</p>
             </section>
 
             <section>
               <h3>6. Your Rights (GDPR)</h3>
               <p>Under the GDPR, you have the following rights:</p>
               <ul>
-                <li>Right of access: you can view all data we hold about you directly in the app.</li>
-                <li>Right to rectification: you can edit your loyalty card data at any time.</li>
                 <li>
-                  Right to erasure: you can delete your account and all cloud data from within the app.
-                  Deletion is completed within 30 days.
+                  Right of access — You can view your cards and account details in the app, and export your
+                  cards. For anything else, contact us.
                 </li>
-                <li>Right to data portability: you can export your data in a standard format.</li>
+                <li>Right to rectification — You can edit your loyalty card data at any time.</li>
                 <li>
-                  Right to withdraw consent: you can revoke your consent at any time in Settings. Withdrawing
-                  consent does not affect the lawfulness of processing based on consent before its withdrawal.
+                  Right to erasure — You can delete your account in Settings, which erases your account, your
+                  cards and your consent records from the cloud. Deletion is completed within 30 days.
+                </li>
+                <li>Right to data portability — You can export your data in a standard format.</li>
+                <li>
+                  Right to withdraw consent — You can withdraw your consent by deleting your account; you can
+                  keep using Cardì as a guest, with your cards never uploaded. Withdrawing consent does not
+                  affect the lawfulness of processing based on consent before its withdrawal.
                 </li>
                 <li>
-                  Right to restriction of processing: you can switch to guest mode at any time, which stops all
-                  cloud data processing.
+                  Right to restriction of processing — You can sign out at any time, which stops your cards
+                  syncing to the cloud. Cards already in the cloud stay there until you delete your account.
                 </li>
-                <li>Right to lodge a complaint: you may file a complaint with your local data protection authority.</li>
+                <li>
+                  Right to lodge a complaint — You may file a complaint with your local data protection
+                  authority.
+                </li>
               </ul>
               <p>
                 To exercise any of these rights, use the options in the app Settings or contact us at the
@@ -189,24 +239,26 @@
             <section>
               <h3>7. Data Retention</h3>
               <ul>
-                <li>Guest mode: data is stored only on your device. We retain nothing.</li>
                 <li>
-                  Authenticated users: your data is retained as long as your account is active. When you delete
-                  your account, all cloud data is permanently erased within 30 days.
+                  Guest mode: your cards are stored on your device, and on your own watch if you pair one. We
+                  keep none of them.
                 </li>
                 <li>
-                  Consent logs: kept for the duration required by applicable law, typically 3 years, for audit
-                  purposes, then permanently deleted.
+                  Authenticated users: your data is retained as long as your account is active. When you
+                  delete your account, all cloud data, consent records included, is permanently erased within
+                  30 days.
                 </li>
+                <li>Crash and error diagnostics: kept by Sentry for up to 90 days, then deleted automatically.</li>
+                <li>Update identifier: used by Expo only to deliver app updates.</li>
               </ul>
             </section>
 
             <section>
               <h3>8. Children's Privacy</h3>
               <p>
-                Cardì is not directed at children under 16 years of age. We do not knowingly collect
-                personal data from children. If you believe a child has provided us with personal data, please
-                contact us and we will delete it promptly.
+                Cardì is not directed at children under 16 years of age. We do not knowingly collect personal
+                data from children. If you believe a child has provided us with personal data, please contact
+                us and we will delete it promptly.
               </p>
             </section>
 
@@ -214,17 +266,19 @@
               <h3>9. Changes to This Policy</h3>
               <p>
                 We may update this Privacy Policy from time to time. The updated version will be indicated by
-                the "Last updated" date at the top. We encourage you to review this Privacy Policy periodically.
-                Continued use of the app after changes constitutes acceptance of the updated policy.
+                the "Last updated" date at the top. We encourage you to review this Privacy Policy
+                periodically. Continued use of the app after changes constitutes acceptance of the updated
+                policy.
               </p>
             </section>
 
             <section>
               <h3>10. Contact Us</h3>
               <p>
-                If you have questions about this Privacy Policy or wish to exercise your rights, please contact
-                us at <a href="mailto:privacy@myloyaltycards.app">privacy@myloyaltycards.app</a>.
+                If you have questions about this Privacy Policy or wish to exercise your rights, please
+                contact us at:
               </p>
+              <p>Email: <a href="mailto:privacy@cardiapp.eu">privacy@cardiapp.eu</a></p>
             </section>
           </div>
 
@@ -232,51 +286,82 @@
             <section>
               <h3>1. Introduzione</h3>
               <p>
-                Cardì ("noi") si impegna a proteggere la tua privacy. Questa Informativa privacy
-                spiega quali dati raccogliamo, come li utilizziamo e quali sono i tuoi diritti ai sensi del
+                Cardì ("noi") si impegna a proteggere la tua privacy. Questa Informativa sulla privacy spiega
+                quali dati raccogliamo, come li utilizziamo e quali sono i tuoi diritti ai sensi del
                 Regolamento generale sulla protezione dei dati (GDPR) e delle altre leggi applicabili.
               </p>
               <p>
-                Utilizzando Cardì accetti la raccolta e l'uso delle informazioni in conformità con
-                questa informativa. Puoi usare l'app in modalità ospite senza fornire alcun dato personale.
+                Utilizzando Cardì accetti la raccolta e l'uso delle informazioni in conformità con questa
+                informativa. Puoi usare l'app in modalità ospite, senza un account: non ci fornisci alcun
+                indirizzo email e le tue carte non vengono mai caricate: restano sul tuo dispositivo e sul tuo
+                smartwatch, se ne colleghi uno.
               </p>
             </section>
 
             <section>
               <h3>2. Dati che raccogliamo</h3>
-              <p>
-                Quando utilizzi Cardì senza un account (modalità ospite), non raccogliamo né
-                trasmettiamo alcun dato personale. Tutti i dati delle carte restano memorizzati localmente sul
-                tuo dispositivo.
-              </p>
+              <p>Per tutti, ospiti inclusi:</p>
+              <ul>
+                <li>
+                  Diagnostica di crash ed errori - quando l'app si arresta in modo anomalo o un'operazione non
+                  riesce (per esempio, il controllo di un aggiornamento dell'app), viene inviata una
+                  segnalazione a Sentry. Contiene l'errore e il punto in cui si è verificato, la versione e la
+                  build dell'app, il modello del tuo dispositivo e il sistema operativo. Non contiene nulla
+                  che ti identifichi: nessun nome, indirizzo email, ID dell'account, dato delle carte,
+                  identificatore del dispositivo o dell'installazione, né la posizione.
+                </li>
+                <li>
+                  Controllo degli aggiornamenti - quando l'app controlla se c'è un aggiornamento, Expo riceve
+                  un identificatore conservato per questa installazione dell'app, con la versione dell'app e
+                  la piattaforma. È usato solo per distribuire gli aggiornamenti dell'app.
+                </li>
+              </ul>
               <p>Quando crei un account, raccogliamo:</p>
               <ul>
-                <li>Indirizzo email: usato per autenticazione e recupero dell'account.</li>
                 <li>
-                  Dati delle carte fedeltà: nomi delle carte, valori dei codici a barre, formati dei codici,
-                  riferimenti al brand e metadati d'uso come preferiti, conteggio utilizzi e timestamp.
+                  Indirizzo email - usato per autenticazione e recupero dell'account, insieme a un ID
+                  dell'account assegnato alla registrazione.
                 </li>
-                <li>Registri del consenso: se e quando hai accettato questa Informativa privacy.</li>
+                <li>
+                  Dati delle carte fedeltà - nomi delle carte, valori dei codici a barre, formati dei codici,
+                  riferimenti al brand, colori e metadati d'uso (stato preferito, numero di utilizzi, ultimo
+                  utilizzo e quando ogni carta è stata creata e modificata).
+                </li>
+                <li>Registri del consenso - se e quando hai accettato questa Informativa sulla privacy.</li>
               </ul>
+              <p>
+                Senza un account, le tue carte non vengono mai caricate: sono memorizzate sul tuo dispositivo
+                e sul tuo smartwatch, se ne colleghi uno.
+              </p>
+              <p>
+                Smartwatch: l'app per Apple Watch scambia le carte solo con il tuo iPhone e non invia nulla ad
+                alcun server. L'app per Wear OS invia a Sentry la diagnostica dei crash, limitata come quella
+                del telefono.
+              </p>
               <p>Non raccogliamo:</p>
               <ul>
                 <li>Dati di posizione</li>
-                <li>Identificatori del dispositivo o ID pubblicitari</li>
-                <li>Dati analitici o di tracciamento</li>
-                <li>Contatti, foto o altri dati sensibili del dispositivo</li>
+                <li>Identificatori pubblicitari</li>
+                <li>
+                  Contatti o foto (un'immagine che scansioni per leggere un codice a barre viene letta sul tuo
+                  dispositivo e non viene mai caricata)
+                </li>
               </ul>
+              <p>Cardì non mostra pubblicità e non usa identificatori pubblicitari.</p>
             </section>
 
             <section>
               <h3>3. Come utilizziamo i tuoi dati</h3>
               <p>Utilizziamo i tuoi dati esclusivamente per le seguenti finalità:</p>
               <ul>
-                <li>Autenticazione: per identificarti e proteggere il tuo account.</li>
-                <li>Backup cloud: per conservare le tue carte fedeltà e sincronizzarle tra i tuoi dispositivi.</li>
+                <li>Autenticazione - per identificarti e proteggere il tuo account.</li>
+                <li>Backup cloud - per conservare le tue carte fedeltà e sincronizzarle tra i tuoi dispositivi.</li>
                 <li>
-                  Traccia di audit: per registrare quando hai dato o revocato il consenso, come richiesto dal
-                  GDPR.
+                  Registri del consenso - per conservare la prova di quando hai accettato questa informativa
+                  (obbligo legale ai sensi del GDPR).
                 </li>
+                <li>Diagnostica - per individuare e correggere crash ed errori.</li>
+                <li>Aggiornamenti dell'app - per distribuire gli aggiornamenti dell'app.</li>
               </ul>
               <p>Non utilizziamo i tuoi dati per pubblicità, profilazione o vendita a terzi.</p>
             </section>
@@ -286,16 +371,22 @@
               <ul>
                 <li>
                   Archiviazione locale: i dati delle carte sono salvati sul dispositivo in un database SQLite
-                  cifrato. I token di sessione sono conservati nel Portachiavi (iOS) o nel Keystore (Android)
-                  tramite expo-secure-store.
+                  nello spazio privato dell'app. Il database in sé non è cifrato; è protetto dall'isolamento
+                  delle app del tuo dispositivo e, se attiva, dalla cifratura del dispositivo stesso. I token
+                  di sessione sono conservati nel Portachiavi (iOS) o nel Keystore (Android) tramite
+                  expo-secure-store.
                 </li>
                 <li>
                   Archiviazione cloud: se crei un account, i tuoi dati vengono salvati in Supabase
-                  (PostgreSQL) con Row-Level Security (RLS), così solo tu puoi accedere ai tuoi dati.
+                  (PostgreSQL) con Row-Level Security (RLS), in modo che solo tu possa accedere ai tuoi dati.
                 </li>
                 <li>
-                  Cifratura: i dati in transito sono protetti da TLS 1.2+. I dati archiviati nel cloud sono
-                  cifrati dal nostro provider di hosting (AES-256).
+                  Diagnostica: le segnalazioni di crash ed errori sono conservate da Sentry nella sua regione
+                  UE. Sentry non conserva l'indirizzo IP da cui arriva una segnalazione.
+                </li>
+                <li>
+                  Cifratura: i dati in transito sono protetti da TLS 1.2+. I dati nel cloud sono cifrati dal
+                  nostro provider di hosting (AES-256).
                 </li>
               </ul>
             </section>
@@ -303,41 +394,62 @@
             <section>
               <h3>5. Condivisione dei dati</h3>
               <p>
-                Non condividiamo, vendiamo né concediamo in affitto i tuoi dati personali a terzi. I tuoi dati
-                vengono trattati solo da:
+                Non vendiamo né concediamo in affitto i tuoi dati personali e non li condividiamo per fini
+                pubblicitari. I tuoi dati sono trattati solo da questi fornitori di servizi, per nostro conto:
               </p>
               <ul>
                 <li>
-                  Supabase: il nostro provider per database cloud e autenticazione, con accordo sul trattamento
-                  dei dati in vigore.
+                  Supabase - il nostro provider per database cloud e autenticazione, per chi ha un account
+                  (accordo sul trattamento dei dati in vigore).
+                </li>
+                <li>
+                  Sentry - diagnostica di crash ed errori, per tutti, conservata nell'UE, con la versione e la
+                  build dell'app, il modello del dispositivo e il sistema operativo e nulla che ti
+                  identifichi.
+                </li>
+                <li>
+                  Expo - distribuisce gli aggiornamenti dell'app e riceve l'identificatore per gli
+                  aggiornamenti descritto nella sezione 2.
                 </li>
               </ul>
+              <p>
+                Come qualsiasi server, Supabase ed Expo ricevono anche l'indirizzo IP da cui arriva ogni
+                richiesta.
+              </p>
             </section>
 
             <section>
               <h3>6. I tuoi diritti (GDPR)</h3>
               <p>Ai sensi del GDPR, hai i seguenti diritti:</p>
               <ul>
-                <li>Diritto di accesso: puoi vedere tutti i dati che conserviamo su di te direttamente nell'app.</li>
-                <li>Diritto di rettifica: puoi modificare i dati delle tue carte fedeltà in qualsiasi momento.</li>
                 <li>
-                  Diritto alla cancellazione: puoi eliminare il tuo account e tutti i dati cloud dall'app.
-                  La cancellazione viene completata entro 30 giorni.
+                  Diritto di accesso - puoi vedere le tue carte e i dati del tuo account nell'app, ed
+                  esportare le tue carte. Per tutto il resto, contattaci.
                 </li>
-                <li>Diritto alla portabilità dei dati: puoi esportare i tuoi dati in un formato standard.</li>
+                <li>Diritto di rettifica - puoi modificare i dati delle tue carte fedeltà in qualsiasi momento.</li>
                 <li>
-                  Diritto di revoca del consenso: puoi revocare il consenso in qualsiasi momento nelle
-                  Impostazioni. La revoca non pregiudica la liceità del trattamento basato sul consenso prima
-                  della revoca stessa.
+                  Diritto alla cancellazione - puoi eliminare il tuo account nelle Impostazioni: vengono
+                  cancellati dal cloud il tuo account, le tue carte e i tuoi registri del consenso. La
+                  cancellazione viene completata entro 30 giorni.
+                </li>
+                <li>Diritto alla portabilità dei dati - puoi esportare i tuoi dati in un formato standard.</li>
+                <li>
+                  Diritto di revoca del consenso - puoi revocare il consenso eliminando il tuo account; puoi
+                  continuare a usare Cardì come ospite, senza che le tue carte vengano mai caricate. La revoca
+                  non pregiudica la liceità del trattamento basato sul consenso prima della revoca stessa.
                 </li>
                 <li>
-                  Diritto alla limitazione del trattamento: puoi passare in qualsiasi momento alla modalità
-                  ospite, che interrompe ogni trattamento cloud dei dati.
+                  Diritto alla limitazione del trattamento - puoi uscire dall'account in qualsiasi momento: le
+                  tue carte smettono di sincronizzarsi con il cloud. Le carte già nel cloud restano lì finché
+                  non elimini il tuo account.
                 </li>
-                <li>Diritto di presentare reclamo: puoi rivolgerti alla tua autorità locale per la protezione dei dati.</li>
+                <li>
+                  Diritto di presentare reclamo - puoi rivolgerti alla tua autorità locale per la protezione
+                  dei dati.
+                </li>
               </ul>
               <p>
-                Per esercitare questi diritti, usa le opzioni disponibili nelle Impostazioni dell'app oppure
+                Per esercitare questi diritti, usa le opzioni disponibili nelle Impostazioni dell'app o
                 contattaci all'indirizzo indicato sotto.
               </p>
             </section>
@@ -345,14 +457,22 @@
             <section>
               <h3>7. Conservazione dei dati</h3>
               <ul>
-                <li>Modalità ospite: i dati restano solo sul tuo dispositivo. Non conserviamo nulla.</li>
                 <li>
-                  Utenti autenticati: i tuoi dati vengono conservati finché il tuo account è attivo. Quando
-                  elimini l'account, tutti i dati cloud vengono cancellati definitivamente entro 30 giorni.
+                  Modalità ospite: le tue carte sono memorizzate sul tuo dispositivo e sul tuo smartwatch, se
+                  ne colleghi uno. Non ne conserviamo nessuna.
                 </li>
                 <li>
-                  Log del consenso: vengono mantenuti per il periodo richiesto dalla legge applicabile, di norma
-                  3 anni, a fini di audit, e poi eliminati in modo permanente.
+                  Utenti autenticati: i tuoi dati sono conservati finché il tuo account è attivo. Quando
+                  elimini l'account, tutti i dati cloud, registri del consenso inclusi, vengono cancellati
+                  definitivamente entro 30 giorni.
+                </li>
+                <li>
+                  Diagnostica di crash ed errori: conservata da Sentry per un massimo di 90 giorni, poi
+                  eliminata automaticamente.
+                </li>
+                <li>
+                  Identificatore per gli aggiornamenti: usato da Expo solo per distribuire gli aggiornamenti
+                  dell'app.
                 </li>
               </ul>
             </section>
@@ -360,17 +480,17 @@
             <section>
               <h3>8. Privacy dei minori</h3>
               <p>
-                Cardì non è destinata a minori di 16 anni. Non raccogliamo consapevolmente dati
-                personali di minori. Se ritieni che un minore ci abbia fornito dati personali, contattaci e li
-                elimineremo tempestivamente.
+                Cardì non è destinata a minori di 16 anni. Non raccogliamo consapevolmente dati personali di
+                minori. Se ritieni che un minore ci abbia fornito dati personali, contattaci e li elimineremo
+                tempestivamente.
               </p>
             </section>
 
             <section>
               <h3>9. Modifiche a questa informativa</h3>
               <p>
-                Potremmo aggiornare questa Informativa privacy di tanto in tanto. La versione aggiornata sarà
-                identificata dalla data di "Ultimo aggiornamento" indicata in alto. Ti invitiamo a consultare
+                Potremmo aggiornare questa Informativa sulla privacy di tanto in tanto. La versione aggiornata
+                sarà identificata dalla data di "Ultimo aggiornamento" in alto. Ti invitiamo a consultare
                 periodicamente questa informativa. L'uso continuato dell'app dopo le modifiche costituisce
                 accettazione della versione aggiornata.
               </p>
@@ -379,9 +499,10 @@
             <section>
               <h3>10. Contattaci</h3>
               <p>
-                Se hai domande su questa Informativa privacy o vuoi esercitare i tuoi diritti, contattaci a
-                <a href="mailto:privacy@myloyaltycards.app">privacy@myloyaltycards.app</a>.
+                Se hai domande su questa Informativa sulla privacy o vuoi esercitare i tuoi diritti,
+                contattaci a:
               </p>
+              <p>Email: <a href="mailto:privacy@cardiapp.eu">privacy@cardiapp.eu</a></p>
             </section>
           </div>
         </section>

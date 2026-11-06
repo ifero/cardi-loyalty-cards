@@ -266,15 +266,15 @@ describe('PrivacyPolicyScreen', () => {
       expect(paragraph.props.accessibilityRole).toBeUndefined();
     });
 
-    // Consecutive bullet lines are one list, in ink: 24 bullets in seven runs.
+    // Consecutive bullet lines are one list, in ink: 31 bullets in eight runs.
     it('sets each run of bullet lines as one list in textPrimary, 8 below', () => {
       render(<PrivacyPolicyScreen />);
       const lists = screen.UNSAFE_getAllByType(BulletList);
-      expect(lists.map((list) => list.props.tone)).toEqual(Array(7).fill('default'));
-      expect(lists.flatMap((list) => list.props.items)).toHaveLength(24);
-      expect(lists[0]?.props.items).toEqual([
-        'Email address — used for authentication and account recovery.',
-        'Loyalty card data — card names, barcode values, barcode formats, brand references, and usage metadata (favourite status, usage count, timestamps).',
+      expect(lists.map((list) => list.props.tone)).toEqual(Array(8).fill('default'));
+      expect(lists.flatMap((list) => list.props.items)).toHaveLength(31);
+      expect(lists[1]?.props.items).toEqual([
+        'Email address — used for authentication and account recovery, together with an account ID assigned when you sign up.',
+        'Loyalty card data — card names, barcode values, barcode formats, brand references, colours, and usage metadata (favourite status, usage count, last-used time, and when each card was created and changed).',
         'Consent records — whether and when you accepted this Privacy Policy.'
       ]);
       const wrapper = blocks().find(
@@ -335,7 +335,7 @@ describe('PrivacyPolicyScreen', () => {
     // No link, icon, card or box: the address is a paragraph like any other.
     it('leaves the e-mail address plain text', () => {
       render(<PrivacyPolicyScreen />);
-      const address = screen.getByText('Email: privacy@myloyaltycards.app');
+      const address = screen.getByText('Email: privacy@cardiapp.eu');
       expect(address.props.onPress).toBeUndefined();
       expect(address.props.accessibilityRole).toBeUndefined();
     });

@@ -24,8 +24,9 @@ import docHelpItemsIt from './help-data.it.json';
 import docHelpItemsEn from './help-data.json';
 import { fallbackHelpItemsEn, fallbackHelpItemsIt, type HelpItem } from './help-fallback';
 
-const SUPPORT_MAIL_URL = 'mailto:support@myloyaltycards.app';
-const FEEDBACK_URL = 'https://myloyaltycards.app/feedback';
+const SUPPORT_MAIL_URL = 'mailto:support@cardiapp.eu';
+// Feedback goes to the support mailbox; there is no separate feedback address (Story 24.1, decision 3).
+const FEEDBACK_URL = `${SUPPORT_MAIL_URL}?subject=${encodeURIComponent('Cardì feedback')}`;
 
 /** How far below the field the no-results line sits: the wallet's frame D. */
 const NO_RESULTS_OFFSET = 80;
