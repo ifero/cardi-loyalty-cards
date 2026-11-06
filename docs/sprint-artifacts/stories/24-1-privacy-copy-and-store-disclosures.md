@@ -2,7 +2,7 @@
 title: 'Privacy copy and store disclosures'
 type: 'bugfix'
 created: '2026-11-04'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'b41d9ded8731df5cce59820afc6e23a72f548a80'
 route: 'dispatch'
 review_loop_iteration: 1
