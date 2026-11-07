@@ -2,7 +2,7 @@
 title: 'Store platform requirements'
 type: 'chore'
 created: '2026-11-04'
-status: 'in-review'
+status: 'done'
 baseline_commit: '89a72933f734309dfb106bd7ce3c477ddfc3e35b'
 route: 'dispatch'
 review_loop_iteration: 0
