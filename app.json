@@ -162,6 +162,7 @@
         }
       ],
       "./plugins/with-watch-accent-color",
+      "./plugins/with-watch-privacy-manifest",
       "@bacons/apple-targets",
       "expo-sharing",
       [
