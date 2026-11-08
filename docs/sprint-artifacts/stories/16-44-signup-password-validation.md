@@ -3,7 +3,7 @@ baseline_commit: 'c5cce6fd4429229e85f4ee72d427bc772c60593f'
 title: 'Sign-up accepts passwords the server rejects, and says only "An unexpected error occurred"'
 type: 'bugfix'
 created: '2026-11-08'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
