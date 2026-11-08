@@ -3,7 +3,12 @@ import path from 'node:path';
 
 import { IDENTITY_COLORS } from '@/shared/theme/tokens.generated';
 
-import { describeOnMac, runSwiftProgram, swiftDeclaration } from './swift-source-helpers';
+import {
+  describeOnMac,
+  runSwiftProgram,
+  swiftDeclaration,
+  withoutComments
+} from './swift-source-helpers';
 
 const repoRoot = path.resolve(__dirname, '../../..');
 const complicationPath = path.join(repoRoot, 'targets', 'watch', 'ComplicationProvider.swift');
@@ -192,23 +197,55 @@ describe('watch complication contract', () => {
     expect(code).not.toContain('.widgetURL(URL(string:');
   });
 
-  it('opens no barcode for a card the watch no longer holds (decision 3)', () => {
-    // The tap lands in the watch app's existing route, which this story does not edit: a link to a
-    // card the list does not hold only waits for that id, and the list stays on screen.
-    const cardList = fs.readFileSync(cardListViewPath, 'utf8');
+  it('routes both complication links through one routing state (Story 24.3)', () => {
+    // A link to a card the list does not hold only waits for that id, and the list stays on
+    // screen; `cardi://watch` pops to the list. The decisions are `WatchDeepLinkRouting`'s, run by
+    // the harness below; these pins hold the SwiftUI wiring that feeds it.
+    const cardList = withoutComments(fs.readFileSync(cardListViewPath, 'utf8'));
+    const pager = withoutComments(fs.readFileSync(barcodePagerPath, 'utf8'));
+    const declaration = (signature: string) =>
+      swiftDeclaration(cardList, signature, 'CardListView.swift').replace(/\s+/g, ' ').trim();
 
-    expect(swiftDeclaration(cardList, '.onOpenURL {', 'CardListView.swift')).toMatch(
-      /guard let cardId = WatchComplicationDeepLink\.cardId\(from: url\) else \{\s+return\s+\}\s+openCardRouteIfAvailable\(cardId\)/
+    // Any link closes the sort sheet before its route applies.
+    expect(declaration('.onOpenURL {')).toBe(
+      '.onOpenURL { url in guard let link = WatchComplicationDeepLink.link(from: url) else { ' +
+        'return } showSortSheet = false deepLinkRouting.open(link, heldCardIds: ' +
+        'displayCards.map(\\.id)) applyDeepLinkRouting() }'
     );
-    expect(
-      swiftDeclaration(
-        cardList,
-        'private func openCardRouteIfAvailable(_ cardId: String) {',
-        'CardListView.swift'
-      )
-    ).toMatch(
-      /^private func openCardRouteIfAvailable\(_ cardId: String\) \{\s+guard displayCards\.contains\(where: \{ \$0\.id == cardId \}\) else \{\s+pendingDeepLinkCardId = cardId\s+return\s+\}/
+    expect(declaration('.onChange(of: displayCards.map(\\.id)) {')).toBe(
+      '.onChange(of: displayCards.map(\\.id)) { _, heldCardIds in ' +
+        'let before = deepLinkRouting deepLinkRouting.cardsChanged(heldCardIds: heldCardIds) ' +
+        'if deepLinkRouting != before { applyDeepLinkRouting() } }'
     );
+    // The three navigations of the user's own: the path changed by the user, the sort sheet
+    // opened, a page turned in the pager.
+    expect(declaration('.onChange(of: navigationPath) {')).toBe(
+      '.onChange(of: navigationPath) { _, path in ' +
+        'deepLinkRouting.pathChanged(to: path.last?.cardId) }'
+    );
+    expect(declaration('.onChange(of: showSortSheet) {')).toBe(
+      '.onChange(of: showSortSheet) { _, isShown in if isShown { ' +
+        'deepLinkRouting.userNavigatedOffPath() } }'
+    );
+    expect(cardList).toContain('onPage: { deepLinkRouting.userNavigatedOffPath() }');
+    expect(pager).toContain(
+      'init(openedCardId: String, liveCards: [WatchCard], onPage: @escaping () -> Void = {}) {'
+    );
+    expect(pager).toContain('self.onPage = onPage');
+    expect(pager.split('onPage()').length - 1).toBe(1);
+
+    // The path follows the routing state, and is assigned nowhere else: the router writes it only
+    // when it differs, so its own write returns to `pathChanged` as an echo.
+    expect(declaration('private func applyDeepLinkRouting() {')).toBe(
+      'private func applyDeepLinkRouting() { let path = deepLinkRouting.pathCardId.map { ' +
+        '[WatchCardRoute(cardId: $0)] } ?? [] if navigationPath != path { navigationPath = path } }'
+    );
+    expect([...cardList.matchAll(/\bnavigationPath\s*=(?!=)/g)]).toHaveLength(1);
+
+    // The old route's leftovers are gone.
+    expect(cardList).not.toContain('pendingDeepLinkCardId');
+    expect(cardList).not.toContain('openCardRouteIfAvailable');
+    expect(cardList).not.toContain('cardId(from:');
   });
 
   it('reads the App Group snapshot under the writer’s own suite and keys', () => {
@@ -564,9 +601,14 @@ describeOnMac('the snapshot reader against the real writer', () => {
       'func read(_ label: String) {',
       '  let entry = WatchComplicationTimelineProvider().entry()',
       '  let stored = MemoryDefaults.shared.string(forKey: ComplicationSharedState.topCardIdKey)',
-      '  let opened = entry.tapURL.flatMap(WatchComplicationDeepLink.cardId(from:))',
+      '  let opened: String',
+      '  switch entry.tapURL.flatMap(WatchComplicationDeepLink.link(from:)) {',
+      '  case .card(let id)?: opened = id',
+      '  case .cardList?: opened = "<list>"',
+      '  case nil: opened = "<no route>"',
+      '  }',
       '  print([label, entry.topCardName ?? "<none>", stored ?? "<unset>",',
-      '         entry.tapURL?.absoluteString ?? "<nil>", opened ?? "<list>"].joined(separator: "|"))',
+      '         entry.tapURL?.absoluteString ?? "<nil>", opened].joined(separator: "|"))',
       '}',
       'read("fresh")',
       'sync([card("e1", "Esselunga"), card("c1", "Coop")], name: "Esselunga", id: "e1")',
@@ -644,6 +686,137 @@ describeOnMac('the snapshot reader against the real writer', () => {
       // The id is percent-encoded into the URL and decoded back whole by the app.
       ['encoded', 'a b&c=d', 'cardi://watch-card?id=a%20b%26c%3Dd', 'a b&c=d'],
       ['emptied', '<unset>', 'cardi://watch', '<list>']
+    ]);
+  });
+});
+
+/**
+ * The deep-link routing, run (Story 24.3): `WatchComplicationDeepLink` and `WatchDeepLinkRouting`
+ * lifted verbatim from `CardListView.swift` and driven through every row of the story's I/O
+ * matrix, plus a parked link dropped by the sort sheet opening and by a page turned.
+ *
+ * The harness mirrors the view's wiring, which the source pins above hold: `openURL` closes the
+ * sort sheet for any link that parses and then calls `open`, `sync` is the cards update, `navigate`
+ * is a path change (an echo of the router's own write included), and `openSheet` / `turnPage` are
+ * the user's navigations that leave the path alone. A failure here means a complication tap can
+ * bring back a barcode instead of the list, or a late card can open over a screen the user chose.
+ */
+describeOnMac('the deep-link routing state', () => {
+  const run = () => {
+    const cardList = fs.readFileSync(cardListViewPath, 'utf8');
+    const program = [
+      'import Foundation',
+      swiftDeclaration(cardList, 'private enum WatchComplicationDeepLink {', 'CardListView.swift'),
+      swiftDeclaration(
+        cardList,
+        'private struct WatchDeepLinkRouting: Equatable {',
+        'CardListView.swift'
+      ),
+      'fileprivate var state = WatchDeepLinkRouting()',
+      'fileprivate var held: [String] = []',
+      'fileprivate var sheetOpen = false',
+      'func given(path: String?, parked: String? = nil, held cards: [String], sheet: Bool = false) {',
+      '  state = WatchDeepLinkRouting(pathCardId: path, parkedCardId: parked, deepLinkGeneration: 0)',
+      '  held = cards',
+      '  sheetOpen = sheet',
+      '}',
+      'func openURL(_ string: String) {',
+      '  guard let url = URL(string: string), let link = WatchComplicationDeepLink.link(from: url) else { return }',
+      '  sheetOpen = false',
+      '  state.open(link, heldCardIds: held)',
+      '}',
+      'func sync(_ cards: [String]) { held = cards; state.cardsChanged(heldCardIds: cards) }',
+      'func navigate(to cardId: String?) { state.pathChanged(to: cardId) }',
+      'func openSheet() { sheetOpen = true; state.userNavigatedOffPath() }',
+      'func turnPage() { state.userNavigatedOffPath() }',
+      'func row(_ label: String) {',
+      '  print([label, state.pathCardId ?? "<list>", state.parkedCardId ?? "<none>",',
+      '         String(state.deepLinkGeneration), sheetOpen ? "sheet" : "-"].joined(separator: "|"))',
+      '}',
+      // The I/O matrix.
+      'given(path: "A", parked: "Z", held: ["A"]); openURL("cardi://watch"); row("list-on-barcode")',
+      'given(path: nil, parked: "Z", held: ["A"]); openURL("cardi://watch"); row("list-on-list")',
+      'given(path: nil, held: ["A"]); openURL("cardi://watch-card?id=A"); row("card-held")',
+      'given(path: "A", held: ["A"]); openURL("cardi://watch-card?id=Z"); row("card-missing")',
+      'given(path: nil, held: ["A"]); openURL("cardi://watch-card?id=Z"); sync(["A", "Z"]); row("late-card")',
+      'given(path: nil, held: ["A", "B"]); openURL("cardi://watch-card?id=Z"); navigate(to: "B"); sync(["A", "B", "Z"]); row("user-opens-row")',
+      'given(path: "A", held: ["A"]); openURL("cardi://watch-card?id=Z"); navigate(to: nil); sync(["A", "Z"]); row("user-pops")',
+      'given(path: nil, held: ["A"], sheet: true); openURL("cardi://watch-card?id=A"); row("card-over-sheet")',
+      'given(path: "A", held: ["A"], sheet: true); openURL("cardi://watch"); row("list-over-sheet")',
+      'given(path: nil, held: ["A"], sheet: true); openURL("cardi://watch-card?id=Z"); row("missing-over-sheet")',
+      // The user's navigations that leave the path alone.
+      'given(path: nil, held: ["A"]); openURL("cardi://watch-card?id=Z"); openSheet(); sync(["A", "Z"]); row("sheet-opened")',
+      'given(path: "A", held: ["A", "B"]); openURL("cardi://watch-card?id=Z"); turnPage(); sync(["A", "B", "Z"]); row("page-turned")',
+      // The router's own write coming back is not the user's navigation.
+      'given(path: nil, held: ["A"]); openURL("cardi://watch-card?id=A"); navigate(to: "A"); openURL("cardi://watch-card?id=Z"); navigate(to: "A"); row("echo")',
+      // A link to the card already open still opens a fresh pager.
+      'given(path: "A", held: ["A", "B"]); openURL("cardi://watch-card?id=A"); row("same-card")',
+      // The next deep link replaces a parked one.
+      'given(path: nil, held: ["A"]); openURL("cardi://watch-card?id=Z"); openURL("cardi://watch-card?id=Y"); row("reparked")',
+      'given(path: nil, held: ["A"]); openURL("cardi://watch-card?id=Z"); openURL("cardi://watch-card?id=A"); sync(["A", "Z"]); row("superseded")',
+      // Case-insensitive scheme and host; the id trimmed.
+      'given(path: "A", held: ["A"]); openURL("CARDI://WATCH"); row("list-uppercase")',
+      'given(path: nil, held: ["A"]); openURL("Cardi://Watch-Card?id=%20A%20"); row("card-mixed-case")',
+      // Unknown URLs change nothing, the sheet included.
+      'for url in ["cardi://other", "https://example.com/watch-card?id=A", "cardi://watch-card",',
+      '            "cardi://watch-card?id=", "cardi://watch-card?id=%20%20", "cardi:watch", "mailto:watch"] {',
+      '  given(path: "A", parked: "Z", held: ["A"], sheet: true)',
+      '  let before = state',
+      '  openURL(url)',
+      '  print(["unknown", url, state == before && sheetOpen ? "unchanged" : "changed"].joined(separator: "|"))',
+      '}',
+      ''
+    ].join('\n');
+
+    return runSwiftProgram({
+      program,
+      input: '',
+      label: 'CardListView.swift',
+      hint:
+        'The routing decides where a complication tap lands; a failure means a tap can bring back ' +
+        'a barcode instead of the list, or a late card can open over a screen the user chose.'
+    });
+  };
+
+  let rows: string[] = [];
+
+  beforeAll(() => {
+    rows = run().trim().split('\n');
+  });
+
+  it('lands every I/O matrix row, and drops a parked link on every navigation by the user', () => {
+    // label | path ("<list>" is the list) | parked id | generation | sort sheet
+    expect(rows.filter((row) => !row.startsWith('unknown|'))).toEqual([
+      'list-on-barcode|<list>|<none>|0|-',
+      'list-on-list|<list>|<none>|0|-',
+      'card-held|A|<none>|1|-',
+      'card-missing|A|Z|0|-',
+      'late-card|Z|<none>|1|-',
+      'user-opens-row|B|<none>|0|-',
+      'user-pops|<list>|<none>|0|-',
+      'card-over-sheet|A|<none>|1|-',
+      'list-over-sheet|<list>|<none>|0|-',
+      'missing-over-sheet|<list>|Z|0|-',
+      'sheet-opened|<list>|<none>|0|sheet',
+      'page-turned|A|<none>|0|-',
+      'echo|A|Z|1|-',
+      'same-card|A|<none>|1|-',
+      'reparked|<list>|Y|0|-',
+      'superseded|A|<none>|1|-',
+      'list-uppercase|<list>|<none>|0|-',
+      'card-mixed-case|A|<none>|1|-'
+    ]);
+  });
+
+  it('ignores every URL that is not one of the two routes', () => {
+    expect(rows.filter((row) => row.startsWith('unknown|'))).toEqual([
+      'unknown|cardi://other|unchanged',
+      'unknown|https://example.com/watch-card?id=A|unchanged',
+      'unknown|cardi://watch-card|unchanged',
+      'unknown|cardi://watch-card?id=|unchanged',
+      'unknown|cardi://watch-card?id=%20%20|unchanged',
+      'unknown|cardi:watch|unchanged',
+      'unknown|mailto:watch|unchanged'
     ]);
   });
 });
