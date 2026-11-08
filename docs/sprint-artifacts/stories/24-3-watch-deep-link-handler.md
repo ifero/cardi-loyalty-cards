@@ -2,7 +2,7 @@
 title: 'Watch deep-link handler'
 type: 'bugfix'
 created: '2026-11-04'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'c5cce6fd4429229e85f4ee72d427bc772c60593f'
 route: 'dispatch'
 review_loop_iteration: 1
