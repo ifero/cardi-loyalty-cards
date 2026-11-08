@@ -121,7 +121,14 @@ const scrollTo = ScrollView.prototype.scrollTo as jest.Mock;
 const layOut = (element: ReturnType<typeof screen.getByTestId>, y: number, height: number) =>
   fireEvent(element, 'layout', { nativeEvent: { layout: { x: 0, y, width: 345, height } } });
 
-const RULE = 'Min 8 characters, at least one letter and one number.';
+/** The new-password rule (Story 16.44): the caption, the field's error and its spoken hint. */
+const RULE_CAPTION =
+  'At least 8 characters, with upper and lower case letters, a number and a symbol.';
+const RULE =
+  'Use at least 8 characters, with upper and lower case letters, a number and a symbol such as ! ? # or @.';
+const RULE_HINT = 'At least 8 characters, with upper and lower case letters, a number and a symbol';
+const WEAK_BANNER =
+  'This password is too weak. Use at least 8 characters, with upper and lower case letters, a number and a symbol.';
 const GENERIC = 'An unexpected error occurred. Please try again.';
 
 describe('NewPasswordScreen', () => {
@@ -187,13 +194,40 @@ describe('NewPasswordScreen', () => {
       expect(actions?.children).toHaveLength(1);
     });
 
-    it('draws no password-requirements caption', () => {
+    // Story 16.44: the rule stands under NEW PASSWORD from the start, not in a placeholder that the
+    // first keystroke takes away.
+    it('states the rule under NEW PASSWORD from the start, and while it is typed', () => {
       render(<NewPasswordScreen />);
-      expect(screen.queryByTestId('password-requirements')).toBeNull();
-      expect(screen.getByTestId('password-input').props).toMatchObject({
-        placeholder: 'Min 8 chars, 1 letter, 1 number',
-        accessibilityHint: 'Minimum 8 characters with at least one letter and one number'
+      expect(screen.getByTestId('password-input-hint').props.children).toBe(RULE_CAPTION);
+      expect(flat('password-input-hint')).toMatchObject({
+        fontSize: 13,
+        marginTop: 4,
+        color: LIGHT_THEME.textSecondary
       });
+      expect(screen.getByTestId('password-input').props).toMatchObject({
+        placeholder: 'Choose a password',
+        accessibilityHint: RULE_HINT
+      });
+      expect(isInside('password-input-hint', 'new-password-screen-field-0')).toBe(true);
+
+      fireEvent.changeText(screen.getByTestId('password-input'), 'pass');
+      expectInOrder([
+        'password-input',
+        'password-input-hint',
+        'password-strength-indicator',
+        'confirm-password-input'
+      ]);
+    });
+
+    it('gives the rule’s place to the field’s error while it shows', () => {
+      render(<NewPasswordScreen />);
+      fillPasswords('password1', 'password1');
+      pressUpdate();
+      expect(screen.getByTestId('password-input-error').props.children).toBe(RULE);
+      expect(screen.queryByTestId('password-input-hint')).toBeNull();
+
+      fireEvent.changeText(screen.getByTestId('password-input'), 'ValidPass1!');
+      expect(screen.getByTestId('password-input-hint')).toBeTruthy();
     });
 
     // Always mounted, as shipped; it draws nothing until a password is typed.
@@ -217,7 +251,7 @@ describe('NewPasswordScreen', () => {
       render(<NewPasswordScreen />);
       expect(screen.getByTestId('password-input').props).toMatchObject({
         accessibilityLabel: 'New Password',
-        accessibilityHint: 'Minimum 8 characters with at least one letter and one number'
+        accessibilityHint: RULE_HINT
       });
       expect(screen.getByTestId('confirm-password-input').props).toMatchObject({
         accessibilityLabel: 'Confirm Password',
@@ -241,6 +275,14 @@ describe('NewPasswordScreen', () => {
       render(<NewPasswordScreen />);
       expect(screen.getByText('Imposta una nuova password')).toBeTruthy();
       expect(screen.getByText('Aggiorna password')).toBeTruthy();
+      expect(screen.getByTestId('password-input-hint').props.children).toBe(
+        'Almeno 8 caratteri, con lettere maiuscole e minuscole, un numero e un simbolo.'
+      );
+      fillPasswords('password1', 'password1');
+      pressUpdate();
+      expect(screen.getByTestId('password-input-error').props.children).toBe(
+        'Usa almeno 8 caratteri, con lettere maiuscole e minuscole, un numero e un simbolo come ! ? # o @.'
+      );
     });
 
     it('draws no MaterialIcons glyph', () => {
@@ -299,9 +341,28 @@ describe('NewPasswordScreen', () => {
       expect(mockUpdatePassword).not.toHaveBeenCalled();
     });
 
+    // Story 16.44: each passes the old rule, or misses one part of the new one.
+    it.each([
+      'password1',
+      'Password1',
+      'PASSWORD1!',
+      'password1!',
+      'Password!!',
+      'Password12',
+      'Password1€',
+      'Pa1!'
+    ])('blocks "%s" with the rule, rated Weak', (password) => {
+      render(<NewPasswordScreen />);
+      fillPasswords(password, password);
+      expect(screen.getByTestId('password-strength-indicator-label').props.children).toBe('Weak');
+      pressUpdate();
+      expect(screen.getByTestId('password-input-error').props.children).toBe(RULE);
+      expect(mockUpdatePassword).not.toHaveBeenCalled();
+    });
+
     it('flags mismatched passwords without calling updatePassword', () => {
       render(<NewPasswordScreen />);
-      fillPasswords('ValidPass1', 'ValidPass2');
+      fillPasswords('ValidPass1!', 'ValidPass2!');
       pressUpdate();
       expect(screen.getByText('Passwords do not match.')).toBeTruthy();
       expect(mockUpdatePassword).not.toHaveBeenCalled();
@@ -317,7 +378,7 @@ describe('NewPasswordScreen', () => {
         expect(focused()).toEqual(['password-input']);
 
         focus.mockClear();
-        fillPasswords('ValidPass1', 'ValidPass2');
+        fillPasswords('ValidPass1!', 'ValidPass2!');
         pressUpdate();
         expect(focused()).toEqual(['confirm-password-input']);
       } finally {
@@ -335,7 +396,7 @@ describe('NewPasswordScreen', () => {
         layOut(screen.getByTestId('new-password-screen-fields'), 260, 210);
         layOut(screen.getByTestId('new-password-screen-field-0'), 0, 104);
         layOut(screen.getByTestId('new-password-screen-field-1'), 136, 74);
-        fillPasswords('ValidPass1', 'ValidPass2');
+        fillPasswords('ValidPass1!', 'ValidPass2!');
 
         pressUpdate();
         // CONFIRM's bottom is 470: 470 + 24 − 300.
@@ -359,11 +420,11 @@ describe('NewPasswordScreen', () => {
       pressUpdate();
       expect(screen.getByText(RULE)).toBeTruthy();
 
-      fireEvent.changeText(screen.getByTestId('password-input'), 'ValidPass1');
+      fireEvent.changeText(screen.getByTestId('password-input'), 'ValidPass1!');
       expect(screen.queryByText(RULE)).toBeNull();
       expect(screen.getByText('Passwords do not match.')).toBeTruthy();
 
-      fireEvent.changeText(screen.getByTestId('confirm-password-input'), 'ValidPass1');
+      fireEvent.changeText(screen.getByTestId('confirm-password-input'), 'ValidPass1!');
       expect(screen.queryByText('Passwords do not match.')).toBeNull();
     });
   });
@@ -377,7 +438,7 @@ describe('NewPasswordScreen', () => {
         })
     );
     render(<NewPasswordScreen />);
-    fillPasswords('ValidPass1', 'ValidPass1');
+    fillPasswords('ValidPass1!', 'ValidPass1!');
     pressUpdate();
 
     const button = screen.getByTestId('update-password-button');
@@ -401,7 +462,7 @@ describe('NewPasswordScreen', () => {
     });
     const answer = holdUpdate();
     render(<NewPasswordScreen />);
-    fillPasswords('ValidPass1', 'ValidPass1');
+    fillPasswords('ValidPass1!', 'ValidPass1!');
     pressUpdate();
     expect(screen.getByTestId('update-password-button').props.accessibilityLabel).toBe(
       'Aggiornamento della password...'
@@ -416,7 +477,7 @@ describe('NewPasswordScreen', () => {
     try {
       const answer = holdUpdate();
       render(<NewPasswordScreen />);
-      fillPasswords('ValidPass1', 'ValidPass1');
+      fillPasswords('ValidPass1!', 'ValidPass1!');
       pressUpdate();
       expect(dismiss).toHaveBeenCalledTimes(1);
       expect(dismiss.mock.invocationCallOrder[0]).toBeLessThan(
@@ -431,11 +492,11 @@ describe('NewPasswordScreen', () => {
   it('updates the password and goes home after recovery', async () => {
     mockUpdatePassword.mockResolvedValue({ success: true, data: undefined });
     render(<NewPasswordScreen />);
-    fillPasswords('ValidPass1', 'ValidPass1');
+    fillPasswords('ValidPass1!', 'ValidPass1!');
     pressUpdate();
 
     await waitFor(() => {
-      expect(mockUpdatePassword).toHaveBeenCalledWith('ValidPass1');
+      expect(mockUpdatePassword).toHaveBeenCalledWith('ValidPass1!');
       expect(mockReplace).toHaveBeenCalledWith('/');
     });
   });
@@ -444,11 +505,11 @@ describe('NewPasswordScreen', () => {
     mockUpdatePassword.mockResolvedValue({ success: true, data: undefined });
     mockParams.origin = 'change-password';
     render(<NewPasswordScreen />);
-    fillPasswords('ValidPass1', 'ValidPass1');
+    fillPasswords('ValidPass1!', 'ValidPass1!');
     pressUpdate();
 
     await waitFor(() => {
-      expect(mockUpdatePassword).toHaveBeenCalledWith('ValidPass1');
+      expect(mockUpdatePassword).toHaveBeenCalledWith('ValidPass1!');
       expect(mockShowToast).toHaveBeenCalledWith({ title: 'Password changed', preset: 'done' });
       expect(mockDismissTo).toHaveBeenCalledWith('/settings');
     });
@@ -460,7 +521,7 @@ describe('NewPasswordScreen', () => {
     const failWith = async (outcome: () => void) => {
       outcome();
       render(<NewPasswordScreen />);
-      fillPasswords('ValidPass1', 'ValidPass1');
+      fillPasswords('ValidPass1!', 'ValidPass1!');
       pressUpdate();
       await waitFor(() => expect(screen.getByTestId('server-error')).toBeTruthy());
     };
@@ -469,7 +530,7 @@ describe('NewPasswordScreen', () => {
       await failWith(() =>
         mockUpdatePassword.mockResolvedValue({ success: false, error: { message: 'x' } })
       );
-      fillPasswords('ValidPass2', 'ValidPass2');
+      fillPasswords('ValidPass2!', 'ValidPass2!');
       expect(screen.getByText(GENERIC)).toBeTruthy();
 
       const answer = holdUpdate();
@@ -506,6 +567,53 @@ describe('NewPasswordScreen', () => {
       expect(screen.getByText(GENERIC)).toBeTruthy();
     });
 
+    // Story 16.44: the server's password policy is named in the banner, not the generic message.
+    it.each([
+      [{ code: 'weak_password', message: 'Password is known to be weak and easy to guess' }],
+      [{ message: 'Password should contain at least one character of each: abc, ABC, 123' }]
+    ])(
+      'maps the server’s weak_password %j to its own banner, reddening no field',
+      async (error) => {
+        await failWith(() => mockUpdatePassword.mockResolvedValue({ success: false, error }));
+        expect(screen.getAllByText(WEAK_BANNER)).toHaveLength(1);
+        expect(screen.queryByText(GENERIC)).toBeNull();
+        expect(screen.queryByTestId('password-input-error')).toBeNull();
+        expect(flat('password-input').borderColor).toBe(LIGHT_THEME.border);
+      }
+    );
+
+    // GoTrue's same_password message also says "password should": it is not a weak password.
+    it('does not call same_password a weak password', async () => {
+      await failWith(() =>
+        mockUpdatePassword.mockResolvedValue({
+          success: false,
+          error: {
+            code: 'same_password',
+            message: 'New password should be different from the old password.'
+          }
+        })
+      );
+      expect(screen.queryByText(WEAK_BANNER)).toBeNull();
+      expect(screen.getByText(GENERIC)).toBeTruthy();
+    });
+
+    it('names the weak password in Italian', async () => {
+      await act(async () => {
+        await changeAppLanguage('it');
+      });
+      await failWith(() =>
+        mockUpdatePassword.mockResolvedValue({
+          success: false,
+          error: { code: 'weak_password', message: 'weak' }
+        })
+      );
+      expect(
+        screen.getByText(
+          'Questa password è troppo debole. Usa almeno 8 caratteri, con lettere maiuscole e minuscole, un numero e un simbolo.'
+        )
+      ).toBeTruthy();
+    });
+
     it('surfaces a generic error when updatePassword throws', async () => {
       await failWith(() => mockUpdatePassword.mockRejectedValue(new Error('boom')));
       expect(screen.getByText(GENERIC)).toBeTruthy();
@@ -516,7 +624,7 @@ describe('NewPasswordScreen', () => {
       await failWith(() =>
         mockUpdatePassword.mockResolvedValue({ success: false, error: { message: 'x' } })
       );
-      fireEvent.changeText(screen.getByTestId('confirm-password-input'), 'ValidPass2');
+      fireEvent.changeText(screen.getByTestId('confirm-password-input'), 'ValidPass2!');
       pressUpdate();
       expect(screen.getByText('Passwords do not match.')).toBeTruthy();
       expect(screen.getByText(GENERIC)).toBeTruthy();

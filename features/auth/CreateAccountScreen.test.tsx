@@ -56,6 +56,15 @@ jest.mock('@/core/privacy/consent-repository', () => ({
   setConsentGiven: () => mockSetConsentGiven()
 }));
 
+/** The new-password rule (Story 16.44): the caption, the field's error and its spoken hint. */
+const RULE_CAPTION =
+  'At least 8 characters, with upper and lower case letters, a number and a symbol.';
+const RULE =
+  'Use at least 8 characters, with upper and lower case letters, a number and a symbol such as ! ? # or @.';
+const RULE_HINT = 'At least 8 characters, with upper and lower case letters, a number and a symbol';
+const WEAK_BANNER =
+  'This password is too weak. Use at least 8 characters, with upper and lower case letters, a number and a symbol.';
+
 const flat = (testID: string) =>
   StyleSheet.flatten(screen.getByTestId(testID).props.style) as Record<string, unknown>;
 
@@ -68,8 +77,8 @@ const expectInOrder = (testIDs: string[]) => {
 
 const fillIn = ({
   email = 'test@example.com',
-  password = 'Password1',
-  confirm = 'Password1',
+  password = 'Passw0rd!',
+  confirm = 'Passw0rd!',
   consent = true
 } = {}) => {
   fireEvent.changeText(screen.getByTestId('email-input'), email);
@@ -230,7 +239,7 @@ describe('CreateAccountScreen', () => {
       });
       expect(screen.getByTestId('password-input').props).toMatchObject({
         accessibilityLabel: 'Password',
-        accessibilityHint: 'Minimum 8 characters with at least one letter and one number'
+        accessibilityHint: RULE_HINT
       });
       expect(screen.getByTestId('confirm-password-input').props).toMatchObject({
         accessibilityLabel: 'Confirm Password',
@@ -245,15 +254,56 @@ describe('CreateAccountScreen', () => {
       expect(screen.getByTestId('register-button').props.accessibilityLabel).toBe('Create Account');
     });
 
-    // Frame B draws no caption: the rule is in the placeholder, the message and the hint.
-    it('draws no password-requirements caption', () => {
+    // Story 16.44: the rule stands under PASSWORD from the start, not in a placeholder that the
+    // first keystroke takes away.
+    it('states the rule under PASSWORD from the start, in captionMd textSecondary', () => {
       render(<CreateAccountScreen />);
-      expect(screen.queryByTestId('password-requirements')).toBeNull();
+      expect(screen.getByTestId('password-input-hint').props.children).toBe(RULE_CAPTION);
+      expect(flat('password-input-hint')).toMatchObject({
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: '400',
+        marginTop: 4,
+        color: LIGHT_THEME.textSecondary
+      });
       expect(screen.getByTestId('password-input').props).toMatchObject({
-        placeholder: 'Min 8 chars, 1 letter, 1 number',
-        accessibilityHint: 'Minimum 8 characters with at least one letter and one number',
+        placeholder: 'Choose a password',
+        accessibilityHint: RULE_HINT,
         autoComplete: 'new-password'
       });
+      expect(screen.queryByTestId('password-strength-indicator')).toBeNull();
+      expectInOrder(['password-input', 'password-input-hint', 'confirm-password-input']);
+      expect(isInside('password-input-hint', 'create-account-screen-field-1')).toBe(true);
+    });
+
+    it('keeps the rule in view while the password is typed, the meter below it', () => {
+      render(<CreateAccountScreen />);
+      fireEvent.changeText(screen.getByTestId('password-input'), 'pass');
+      expect(screen.getByTestId('password-input-hint').props.children).toBe(RULE_CAPTION);
+      expectInOrder(['password-input', 'password-input-hint', 'password-strength-indicator']);
+    });
+
+    it('gives the rule’s place to the field’s error while it shows, and takes it back', () => {
+      render(<CreateAccountScreen />);
+      fillIn({ password: 'password1', confirm: 'password1' });
+      pressCreate();
+      expect(screen.getByTestId('password-input-error').props.children).toBe(RULE);
+      expect(screen.queryByTestId('password-input-hint')).toBeNull();
+
+      fireEvent.changeText(screen.getByTestId('password-input'), 'Passw0rd!');
+      expect(screen.queryByTestId('password-input-error')).toBeNull();
+      expect(screen.getByTestId('password-input-hint')).toBeTruthy();
+    });
+
+    it('shows no meter and no error for an empty password until the press', () => {
+      render(<CreateAccountScreen />);
+      expect(screen.getByTestId('password-input-hint')).toBeTruthy();
+      expect(screen.queryByTestId('password-input-error')).toBeNull();
+      pressCreate();
+      expect(screen.getByTestId('password-input-error').props.children).toBe(
+        'Password is required.'
+      );
+      expect(screen.queryByTestId('password-strength-indicator')).toBeNull();
     });
 
     it('shows the meter only once a password is typed, 8 below the field', () => {
@@ -293,6 +343,20 @@ describe('CreateAccountScreen', () => {
       expect(screen.getByTestId('create-account-title').props.children).toBe('Crea account');
       expect(screen.getByTestId('create-account-subtitle').props.children).toBe('Unisciti a Cardì');
       expect(screen.getByText('Hai già un account? Accedi')).toBeTruthy();
+      expect(screen.getByTestId('password-input-hint').props.children).toBe(
+        'Almeno 8 caratteri, con lettere maiuscole e minuscole, un numero e un simbolo.'
+      );
+      expect(screen.getByTestId('password-input').props).toMatchObject({
+        placeholder: 'Scegli una password',
+        accessibilityHint:
+          'Almeno 8 caratteri, con lettere maiuscole e minuscole, un numero e un simbolo'
+      });
+
+      fillIn({ password: 'password1', confirm: 'password1' });
+      pressCreate();
+      expect(screen.getByTestId('password-input-error').props.children).toBe(
+        'Usa almeno 8 caratteri, con lettere maiuscole e minuscole, un numero e un simbolo come ! ? # o @.'
+      );
     });
 
     it('draws no MaterialIcons glyph', () => {
@@ -354,7 +418,7 @@ describe('CreateAccountScreen', () => {
     const view = render(<CreateAccountScreen />);
     expect(screen.getByTestId('email-input').props.value).toBe('saved@example.com');
 
-    fireEvent.changeText(screen.getByTestId('password-input'), 'Password1');
+    fireEvent.changeText(screen.getByTestId('password-input'), 'Passw0rd!');
     pressCreate();
     expect(screen.getByTestId('confirm-password-input-error')).toBeTruthy();
 
@@ -393,12 +457,8 @@ describe('CreateAccountScreen', () => {
 
     it.each([
       [{ email: 'not-an-email' }, 'email-input-error', 'Please enter a valid email address'],
-      [
-        { password: 'short', confirm: 'short' },
-        'password-input-error',
-        'Min 8 characters, at least one letter and one number.'
-      ],
-      [{ confirm: 'Password2' }, 'confirm-password-input-error', 'Passwords do not match.'],
+      [{ password: 'short', confirm: 'short' }, 'password-input-error', RULE],
+      [{ confirm: 'Passw0rd?' }, 'confirm-password-input-error', 'Passwords do not match.'],
       [{ consent: false }, 'consent-error', 'You must agree to the Privacy Policy.']
     ])('holds back %j with "%s"', (values, errorTestID, message) => {
       render(<CreateAccountScreen />);
@@ -406,6 +466,35 @@ describe('CreateAccountScreen', () => {
       pressCreate();
       expect(screen.getByTestId(errorTestID).props.children).toBe(message);
       expect(mockSignUp).not.toHaveBeenCalled();
+    });
+
+    // Story 16.44: each passes the old rule, or misses one part of the new one; the server would
+    // refuse every one, so none is sent.
+    it.each([
+      'password1',
+      'Password1',
+      'PASSWORD1!',
+      'password1!',
+      'Password!!',
+      'Password12',
+      'Password1€',
+      'Pa1!'
+    ])('holds back "%s" with the rule, rated Weak', (password) => {
+      render(<CreateAccountScreen />);
+      fillIn({ password, confirm: password });
+      expect(screen.getByTestId('password-strength-indicator-label').props.children).toBe('Weak');
+      pressCreate();
+      expect(screen.getByTestId('password-input-error').props.children).toBe(RULE);
+      expect(mockSignUp).not.toHaveBeenCalled();
+    });
+
+    it('sends a password that meets the rule', async () => {
+      mockSignUp.mockResolvedValue({ success: true, data: { user: { id: 'u1' }, session: null } });
+      render(<CreateAccountScreen />);
+      fillIn({ password: 'Passw0rd!', confirm: 'Passw0rd!' });
+      pressCreate();
+      expect(screen.queryByTestId('password-input-error')).toBeNull();
+      await waitFor(() => expect(mockSignUp).toHaveBeenCalledWith('test@example.com', 'Passw0rd!'));
     });
 
     // Create Account is never disabled: unticked consent is said, not refused in silence.
@@ -436,7 +525,7 @@ describe('CreateAccountScreen', () => {
         expect(focused()).toEqual(['password-input']);
 
         focus.mockClear();
-        fillIn({ confirm: 'Password2', consent: false });
+        fillIn({ confirm: 'Passw0rd?', consent: false });
         pressCreate();
         expect(focused()).toEqual(['confirm-password-input']);
 
@@ -490,7 +579,7 @@ describe('CreateAccountScreen', () => {
     it.each([
       ['EMAIL', { email: 'not-an-email' }, 58],
       ['PASSWORD', { password: 'short', confirm: 'short' }, 164],
-      ['CONFIRM PASSWORD', { confirm: 'Password2' }, 270]
+      ['CONFIRM PASSWORD', { confirm: 'Passw0rd?' }, 270]
     ])('brings %s into view when it is the first invalid field', (_field, values, y) => {
       render(<CreateAccountScreen />);
       layOutForm();
@@ -516,11 +605,11 @@ describe('CreateAccountScreen', () => {
     it('follows the typing after the first press', () => {
       render(<CreateAccountScreen />);
       pressCreate();
-      fireEvent.changeText(screen.getByTestId('password-input'), 'Password1');
+      fireEvent.changeText(screen.getByTestId('password-input'), 'Passw0rd!');
       expect(screen.queryByTestId('password-input-error')).toBeNull();
       fireEvent.changeText(screen.getByTestId('confirm-password-input'), 'Password');
       expect(screen.getByText('Passwords do not match.')).toBeTruthy();
-      fireEvent.changeText(screen.getByTestId('confirm-password-input'), 'Password1');
+      fireEvent.changeText(screen.getByTestId('confirm-password-input'), 'Passw0rd!');
       expect(screen.queryByTestId('confirm-password-input-error')).toBeNull();
     });
   });
@@ -638,6 +727,54 @@ describe('CreateAccountScreen', () => {
       expect(screen.getByText(shown)).toBeTruthy();
     });
 
+    // Story 16.44: the server's password policy is named in the banner, not the generic message.
+    it.each([
+      [{ code: 'weak_password', message: 'Password is known to be weak and easy to guess' }],
+      [{ message: 'Password should contain at least one character of each: abc, ABC, 123' }]
+    ])(
+      'maps the server’s weak_password %j to its own banner, reddening no field',
+      async (error) => {
+        await failWith(() => mockSignUp.mockResolvedValue({ success: false, error }));
+        expect(screen.getByTestId('server-error')).toBeTruthy();
+        expect(screen.getAllByText(WEAK_BANNER)).toHaveLength(1);
+        expect(screen.queryByText('An unexpected error occurred. Please try again.')).toBeNull();
+        expect(screen.queryByTestId('password-input-error')).toBeNull();
+        expect(flat('password-input').borderColor).toBe(LIGHT_THEME.border);
+      }
+    );
+
+    // A coded error is never read by its message: "password should" alone is not a weak password.
+    it('does not call another coded "password should" error a weak password', async () => {
+      await failWith(() =>
+        mockSignUp.mockResolvedValue({
+          success: false,
+          error: {
+            code: 'same_password',
+            message: 'New password should be different from the old password.'
+          }
+        })
+      );
+      expect(screen.queryByText(WEAK_BANNER)).toBeNull();
+      expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeTruthy();
+    });
+
+    it('names the weak password in Italian', async () => {
+      await act(async () => {
+        await changeAppLanguage('it');
+      });
+      await failWith(() =>
+        mockSignUp.mockResolvedValue({
+          success: false,
+          error: { code: 'weak_password', message: 'weak' }
+        })
+      );
+      expect(
+        screen.getByText(
+          'Questa password è troppo debole. Usa almeno 8 caratteri, con lettere maiuscole e minuscole, un numero e un simbolo.'
+        )
+      ).toBeTruthy();
+    });
+
     it('maps a request that throws to the generic message', async () => {
       await failWith(() => mockSignUp.mockRejectedValue(new Error('Unexpected failure')));
       expect(screen.getByText('An unexpected error occurred. Please try again.')).toBeTruthy();
@@ -667,7 +804,7 @@ describe('CreateAccountScreen', () => {
       pressCreate();
 
       await waitFor(() => {
-        expect(mockSignUp).toHaveBeenCalledWith('test@example.com', 'Password1');
+        expect(mockSignUp).toHaveBeenCalledWith('test@example.com', 'Passw0rd!');
         expect(mockSetConsentGiven).toHaveBeenCalled();
         expect(mockReplace).toHaveBeenCalledWith('/');
       });

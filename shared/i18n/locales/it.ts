@@ -357,7 +357,7 @@ export const it = {
     placeholders: {
       email: 'tu@esempio.com',
       password: 'La tua password',
-      newPassword: 'Min 8 car., 1 lettera, 1 numero',
+      newPassword: 'Scegli una password',
       confirmPassword: 'Inserisci di nuovo la password',
       confirmNewPassword: 'Inserisci di nuovo la nuova password',
       verificationCode: 'Codice a 8 cifre'
@@ -365,7 +365,8 @@ export const it = {
     accessibility: {
       emailHint: 'Inserisci il tuo indirizzo email',
       passwordHint: 'Inserisci la tua password',
-      passwordRuleHint: 'Almeno 8 caratteri con almeno una lettera e un numero',
+      passwordRuleHint:
+        'Almeno {{min}} caratteri, con lettere maiuscole e minuscole, un numero e un simbolo',
       confirmPasswordHint: 'Inserisci di nuovo la password per confermare',
       forgotPasswordEmailHint: 'Inserisci il tuo indirizzo email per ricevere un codice di reset',
       confirmNewPasswordHint: 'Inserisci di nuovo la nuova password per confermare',
@@ -377,11 +378,16 @@ export const it = {
       confirmCode: 'Conferma',
       wrongEmailGoBack: 'Email sbagliata? Torna indietro'
     },
+    hints: {
+      passwordRule:
+        'Almeno {{min}} caratteri, con lettere maiuscole e minuscole, un numero e un simbolo.'
+    },
     validation: {
       emailRequired: "L'email è obbligatoria.",
       emailInvalid: 'Inserisci un indirizzo email valido',
       passwordRequired: 'La password è obbligatoria.',
-      passwordRule: 'Minimo 8 caratteri, almeno una lettera e un numero.',
+      passwordRule:
+        'Usa almeno {{min}} caratteri, con lettere maiuscole e minuscole, un numero e un simbolo come ! ? # o @.',
       confirmPasswordRequired: 'Conferma la password.',
       passwordsMismatch: 'Le password non corrispondono.',
       consentRequired: "Devi accettare l'Informativa sulla privacy.",
@@ -406,6 +412,8 @@ export const it = {
       alreadyHaveAccount: 'Hai già un account?',
       signInAction: 'Accedi',
       accountExists: 'Esiste già un account con questa email. Accedi invece di crearne uno nuovo.',
+      weakPassword:
+        'Questa password è troppo debole. Usa almeno {{min}} caratteri, con lettere maiuscole e minuscole, un numero e un simbolo.',
       networkError: 'Impossibile connettersi. Controlla internet e riprova.',
       genericError: 'Si è verificato un errore imprevisto. Riprova.'
     },
@@ -449,6 +457,8 @@ export const it = {
       heading: 'Imposta una nuova password',
       subtitle: 'Scegli una nuova password sicura per il tuo account.',
       button: 'Aggiorna password',
+      weakPassword:
+        'Questa password è troppo debole. Usa almeno {{min}} caratteri, con lettere maiuscole e minuscole, un numero e un simbolo.',
       networkError: 'Impossibile connettersi. Controlla internet e riprova.',
       genericError: 'Si è verificato un errore imprevisto. Riprova.'
     },

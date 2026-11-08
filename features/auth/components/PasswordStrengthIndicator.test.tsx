@@ -31,7 +31,7 @@ const segmentColours = () =>
   );
 
 const WEAK = 'abc';
-const FAIR = 'Password12';
+const FAIR = 'Passw0rd!';
 const STRONG = 'Password123!@#';
 
 describe('getPasswordStrength', () => {
@@ -40,12 +40,26 @@ describe('getPasswordStrength', () => {
     ['Pass1', 'weak'],
     ['password', 'weak'],
     ['12345678', 'weak'],
-    ['Password1', 'fair'],
-    ['Password1234', 'fair'],
     ['Password!1', 'fair'],
+    ['Passw0rd!', 'fair'],
+    ['Password12!', 'fair'],
     ['Password123!', 'strong']
   ])('rates "%s" %s', (password, strength) => {
     expect(getPasswordStrength(password)).toBe(strength);
+  });
+
+  // Story 16.44: whatever its length, a password the screens would refuse is never above Weak.
+  it.each([
+    'password1',
+    'Password1',
+    'Password1234',
+    'PASSWORD1234!',
+    'password1234!',
+    'Password!!!!',
+    'Password1234€',
+    'Pa1!'
+  ])('rates "%s", which fails the rule, weak', (password) => {
+    expect(getPasswordStrength(password)).toBe('weak');
   });
 });
 
