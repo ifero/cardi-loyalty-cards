@@ -92,6 +92,16 @@ const codeIndexOf = (source: string, signature: string) => {
 };
 
 /**
+ * `source` with its comments removed.
+ *
+ * Assertions that a construct is ABSENT have to read code only: the watch sources' comments quote
+ * the modifiers and calls they explain, so a naive `not.toContain` would match the prose rather
+ * than the code and pass, or fail, for the wrong reason.
+ */
+export const withoutComments = (source: string) =>
+  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+
+/**
  * Slice a Swift declaration out of `source`, brace/bracket-matched.
  *
  * Anchors on the signature's OWN trailing delimiter: `[String] = [` contains an

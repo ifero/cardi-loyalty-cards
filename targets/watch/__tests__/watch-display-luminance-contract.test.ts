@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { describeOnMac, runSwiftProgram, swiftDeclaration } from './swift-source-helpers';
+import {
+  describeOnMac,
+  runSwiftProgram,
+  swiftDeclaration,
+  withoutComments
+} from './swift-source-helpers';
 
 /**
  * Story 16.26 — hold the barcode readable while the Apple Watch display dims.
@@ -79,16 +84,6 @@ const SYMBOLS = [
   { label: 'EAN-8', format: 'EAN8', units: 67 },
   { label: 'QR', format: 'QR', units: null }
 ] as const;
-
-/**
- * `source` with comments stripped.
- *
- * Assertions that a construct is ABSENT must read code only: the doc comments below
- * quote the modifiers they exist to forbid, so a naive `not.toContain` would match the
- * prose and fail for the wrong reason.
- */
-const withoutComments = (source: string) =>
-  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
 const readSwift = (filePath: string) => fs.readFileSync(filePath, 'utf8');
 

@@ -470,24 +470,104 @@ private struct WatchCardRoute: Hashable {
   let cardId: String
 }
 
+/// The complication's two routes: `cardi://watch` is the card list, and
+/// `cardi://watch-card?id=<id>` is that card's barcode. It checks the scheme, the host and, for a
+/// card, the `id` query item only (case-insensitive on scheme and host, the id trimmed); path
+/// segments are ignored, and any other scheme or host, or a card link with no id, is no route.
 private enum WatchComplicationDeepLink {
+  enum Link: Equatable {
+    case cardList
+    case card(id: String)
+  }
+
   static let scheme = "cardi"
+  static let listHost = "watch"
   static let cardHost = "watch-card"
   static let cardIdQueryItem = "id"
 
-  static func cardId(from url: URL) -> String? {
-    guard
-      url.scheme?.lowercased() == scheme,
-      url.host?.lowercased() == cardHost,
-      let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-      let cardId = components.queryItems?.first(where: { $0.name == cardIdQueryItem })?.value?
-        .trimmingCharacters(in: .whitespacesAndNewlines),
-      !cardId.isEmpty
-    else {
+  static func link(from url: URL) -> Link? {
+    guard url.scheme?.lowercased() == scheme, let host = url.host?.lowercased() else {
       return nil
     }
 
-    return cardId
+    switch host {
+    case listHost:
+      return .cardList
+    case cardHost:
+      guard
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+        let cardId = components.queryItems?.first(where: { $0.name == cardIdQueryItem })?.value?
+          .trimmingCharacters(in: .whitespacesAndNewlines),
+        !cardId.isEmpty
+      else {
+        return nil
+      }
+
+      return .card(id: cardId)
+    default:
+      return nil
+    }
+  }
+}
+
+/// Where the complication's deep links take the list, as pure state the contract suite runs
+/// (Story 24.3). `pathCardId` mirrors the navigation path (`nil` is the list); `parkedCardId` is a
+/// card link waiting for a card the watch does not hold yet, kept only until the next link or the
+/// next navigation by the user.
+private struct WatchDeepLinkRouting: Equatable {
+  var pathCardId: String?
+  var parkedCardId: String?
+  /// The barcode pager's identity, bumped by every card link that opens a barcode: each one opens
+  /// a fresh pager, as an open, whatever the pager was showing — the same card included.
+  var deepLinkGeneration = 0
+
+  /// A deep link: the list route pops to the list, a held card opens its barcode, and a card not
+  /// held yet is parked until it arrives.
+  mutating func open(_ link: WatchComplicationDeepLink.Link, heldCardIds: [String]) {
+    switch link {
+    case .cardList:
+      parkedCardId = nil
+      pathCardId = nil
+    case .card(let cardId):
+      if heldCardIds.contains(cardId) {
+        openBarcode(cardId)
+      } else {
+        parkedCardId = cardId
+      }
+    }
+  }
+
+  /// The held cards changed: a parked card that has now arrived opens.
+  mutating func cardsChanged(heldCardIds: [String]) {
+    guard let parkedCardId, heldCardIds.contains(parkedCardId) else {
+      return
+    }
+
+    openBarcode(parkedCardId)
+  }
+
+  /// The navigation path changed. An echo of `pathCardId` is the router's own write and changes
+  /// nothing; any other change is the user's (a row tapped, a barcode popped) and drops the parked
+  /// id.
+  mutating func pathChanged(to cardId: String?) {
+    guard cardId != pathCardId else {
+      return
+    }
+
+    pathCardId = cardId
+    parkedCardId = nil
+  }
+
+  /// A navigation by the user that leaves the path as it is (the sort sheet opened, a page turned
+  /// in the barcode pager): it only drops the parked id.
+  mutating func userNavigatedOffPath() {
+    parkedCardId = nil
+  }
+
+  private mutating func openBarcode(_ cardId: String) {
+    parkedCardId = nil
+    deepLinkGeneration += 1
+    pathCardId = cardId
   }
 }
 
@@ -496,10 +576,8 @@ struct CardListView: View {
   @Query private var persistedEntities: [WatchCardEntity]
   @StateObject private var store: CardStore
   @State private var navigationPath: [WatchCardRoute] = []
-  @State private var pendingDeepLinkCardId: String?
-  /// Bumped by every complication deep link, and the barcode pager's identity: each link opens a
-  /// fresh barcode, as an open, whatever the pager was showing.
-  @State private var deepLinkGeneration = 0
+  /// The complication's deep links; `applyDeepLinkRouting()` carries its path to `navigationPath`.
+  @State private var deepLinkRouting = WatchDeepLinkRouting()
   // Watch-local, persisted sort preference (default A-Z), independent of the phone (AC3, AC4).
   @AppStorage(WatchSortMode.storageKey) private var sortMode: WatchSortMode = WatchSortMode.defaultMode
   @State private var showSortSheet = false
@@ -573,10 +651,15 @@ struct CardListView: View {
       .navigationDestination(for: WatchCardRoute.self) { route in
         // The barcode, and the crown paging through the cards from it (Story 23.2, decisions 2–5).
         // The pager takes the live cards on every update and holds their order at opening itself.
-        // `.id` gives it a fresh identity on every deep link: a link to the card this route opened
-        // sets the SAME route value, which SwiftUI would keep as it is — paged on and all.
-        BarcodePagerView(openedCardId: route.cardId, liveCards: displayCards)
-          .id(deepLinkGeneration)
+        // `.id` gives it a fresh identity on every card link that opens a barcode: a link to the
+        // card this route opened sets the SAME route value, which SwiftUI would keep as it is —
+        // paged on and all. A page turned is the user's navigation, so it drops a parked link.
+        BarcodePagerView(
+          openedCardId: route.cardId,
+          liveCards: displayCards,
+          onPage: { deepLinkRouting.userNavigatedOffPath() }
+        )
+        .id(deepLinkRouting.deepLinkGeneration)
       }
       .toolbar {
         if !displayCards.isEmpty {
@@ -618,30 +701,42 @@ struct CardListView: View {
       // existing behavior: store still used as fallback for UI tests or older builds
     }
     .onOpenURL { url in
-      guard let cardId = WatchComplicationDeepLink.cardId(from: url) else {
+      guard let link = WatchComplicationDeepLink.link(from: url) else {
         return
       }
 
-      openCardRouteIfAvailable(cardId)
+      // Any link closes the sort sheet, so its route is not pushed underneath it.
+      showSortSheet = false
+      deepLinkRouting.open(link, heldCardIds: displayCards.map(\.id))
+      applyDeepLinkRouting()
     }
-    .onChange(of: displayCards.map(\.id)) { _, _ in
-      guard let pendingDeepLinkCardId else {
-        return
+    .onChange(of: displayCards.map(\.id)) { _, heldCardIds in
+      // Applied only when a parked card opened: a sync landing in the same update as a pop must
+      // not push the popped barcode back before `pathChanged` hears the pop.
+      let before = deepLinkRouting
+      deepLinkRouting.cardsChanged(heldCardIds: heldCardIds)
+      if deepLinkRouting != before {
+        applyDeepLinkRouting()
       }
-
-      openCardRouteIfAvailable(pendingDeepLinkCardId)
+    }
+    .onChange(of: navigationPath) { _, path in
+      deepLinkRouting.pathChanged(to: path.last?.cardId)
+    }
+    .onChange(of: showSortSheet) { _, isShown in
+      if isShown {
+        deepLinkRouting.userNavigatedOffPath()
+      }
     }
   }
 
-  private func openCardRouteIfAvailable(_ cardId: String) {
-    guard displayCards.contains(where: { $0.id == cardId }) else {
-      pendingDeepLinkCardId = cardId
-      return
-    }
+  /// The only assignment to `navigationPath`: it follows the routing's path, and writes only when
+  /// the value differs, so the router's own write comes back to `pathChanged` as an echo.
+  private func applyDeepLinkRouting() {
+    let path = deepLinkRouting.pathCardId.map { [WatchCardRoute(cardId: $0)] } ?? []
 
-    pendingDeepLinkCardId = nil
-    deepLinkGeneration += 1
-    navigationPath = [WatchCardRoute(cardId: cardId)]
+    if navigationPath != path {
+      navigationPath = path
+    }
   }
 
   private var emptyState: some View {
