@@ -2,11 +2,12 @@ import Eye from 'lucide-react-native/icons/eye';
 import EyeOff from 'lucide-react-native/icons/eye-off';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, type TextInput } from 'react-native';
+import { Pressable, StyleSheet, Text, type TextInput, View } from 'react-native';
 
 import { TextField } from '@/shared/components/ui';
 import { useTheme } from '@/shared/theme';
-import { TOUCH_TARGET } from '@/shared/theme/spacing';
+import { SPACING, TOUCH_TARGET } from '@/shared/theme/spacing';
+import { TYPOGRAPHY } from '@/shared/theme/typography';
 
 /** The eye: Lucide at the icon's 24 / 1.5, as the auth frames draw it on its 48pt target. */
 const EYE_SIZE = 24;
@@ -21,6 +22,11 @@ type PasswordInputProps = {
   onChangeText: (value: string) => void;
   placeholder: string;
   error?: string;
+  /**
+   * A standing caption under the field — the rule a new password must meet. It shows from the
+   * first render, and the field's error takes its place while one shows.
+   */
+  hint?: string;
   testID: string;
   accessibilityHint?: string;
   onBlur?: () => void;
@@ -33,7 +39,8 @@ type PasswordInputProps = {
  * A password field: a `TextField`, secure until its eye is pressed (Story 22.9). The eye sits at
  * the field's end, inside the box: Lucide `eye` while the password is hidden and `eye-off` while it
  * is shown, at 24 / 1.5 in `textSecondary`, centred in its 48pt target, scaling to 0.98 while
- * pressed. A failed request never reddens it: it errs only through its own message.
+ * pressed. A failed request never reddens it: it errs only through its own message. Given a `hint`,
+ * it stands under the field until an error takes its place.
  */
 export const PasswordInput = ({
   label,
@@ -41,6 +48,7 @@ export const PasswordInput = ({
   onChangeText,
   placeholder,
   error,
+  hint,
   testID,
   accessibilityHint,
   onBlur,
@@ -53,7 +61,7 @@ export const PasswordInput = ({
   const [isPressed, setIsPressed] = useState(false);
   const Icon = isVisible ? EyeOff : Eye;
 
-  return (
+  const field = (
     <TextField
       ref={ref}
       label={label}
@@ -91,6 +99,23 @@ export const PasswordInput = ({
       }
     />
   );
+
+  if (!hint) {
+    return field;
+  }
+
+  // The caption is the field's error's twin: captionMd, 4pt below the input, in textSecondary. It
+  // stays readable by assistive technology: the field's spoken hint is lost when hints are off.
+  return (
+    <View>
+      {field}
+      {error ? null : (
+        <Text testID={`${testID}-hint`} style={[styles.hint, { color: theme.textSecondary }]}>
+          {hint}
+        </Text>
+      )}
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
@@ -102,5 +127,9 @@ const styles = StyleSheet.create({
   },
   pressed: {
     transform: [{ scale: PRESSED_SCALE }]
+  },
+  hint: {
+    ...TYPOGRAPHY.captionMd,
+    marginTop: SPACING.xs
   }
 });

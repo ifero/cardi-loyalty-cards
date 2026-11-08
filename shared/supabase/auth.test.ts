@@ -372,6 +372,21 @@ describe('signUp', () => {
     }
   });
 
+  // Story 16.44: Create Account's weak-password banner reads this code.
+  it('keeps the Supabase error code on a registration error', async () => {
+    mockSignUp.mockResolvedValue({
+      data: { user: null, session: null },
+      error: { message: 'Password is known to be weak and easy to guess', code: 'weak_password' }
+    });
+
+    const result = await signUp('new@example.com', 'password1');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe('weak_password');
+    }
+  });
+
   it('returns failure when user is null with no error', async () => {
     mockSignUp.mockResolvedValue({ data: { user: null, session: null }, error: null });
 
@@ -810,6 +825,21 @@ describe('updatePassword', () => {
     expect(result.success).toBe(false);
     if (!result.success) {
       expect(result.error.message).toBe('Password too weak');
+    }
+  });
+
+  // Story 16.44: Set New Password's weak-password banner reads this code.
+  it('keeps the Supabase error code on an update error', async () => {
+    mockUpdateUser.mockResolvedValue({
+      data: { user: null },
+      error: { message: 'Password is known to be weak and easy to guess', code: 'weak_password' }
+    });
+
+    const result = await updatePassword('password1');
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.code).toBe('weak_password');
     }
   });
 

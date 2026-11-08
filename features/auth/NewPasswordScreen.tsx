@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard, StyleSheet, type TextInput, View } from 'react-native';
 
-import { isValidPassword } from '@/core/auth/validation';
+import { PASSWORD_MIN_LENGTH, isValidPassword } from '@/core/auth/validation';
 
 import { FormScreen, type FormScreenHandle } from '@/shared/components/ui';
 import { updatePassword } from '@/shared/supabase/auth';
@@ -19,13 +19,17 @@ type NewPasswordErrors = { password?: string; confirmPassword?: string };
 /** The form's fields, as `FormScreen` counts its children. */
 const FIELD = { password: 0, confirmPassword: 1 } as const;
 
+/** The rule's copy states the length the rule checks (Story 16.44). */
+const PASSWORD_RULE_VALUES = { min: PASSWORD_MIN_LENGTH };
+
 /**
  * Shared "set a new password" screen (Story 6.19; reused by Story 6.20) — auth frame E, on the form
- * pattern (Story 22.9): the brand block, then NEW PASSWORD with the strength meter and CONFIRM
- * PASSWORD; Update Password alone in the footer. After recovery begun from Home it is alone on the
- * stack, so it has no back and no header row. Begun from welcome, `dismissTo('/')` finds no Home, so
- * the screens beneath stay and its back shows, as the native header's did (Story 22.9, Found, not
- * fixed 22). Reached from Settings, Settings is beneath it and its back goes there.
+ * pattern (Story 22.9): the brand block, then NEW PASSWORD with its rule (Story 16.44) and the
+ * strength meter, and CONFIRM PASSWORD; Update Password alone in the footer. After recovery begun
+ * from Home it is alone on the stack, so it has no back and no header row. Begun from welcome,
+ * `dismissTo('/')` finds no Home, so the screens beneath stay and its back shows, as the native
+ * header's did (Story 22.9, Found, not fixed 22). Reached from Settings, Settings is beneath it and
+ * its back goes there.
  *
  * Assumes an authenticated session is already active — for recovery that is the
  * session returned by `verifyPasswordResetOtp`. It only validates the new
@@ -58,8 +62,15 @@ const NewPasswordScreen = () => {
   const [error, setError] = useState<string | null>(null);
 
   const mapUpdateError = useCallback(
-    (message?: string) => {
+    (code?: string, message?: string) => {
       const normalizedMessage = message?.toLowerCase() ?? '';
+
+      // The server's own password policy refused it (Story 16.44): an older GoTrue may send only
+      // its "Password should …" message, without the code. A coded error is never read by its
+      // message: `same_password`'s "New password should be different…" is not a weak password.
+      if (code === 'weak_password' || (!code && normalizedMessage.startsWith('password should'))) {
+        return t('auth.newPassword.weakPassword', PASSWORD_RULE_VALUES);
+      }
 
       if (
         normalizedMessage.includes('network') ||
@@ -80,7 +91,7 @@ const NewPasswordScreen = () => {
     if (!password) {
       errors.password = t('auth.validation.passwordRequired');
     } else if (!isValidPassword(password)) {
-      errors.password = t('auth.validation.passwordRule');
+      errors.password = t('auth.validation.passwordRule', PASSWORD_RULE_VALUES);
     }
 
     if (!confirmPassword) {
@@ -121,7 +132,7 @@ const NewPasswordScreen = () => {
       const result = await updatePassword(password);
 
       if (!result.success) {
-        setError(mapUpdateError(result.error.message));
+        setError(mapUpdateError(result.error.code, result.error.message));
         return;
       }
 
@@ -175,7 +186,8 @@ const NewPasswordScreen = () => {
           onChangeText={setPassword}
           placeholder={t('auth.placeholders.newPassword')}
           autoComplete="new-password"
-          accessibilityHint={t('auth.accessibility.passwordRuleHint')}
+          accessibilityHint={t('auth.accessibility.passwordRuleHint', PASSWORD_RULE_VALUES)}
+          hint={t('auth.hints.passwordRule', PASSWORD_RULE_VALUES)}
           error={fieldErrors.password}
         />
         <PasswordStrengthIndicator password={password} />
@@ -197,7 +209,7 @@ const NewPasswordScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  // The meter sits 8 below the password field, below its message when one shows.
+  // The meter sits 8 below the password field, below its rule or its message.
   passwordGroup: {
     gap: SPACING.sm
   }

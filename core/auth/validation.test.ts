@@ -3,7 +3,13 @@
  * Story 6-8: Password Reset
  */
 
-import { isValidEmail, isValidPassword } from './validation';
+import {
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_SYMBOLS,
+  getUnmetPasswordRequirements,
+  isValidEmail,
+  isValidPassword
+} from './validation';
 
 // ---------------------------------------------------------------------------
 // isValidEmail
@@ -42,35 +48,69 @@ describe('isValidEmail', () => {
 });
 
 // ---------------------------------------------------------------------------
-// isValidPassword
+// isValidPassword — Story 16.44: at least as strict as the hosted auth policy
 // ---------------------------------------------------------------------------
 
 describe('isValidPassword', () => {
-  it('accepts password with letters and digits (8+ chars)', () => {
-    expect(isValidPassword('Password1')).toBe(true);
-    expect(isValidPassword('12345678a')).toBe(true);
-    expect(isValidPassword('abcdefg1')).toBe(true);
+  it.each(['Passw0rd!', 'P@ssw0rd!', 'Abcdef1!', 'aB3`~~~~', 'Zz9\\zzzz', 'Zz9"zzzz'])(
+    'accepts "%s": 8+ characters, lower, upper, digit and a server symbol',
+    (pw) => {
+      expect(isValidPassword(pw)).toBe(true);
+    }
+  );
+
+  it('accepts every symbol the server counts', () => {
+    [...PASSWORD_SYMBOLS].forEach((symbol) => {
+      expect(isValidPassword(`Passw0rd${symbol}`)).toBe(true);
+    });
   });
 
-  it('rejects password shorter than 8 characters', () => {
-    expect(isValidPassword('Pass1')).toBe(false);
-    expect(isValidPassword('Ab1')).toBe(false);
+  // Each passed the old "8+ characters, a letter and a digit" rule; the server rejects them all.
+  it.each([
+    ['password1', ['uppercase', 'symbol']],
+    ['Password1', ['symbol']],
+    ['PASSWORD1!', ['lowercase']],
+    ['password1!', ['uppercase']],
+    ['Password!!', ['digit']],
+    ['Password12', ['symbol']]
+  ])('rejects "%s", missing %j', (pw, unmet) => {
+    expect(isValidPassword(pw)).toBe(false);
+    expect(getUnmetPasswordRequirements(pw)).toEqual(unmet);
   });
 
-  it('rejects password without any digit', () => {
-    expect(isValidPassword('abcdefgh')).toBe(false);
-    expect(isValidPassword('PasswordOnly')).toBe(false);
+  it.each(['Password1€', 'Password1£', 'Password1 ', 'Password1§'])(
+    'rejects "%s": a symbol outside the server\'s set does not count',
+    (pw) => {
+      expect(isValidPassword(pw)).toBe(false);
+      expect(getUnmetPasswordRequirements(pw)).toEqual(['symbol']);
+    }
+  );
+
+  it('counts letters and digits only in ASCII, as the server does', () => {
+    expect(isValidPassword('pàsswörd1!')).toBe(false);
+    expect(getUnmetPasswordRequirements('ÀÉÎÕÜ1!a')).toEqual(['uppercase']);
+    expect(getUnmetPasswordRequirements('Passwor١!')).toEqual(['digit']);
   });
 
-  it('rejects password without any letter', () => {
-    expect(isValidPassword('12345678')).toBe(false);
+  it('rejects a password shorter than 8 characters', () => {
+    expect(isValidPassword('Pa1!')).toBe(false);
+    expect(getUnmetPasswordRequirements('Pa1!')).toEqual(['length']);
   });
 
-  it('rejects empty string', () => {
+  it('holds the length boundary at 8', () => {
+    expect(PASSWORD_MIN_LENGTH).toBe(8);
+    expect(isValidPassword('Pass1!x')).toBe(false);
+    expect(isValidPassword('Pass1!xy')).toBe(true);
+  });
+
+  it('rejects the empty string, missing every part of the rule', () => {
     expect(isValidPassword('')).toBe(false);
-  });
-
-  it('accepts passwords with special characters', () => {
-    expect(isValidPassword('P@ssw0rd!')).toBe(true);
+    expect(getUnmetPasswordRequirements('')).toEqual([
+      'length',
+      'lowercase',
+      'uppercase',
+      'digit',
+      'symbol'
+    ]);
   });
 });

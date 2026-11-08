@@ -2,26 +2,28 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { isValidPassword } from '@/core/auth/validation';
+
 import { useTheme } from '@/shared/theme';
 import { SPACING } from '@/shared/theme/spacing';
 import { TYPOGRAPHY } from '@/shared/theme/typography';
 
 export type PasswordStrength = 'weak' | 'fair' | 'strong';
 
-const hasSpecialCharacter = (value: string) => /[^a-zA-Z0-9]/.test(value);
-const hasNumber = (value: string) => /\d/.test(value);
-const hasLetter = (value: string) => /[a-zA-Z]/.test(value);
+/** A password that meets the rule and runs to this many characters is strong. */
+const STRONG_LENGTH = 12;
 
+/**
+ * Weak until the password meets the whole new-password rule — the one the screens enforce, so the
+ * meter never rates above Weak a password they would refuse (Story 16.44); then strong from 12
+ * characters, fair below.
+ */
 export const getPasswordStrength = (password: string): PasswordStrength => {
-  if (password.length < 8 || !hasLetter(password) || !hasNumber(password)) {
+  if (!isValidPassword(password)) {
     return 'weak';
   }
 
-  if (password.length >= 12 && hasSpecialCharacter(password)) {
-    return 'strong';
-  }
-
-  return 'fair';
+  return password.length >= STRONG_LENGTH ? 'strong' : 'fair';
 };
 
 /** The meter's three segments, and how many each strength fills. */

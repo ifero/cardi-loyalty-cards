@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard, StyleSheet, type TextInput, View } from 'react-native';
 
-import { isValidEmail, isValidPassword } from '@/core/auth/validation';
+import { PASSWORD_MIN_LENGTH, isValidEmail, isValidPassword } from '@/core/auth/validation';
 import { setConsentGiven } from '@/core/privacy/consent-repository';
 
 import ConsentCheckbox from '@/shared/components/ConsentCheckbox';
@@ -24,11 +24,15 @@ type CreateAccountErrors = {
 /** The form's fields, as `FormScreen` counts its children. */
 const FIELD = { email: 0, password: 1, confirmPassword: 2, consent: 3 } as const;
 
+/** The rule's copy states the length the rule checks (Story 16.44). */
+const PASSWORD_RULE_VALUES = { min: PASSWORD_MIN_LENGTH };
+
 /**
  * Create account — auth frame B, the longest form, on the form pattern (Story 22.9): the brand
- * block, then EMAIL; PASSWORD with the strength meter once something is typed; CONFIRM PASSWORD;
- * and the consent row. Create Account is the footer's, always enabled, with "Already have an
- * account? Sign in" under it. Unticked consent is a field error under its row, not a refusal.
+ * block, then EMAIL; PASSWORD with the rule under it (Story 16.44) and the strength meter once
+ * something is typed; CONFIRM PASSWORD; and the consent row. Create Account is the footer's,
+ * always enabled, with "Already have an account? Sign in" under it. Unticked consent is a field
+ * error under its row, not a refusal.
  */
 const CreateAccountScreen = () => {
   const { t } = useTranslation();
@@ -64,6 +68,13 @@ const CreateAccountScreen = () => {
         normalizedMessage.includes('already been registered')
       ) {
         return t('auth.createAccount.accountExists');
+      }
+
+      // The server's own password policy refused it (Story 16.44): an older GoTrue may send only
+      // its "Password should …" message, without the code. A coded error is never read by its
+      // message: `same_password`'s "New password should be different…" is not a weak password.
+      if (code === 'weak_password' || (!code && normalizedMessage.startsWith('password should'))) {
+        return t('auth.createAccount.weakPassword', PASSWORD_RULE_VALUES);
       }
 
       if (
@@ -102,7 +113,7 @@ const CreateAccountScreen = () => {
     if (!password) {
       errors.password = t('auth.validation.passwordRequired');
     } else if (!isValidPassword(password)) {
-      errors.password = t('auth.validation.passwordRule');
+      errors.password = t('auth.validation.passwordRule', PASSWORD_RULE_VALUES);
     }
 
     if (!confirmPassword) {
@@ -237,7 +248,8 @@ const CreateAccountScreen = () => {
           onChangeText={setPassword}
           placeholder={t('auth.placeholders.newPassword')}
           autoComplete="new-password"
-          accessibilityHint={t('auth.accessibility.passwordRuleHint')}
+          accessibilityHint={t('auth.accessibility.passwordRuleHint', PASSWORD_RULE_VALUES)}
+          hint={t('auth.hints.passwordRule', PASSWORD_RULE_VALUES)}
           error={fieldErrors.password}
         />
         {password.trim().length > 0 ? <PasswordStrengthIndicator password={password} /> : null}
@@ -261,7 +273,7 @@ const CreateAccountScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  // The meter sits 8 below the password field, below its message when one shows.
+  // The meter sits 8 below the password field, below its rule or its message.
   passwordGroup: {
     gap: SPACING.sm
   }

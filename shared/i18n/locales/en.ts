@@ -353,7 +353,7 @@ export const en = {
     placeholders: {
       email: 'you@example.com',
       password: 'Your password',
-      newPassword: 'Min 8 chars, 1 letter, 1 number',
+      newPassword: 'Choose a password',
       confirmPassword: 'Re-enter your password',
       confirmNewPassword: 'Re-enter your new password',
       verificationCode: '8-digit code'
@@ -361,7 +361,8 @@ export const en = {
     accessibility: {
       emailHint: 'Enter your email address',
       passwordHint: 'Enter your password',
-      passwordRuleHint: 'Minimum 8 characters with at least one letter and one number',
+      passwordRuleHint:
+        'At least {{min}} characters, with upper and lower case letters, a number and a symbol',
       confirmPasswordHint: 'Re-enter your password to confirm',
       forgotPasswordEmailHint: 'Enter your email address to receive a reset code',
       confirmNewPasswordHint: 'Re-enter your new password to confirm',
@@ -373,11 +374,18 @@ export const en = {
       confirmCode: 'Confirm',
       wrongEmailGoBack: 'Wrong email? Go back'
     },
+    // The new-password rule, under the field from the moment Create Account or Set New Password
+    // opens (Story 16.44). The placeholder no longer states it.
+    hints: {
+      passwordRule:
+        'At least {{min}} characters, with upper and lower case letters, a number and a symbol.'
+    },
     validation: {
       emailRequired: 'Email is required.',
       emailInvalid: 'Please enter a valid email address',
       passwordRequired: 'Password is required.',
-      passwordRule: 'Min 8 characters, at least one letter and one number.',
+      passwordRule:
+        'Use at least {{min}} characters, with upper and lower case letters, a number and a symbol such as ! ? # or @.',
       confirmPasswordRequired: 'Please confirm your password.',
       passwordsMismatch: 'Passwords do not match.',
       consentRequired: 'You must agree to the Privacy Policy.',
@@ -402,6 +410,8 @@ export const en = {
       alreadyHaveAccount: 'Already have an account?',
       signInAction: 'Sign in',
       accountExists: 'An account with this email already exists. Sign in instead.',
+      weakPassword:
+        'This password is too weak. Use at least {{min}} characters, with upper and lower case letters, a number and a symbol.',
       networkError: 'Unable to connect. Check your internet and try again.',
       genericError: 'An unexpected error occurred. Please try again.'
     },
@@ -445,6 +455,8 @@ export const en = {
       heading: 'Set New Password',
       subtitle: 'Choose a strong new password for your account.',
       button: 'Update Password',
+      weakPassword:
+        'This password is too weak. Use at least {{min}} characters, with upper and lower case letters, a number and a symbol.',
       networkError: 'Unable to connect. Check your internet and try again.',
       genericError: 'An unexpected error occurred. Please try again.'
     },

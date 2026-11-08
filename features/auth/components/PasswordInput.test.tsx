@@ -129,6 +129,51 @@ describe('PasswordInput', () => {
     );
   });
 
+  // Story 16.44: the new-password rule, stated under the field rather than in its placeholder.
+  describe('its hint', () => {
+    const HINT = 'At least 8 characters, with upper and lower case letters, a number and a symbol.';
+
+    it('draws none unless given one', () => {
+      renderInput();
+      expect(screen.queryByTestId('password-input-hint')).toBeNull();
+    });
+
+    it.each<[string, boolean, Theme]>([
+      ['light', false, LIGHT_THEME],
+      ['dark', true, DARK_THEME]
+    ])('stands 4 below the field in captionMd textSecondary, in %s', (_scheme, isDark, theme) => {
+      mockIsDark = isDark;
+      renderInput({ hint: HINT });
+      expect(screen.getByTestId('password-input-hint').props.children).toBe(HINT);
+      expect(flat(screen.getByTestId('password-input-hint').props.style)).toMatchObject({
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: '400',
+        marginTop: 4,
+        color: theme.textSecondary
+      });
+    });
+
+    it('gives its place to the error while one shows', () => {
+      const view = renderInput({ hint: HINT, error: 'Password is required.' });
+      expect(screen.queryByTestId('password-input-hint')).toBeNull();
+      expect(screen.getByTestId('password-input-error')).toBeTruthy();
+
+      view.rerender(
+        <PasswordInput
+          testID="password-input"
+          label="Password"
+          value=""
+          onChangeText={jest.fn()}
+          placeholder="Your password"
+          hint={HINT}
+        />
+      );
+      expect(screen.getByTestId('password-input-hint')).toBeTruthy();
+      expect(screen.queryByTestId('password-input-error')).toBeNull();
+    });
+  });
+
   it('hands its ref to the input, so a failed submit can focus it', () => {
     const ref = createRef<TextInput>();
     renderInput({ ref });
