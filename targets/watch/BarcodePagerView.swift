@@ -53,6 +53,9 @@ struct BarcodePagerView: View {
   /// pager reads it for what still exists and for each card's current data; the ORDER it pages in
   /// is `heldOrder`, never this one.
   let liveCards: [WatchCard]
+  /// Told each time the user turns a page (the crown, or VoiceOver's adjust), so the list can
+  /// treat it as a navigation of the user's own: it drops a deep link still waiting for its card.
+  let onPage: () -> Void
 
   /// The ids of the list's cards at the moment the barcode opened. `@State`, so it is taken from
   /// the first `init` only: the list re-renders on every sync and re-sort, and a later `init`
@@ -75,10 +78,11 @@ struct BarcodePagerView: View {
   @Environment(\.accessibilityReduceMotion) private var reduceMotion
   @Environment(\.isPresented) private var isPresented
 
-  init(openedCardId: String, liveCards: [WatchCard]) {
+  init(openedCardId: String, liveCards: [WatchCard], onPage: @escaping () -> Void = {}) {
     let heldOrder = liveCards.map(\.id)
 
     self.liveCards = liveCards
+    self.onPage = onPage
     _heldOrder = State(initialValue: heldOrder)
     _currentId = State(initialValue: openedCardId)
     _detent = State(initialValue: heldOrder.firstIndex(of: openedCardId) ?? 0)
@@ -274,6 +278,7 @@ struct BarcodePagerView: View {
       target != currentId
     else { return }
 
+    onPage()
     // Before the slide: the card leaving stops counting the instant the crown moves on.
     onScreen.cardId = target
     withAnimation(.easeInOut(duration: 0.25)) {

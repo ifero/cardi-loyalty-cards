@@ -1,7 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { describeOnMac, runSwiftProgram, swiftDeclaration } from './swift-source-helpers';
+import {
+  describeOnMac,
+  runSwiftProgram,
+  swiftDeclaration,
+  withoutComments
+} from './swift-source-helpers';
 
 const repoRoot = path.resolve(__dirname, '../../..');
 const barcodeViewPath = path.join(repoRoot, 'targets', 'watch', 'BarcodeFlashView.swift');
@@ -170,16 +175,6 @@ type GeometryCase = {
   showsValueLabel?: boolean;
   current?: 'horizontal' | 'rotated' | null;
 };
-
-/**
- * `source` with its comments removed.
- *
- * Assertions that a construct is ABSENT have to read code only: several comments here
- * quote the modifier they explain, and a naive `not.toContain` would match the prose
- * rather than the code and pass for the wrong reason (or fail for it).
- */
-const withoutComments = (source: string) =>
-  source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
 
 /**
  * Every way SwiftUI offers to hide the navigation bar or its back button — the bar that carries
@@ -486,8 +481,9 @@ describe('watch layout contract', () => {
         .trim()
     ).toBe(
       '.navigationDestination(for: WatchCardRoute.self) { route in ' +
-        'BarcodePagerView(openedCardId: route.cardId, liveCards: displayCards) ' +
-        '.id(deepLinkGeneration) }'
+        'BarcodePagerView( openedCardId: route.cardId, liveCards: displayCards, ' +
+        'onPage: { deepLinkRouting.userNavigatedOffPath() } ) ' +
+        '.id(deepLinkRouting.deepLinkGeneration) }'
     );
     expect(withoutComments(cardListView)).not.toContain('BarcodeFlashView(');
     expect(pagerCode).toContain('adjustable(BarcodeFlashView(card: card, arrival: arrival))');
@@ -521,20 +517,29 @@ describe('watch layout contract', () => {
   it('opens a fresh barcode pager on every complication deep link', () => {
     // A complication tap for the card this route opened sets the SAME route value, which SwiftUI
     // keeps as it is — so without a new identity the link would land on whatever card the crown
-    // had paged to. The generation is bumped on every link and is the pager's `.id`.
+    // had paged to. The generation lives in the routing type (Story 24.3), is bumped by every card
+    // link that opens a barcode, and is the pager's `.id`.
     const cardListCode = withoutComments(fs.readFileSync(cardListViewPath, 'utf8'));
-    const openRoute = swiftDeclaration(
+    const routing = swiftDeclaration(
       cardListCode,
-      'private func openCardRouteIfAvailable(_ cardId: String) {',
+      'private struct WatchDeepLinkRouting: Equatable {',
+      CARD_LIST
+    );
+    const openBarcode = swiftDeclaration(
+      routing,
+      'private mutating func openBarcode(_ cardId: String) {',
       CARD_LIST
     );
 
-    expect(cardListCode).toContain('@State private var deepLinkGeneration = 0');
-    expect(openRoute).toMatch(
-      /deepLinkGeneration \+= 1\s*navigationPath = \[WatchCardRoute\(cardId: cardId\)\]/
+    expect(routing).toContain('var deepLinkGeneration = 0');
+    expect(openBarcode).toMatch(
+      /parkedCardId = nil\s*deepLinkGeneration \+= 1\s*pathCardId = cardId/
     );
     expect(cardListCode.split('deepLinkGeneration += 1').length - 1).toBe(1);
-    expect(cardListCode).toContain('.id(deepLinkGeneration)');
+    // The view keeps no generation of its own: the old `@State` counter is gone.
+    expect(cardListCode).not.toMatch(/@State private var deepLinkGeneration\b/);
+    expect(cardListCode).not.toMatch(/@State private var pendingDeepLinkCardId\b/);
+    expect(cardListCode).toContain('.id(deepLinkRouting.deepLinkGeneration)');
   });
 
   it('makes the barcode pager the one crown reader, and only scrolling through the cards', () => {
@@ -644,7 +649,7 @@ describe('watch layout contract', () => {
     );
     expect(pagerDeclaration(pagerCode, 'private func showCardAtDetent() {')).toBe(
       'private func showCardAtDetent() { guard pages, let target = WatchBarcodePaging.id(' +
-        'atDetent: detent, in: reachable), target != currentId else { return } ' +
+        'atDetent: detent, in: reachable), target != currentId else { return } onPage() ' +
         'onScreen.cardId = target withAnimation(.easeInOut(duration: 0.25)) { ' +
         'currentId = target arrival = .paged } }'
     );
