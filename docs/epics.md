@@ -12,7 +12,7 @@ project_name: 'myLoyaltyCards'
 user_name: 'Ifero'
 date: '2025-01-03'
 totalEpics: 24
-totalStories: 214 # counted from `### Story` headings on 2026-11-03
+totalStories: 215 # counted from `### Story` headings on 2026-11-08
 aligned_with_tracker: '2026-08-02'
 authoritative_source: 'docs/sprint-artifacts/sprint-status.yaml'
 ---
@@ -3327,6 +3327,20 @@ It is **narrower still** than watchOS was. On a round display it additionally in
 - The added CI duration is measured and the workflow's own timing comment updated if it moves materially. Measured locally at ~15s warm.
 
 **Notes:** ⛔ **Sequenced AFTER Story 21.4**, and that is a hard dependency rather than a preference: `main` has no `<monochrome>` layer today, so promoting the check to `fatal` turns the Wear job red on `main` until 21.4 merges. Measured by removing the layer and re-running lint — it reports `MonochromeLauncherIcon` plus, if the generated PNGs are present without the reference, `UnusedResources`, which is a second free guard on the same coupling. ⚠️ **The follow-up note that spawned this story overstated the problem** — it claimed adding `lintDebug` as-is would hand CI a gate that "can go red on a day nobody touched the repo". It cannot; warnings never fail. The nondeterminism only bites under `warningsAsErrors`. The correction is recorded here so the next reader does not suppress a check for a reason that does not apply. Note also that `.github/build-path-filters.json` governs which changes reach a RELEASE build and deliberately excludes `watch-android/**` from both platform sets; this story does not touch it.
+
+### Story 16.44: Sign-up accepts passwords the server rejects, and says only "An unexpected error occurred"
+
+**As a** person creating a Cardì account, **I want** to see the password rule while I type and be stopped before I submit a password that does not meet it, **So that** I am not sent back with a generic error I cannot act on.
+
+**Found 2026-11-08 by ifero.** The hosted Supabase project requires at least 6 characters with a lowercase letter, an uppercase letter, a digit and a symbol. The app checks only "8+ characters, one letter, one number", and shows that rule only as the field's placeholder, which disappears once typing starts. A password such as `password1` passes the app's check, the server rejects it with `weak_password`, and the screen maps that to the generic banner. The `weak_password` mapping from Story 13.5 no longer exists.
+
+**Acceptance Criteria:**
+
+- The password rule is visible under the password field on Create Account and on Set New Password while the person types, not only as a placeholder.
+- The device-side check requires everything the hosted policy requires (lowercase, uppercase, digit, symbol from the server's own symbol set), so a password the server would reject on those grounds cannot be submitted; the field's error names the rule.
+- A `weak_password` rejection from the server (for example from a policy the app does not know) shows a specific message about the password rather than the generic error.
+- The strength meter never rates a password that fails the rule above "Weak".
+- English and Italian copy are updated together.
 
 ## Epic 17: Apple Wallet Pass Support
 
