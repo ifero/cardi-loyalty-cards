@@ -806,12 +806,10 @@ describe('useImageScan', () => {
 
   describe('unmapped format fallback (Story 16.23, AC4)', () => {
     it('notifies when a decoder format falls through to CODE128', async () => {
-      // UPC_E is genuinely reachable, not hypothetical: the iOS side registers
-      // `.upce` whenever UPC_A is requested (ImageCodeScanner.swift), and
-      // BARCODE_FORMAT_MAP has no `upc_e` key — so a UPC-E detection is stored
-      // as Code 128 today. AC4 makes that visible instead of silent.
+      // An INVALID UPC-E (bad check digit) still takes the old path: Story 16.25
+      // only rescues payloads `expandUpcE` can expand losslessly.
       mockLaunch.mockResolvedValueOnce(assetResult('file://test.jpg'));
-      mockScanImage.mockResolvedValueOnce([{ content: '01234565', format: 'UPC_E' }]);
+      mockScanImage.mockResolvedValueOnce([{ content: '01234566', format: 'UPC_E' }]);
 
       const { result } = renderHook(() => useImageScan({ onCodeResolved }));
 
@@ -819,6 +817,7 @@ describe('useImageScan', () => {
         await result.current.pickAndScan();
       });
 
+      expect(mockNotify).toHaveBeenCalledTimes(1);
       expect(mockNotify).toHaveBeenCalledWith(
         'Barcode format fell back to CODE128',
         expect.objectContaining({
@@ -826,8 +825,7 @@ describe('useImageScan', () => {
           context: [expect.objectContaining({ unmappedFormat: 'UPC_E' })]
         })
       );
-      // AC4 is observability only — the stored format must not change.
-      expect(onCodeResolved).toHaveBeenCalledWith({ barcode: '01234565', format: 'CODE128' });
+      expect(onCodeResolved).toHaveBeenCalledWith({ barcode: '01234566', format: 'CODE128' });
     });
 
     it('does not notify for any mapped format label', async () => {
@@ -855,6 +853,9 @@ describe('useImageScan', () => {
       }
     });
 
+    // The dedupe tests below use `UPC_E` with the contents 'A' / 'B' / 'C'. Those
+    // are not valid UPC-E payloads, so `expandUpcE` rejects them and they still
+    // reach the CODE128 fallback — exactly the invalid-UPC-E path (Story 16.25).
     it('reports each DISTINCT unmapped code in a multi-code result', async () => {
       mockLaunch.mockResolvedValueOnce(assetResult('file://test.jpg'));
       mockScanImage.mockResolvedValueOnce([
@@ -914,6 +915,126 @@ describe('useImageScan', () => {
       });
 
       expect(mockNotify).toHaveBeenCalledTimes(2);
+    });
+  });
+  describe('UPC-E expansion (Story 16.25)', () => {
+    const scanOne = async (content: string, expectedFormat?: 'EAN13', format = 'UPC_E') => {
+      mockLaunch.mockResolvedValueOnce(assetResult('file://test.jpg'));
+      mockScanImage.mockResolvedValueOnce([{ content, format }]);
+      const { result } = renderHook(() => useImageScan({ onCodeResolved, expectedFormat }));
+      await act(async () => {
+        await result.current.pickAndScan();
+      });
+      return result;
+    };
+
+    it('stores a valid UPC-E as EAN-13 without the fallback notify', async () => {
+      await scanOne('01234565');
+
+      expect(onCodeResolved).toHaveBeenCalledWith({ barcode: '0012345000065', format: 'EAN13' });
+      expect(mockNotify).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['d6 = 0', '01234505', '0012000003455'],
+      ['d6 = 1', '01234514', '0012100003454'],
+      ['d6 = 2', '01234523', '0012200003453'],
+      ['d6 = 3', '01234531', '0012300000451'],
+      ['d6 = 4', '01234543', '0012340000053'],
+      ['d6 = 7', '01234572', '0012345000072'],
+      ['number system 1', '12345694', '0123456000094']
+    ])('expands %s to EAN-13', async (_case, upcE, ean13) => {
+      await scanOne(upcE);
+
+      expect(onCodeResolved).toHaveBeenCalledWith({ barcode: ean13, format: 'EAN13' });
+      expect(mockNotify).not.toHaveBeenCalled();
+    });
+
+    it('accepts a lowercase decoder label', async () => {
+      await scanOne('01234565', undefined, 'upc_e');
+
+      expect(onCodeResolved).toHaveBeenCalledWith({ barcode: '0012345000065', format: 'EAN13' });
+      expect(mockNotify).not.toHaveBeenCalled();
+    });
+
+    it('trims a trailing newline before expanding', async () => {
+      await scanOne('01234565\n');
+
+      expect(onCodeResolved).toHaveBeenCalledWith({ barcode: '0012345000065', format: 'EAN13' });
+      expect(mockNotify).not.toHaveBeenCalled();
+    });
+
+    it('is unaffected by an EAN13 expectedFormat hint', async () => {
+      await scanOne('01234565', 'EAN13');
+
+      expect(onCodeResolved).toHaveBeenCalledWith({ barcode: '0012345000065', format: 'EAN13' });
+      expect(mockNotify).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['7 digits', '0123456'],
+      ['9 digits', '012345650'],
+      ['number system 2', '21234565'],
+      ['non-digits', '0123A565'],
+      ['bad check digit', '01234566']
+    ])('keeps an invalid UPC-E (%s) as CODE128 and notifies once', async (_case, content) => {
+      await scanOne(content);
+
+      expect(onCodeResolved).toHaveBeenCalledWith({ barcode: content, format: 'CODE128' });
+      expect(mockNotify).toHaveBeenCalledTimes(1);
+      expect(mockNotify).toHaveBeenCalledWith(
+        'Barcode format fell back to CODE128',
+        expect.anything()
+      );
+    });
+
+    it('never puts the barcode value in the fallback telemetry', async () => {
+      await scanOne('01234566');
+
+      expect(JSON.stringify(mockNotify.mock.calls)).not.toContain('01234566');
+    });
+
+    it('expands the UPC-E entry of a multi-code scan and leaves the others alone', async () => {
+      mockLaunch.mockResolvedValueOnce(assetResult('file://test.jpg'));
+      mockScanImage.mockResolvedValueOnce([
+        { content: '01234565', format: 'UPC_E' },
+        { content: '1234567890128', format: ImageBarcodeFormat.EAN_13 },
+        { content: 'https://example.com', format: ImageBarcodeFormat.QR_CODE }
+      ]);
+      const { result } = renderHook(() => useImageScan({ onCodeResolved }));
+      await act(async () => {
+        await result.current.pickAndScan();
+      });
+
+      expect(result.current.multiCodes).toEqual([
+        { value: '0012345000065', format: 'EAN13' },
+        { value: '1234567890128', format: 'EAN13' },
+        { value: 'https://example.com', format: 'QR' }
+      ]);
+      expect(mockNotify).not.toHaveBeenCalled();
+
+      act(() => {
+        result.current.selectCode(result.current.multiCodes[0]!);
+      });
+      expect(onCodeResolved).toHaveBeenCalledWith({ barcode: '0012345000065', format: 'EAN13' });
+    });
+
+    it('expands a valid UPC-E but still reports an invalid one in the same scan', async () => {
+      mockLaunch.mockResolvedValueOnce(assetResult('file://test.jpg'));
+      mockScanImage.mockResolvedValueOnce([
+        { content: '01234565', format: 'UPC_E' },
+        { content: '01234566', format: 'UPC_E' }
+      ]);
+      const { result } = renderHook(() => useImageScan({ onCodeResolved }));
+      await act(async () => {
+        await result.current.pickAndScan();
+      });
+
+      expect(result.current.multiCodes).toEqual([
+        { value: '0012345000065', format: 'EAN13' },
+        { value: '01234566', format: 'CODE128' }
+      ]);
+      expect(mockNotify).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -12,4 +12,5 @@ export {
   isValidEAN13Checksum,
   type NormalizedBarcode
 } from './normalizeBarcode';
+export { expandUpcE } from './expandUpcE';
 export { withTimeout } from './with-timeout';

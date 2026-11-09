@@ -20,7 +20,7 @@ import ImageCodeScanner, {
 } from 'react-native-image-code-scanner';
 
 import { BarcodeFormat } from '@/core/schemas';
-import { applyExpectedFormat, logger, normalizeBarcode } from '@/core/utils';
+import { applyExpectedFormat, expandUpcE, logger, normalizeBarcode } from '@/core/utils';
 
 import { ScanResult } from '@/features/cards/hooks/useBarcodeScanner';
 
@@ -73,9 +73,8 @@ function mapFormat(rawFormat: string, reportedFormats: Set<string>): BarcodeForm
     // CODE128 remains the fallback — the defect Story 16.23 fixes is that it was
     // SILENT. A mislabelled card is stored with the wrong `barcodeFormat` and
     // re-rendered as Code 128 forever; `normalizeBarcode` Rule 3 only rescues
-    // the 13-digit-valid-EAN-13 case. This is reachable rather than theoretical:
-    // the iOS decoder registers `.upce` whenever UPC_A is requested and reports
-    // it back as `UPC_E`, for which BARCODE_FORMAT_MAP has no entry.
+    // the 13-digit-valid-EAN-13 case. A valid `UPC_E` result never gets here
+    // (Story 16.25, see `toSchemaBarcode`); an invalid one still does, by design.
     if (!reportedFormats.has(normalizedFormat)) {
       reportedFormats.add(normalizedFormat);
       logger.notify('Barcode format fell back to CODE128', {
@@ -90,6 +89,31 @@ function mapFormat(rawFormat: string, reportedFormats: Set<string>): BarcodeForm
 
   return mapped;
 }
+
+/**
+ * Turn one decoder result into a value + schema format for `normalizeBarcode`.
+ *
+ * Story 16.25: the iOS decoder registers `.upce` whenever UPC_A is requested and
+ * reports it back as `UPC_E`, which the schema has no member for. A valid UPC-E
+ * is expanded losslessly to its UPC-A form and handed on as `UPCA`, so
+ * `normalizeBarcode` Rule 1 stores it as EAN-13 — and `mapFormat` (with its
+ * CODE128 fallback notify) is skipped. An invalid UPC-E takes the old path
+ * unchanged: CODE128 fallback, reported.
+ */
+const toSchemaBarcode = (
+  content: string,
+  rawFormat: string,
+  reportedFormats: Set<string>
+): { value: string; format: BarcodeFormat } => {
+  if (rawFormat.toLowerCase() === 'upc_e') {
+    const upcA = expandUpcE(content);
+    if (upcA !== null) {
+      return { value: upcA, format: 'UPCA' };
+    }
+  }
+
+  return { value: content, format: mapFormat(rawFormat, reportedFormats) };
+};
 
 /**
  * Why an image scan failed.
@@ -343,14 +367,14 @@ export const useImageScan = ({
         setErrorReason('notFound');
       } else if (scanned.length === 1) {
         const firstBarcode = scanned[0]!;
-        const baseFormat = mapFormat(firstBarcode.format, reportedFormats);
-        const canonical = normalizeBarcode(firstBarcode.content, baseFormat);
+        const decoded = toSchemaBarcode(firstBarcode.content, firstBarcode.format, reportedFormats);
+        const canonical = normalizeBarcode(decoded.value, decoded.format);
         const final = applyExpectedFormat(canonical, expectedFormat);
         onCodeResolved({ barcode: final.value, format: final.format });
       } else {
         const codes: DetectedCode[] = scanned.slice(0, 6).map((r) => {
-          const baseFormat = mapFormat(r.format, reportedFormats);
-          const canonical = normalizeBarcode(r.content, baseFormat);
+          const decoded = toSchemaBarcode(r.content, r.format, reportedFormats);
+          const canonical = normalizeBarcode(decoded.value, decoded.format);
           const final = applyExpectedFormat(canonical, expectedFormat);
           return {
             value: final.value,
