@@ -2,7 +2,7 @@
 title: 'Android and Wear OS crash reporting'
 type: 'feature'
 created: '2026-11-04'
-status: 'in-review'
+status: 'done'
 baseline_commit: '319aa1a7fc273bac5e3549365137713fd9b00c00'
 route: 'dispatch'
 review_loop_iteration: 1
