@@ -105,7 +105,7 @@
     "react-native-nitro-modules": "^0.35.9",
     "react-native-reanimated": "4.2.1",
     "react-native-safe-area-context": "5.6.2",
-    "react-native-screens": "~4.23.0",
+    "react-native-screens": "~4.25.2",
     "react-native-svg": "15.15.3",
     "react-native-unistyles": "^3",
     "react-native-watch-connectivity": "^1.1.0",
@@ -160,6 +160,13 @@
     "string-length/strip-ansi": "6.0.1",
     "jest-message-util/strip-ansi": "6.0.1",
     "string-width": "^4.2.3"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "react-native-screens"
+      ]
+    }
   },
   "private": true
 }
