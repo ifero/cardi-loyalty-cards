@@ -2,8 +2,9 @@
 title: 'Map UPC-E so a UPC-E barcode is not stored as Code 128'
 type: 'bugfix'
 created: '2026-11-04'
-status: 'ready-for-dev'
+status: 'in-review'
 route: 'dispatch'
+baseline_commit: 'bf26bd417ebd2b47c9152db07d2679a6246fc114'
 review_loop_iteration: 0
 context:
   - '{project-root}/AGENTS.md'
@@ -87,8 +88,8 @@ context:
 
 **Execution:**
 
-- [ ] `core/utils/expandUpcE.ts` + `expandUpcE.test.ts` + `core/utils/index.ts` -- the table, the check digit, every invalid case. Rationale: a pure, lossless step.
-- [ ] `features/add-card/hooks/useImageScan.ts` + test -- the hook behaviour above, at the single and multi-code sites. Rationale: the reachable path.
+- [x] `core/utils/expandUpcE.ts` + `expandUpcE.test.ts` + `core/utils/index.ts` -- the table, the check digit, every invalid case. Rationale: a pure, lossless step.
+- [x] `features/add-card/hooks/useImageScan.ts` + test -- the hook behaviour above, at the single and multi-code sites. Rationale: the reachable path.
 
 **Acceptance Criteria:**
 
@@ -97,9 +98,53 @@ context:
 
 ## Implementation Notes
 
+- `expandUpcE` (`core/utils/expandUpcE.ts`) is a pure arrow function: trim, `/^[01]\d{7}$/`, the four-row table, then the check digit, validated as ``isValidEAN13Checksum(`0${firstEleven}${C}`)`` (a 0-prefixed UPC-A is an EAN-13) so there is one checksum implementation. Number system 1 is accepted for decoder compatibility (GS1 assigns only 0; zxing accepts both). Test values were derived from the table and cross-checked against the published GS1 example `04252614` → `042100005264`.
+- The hook gained `toSchemaBarcode(content, rawFormat, reportedFormats)`, called at both the single-code and the multi-code site in place of `mapFormat`. A `upc_e` label with an expandable payload returns `{ upcA, 'UPCA' }` and never calls `mapFormat`; everything else goes through `mapFormat` exactly as before. `normalizeBarcode` and its tests are untouched; `selectCode` is unchanged.
+- The stale "reachable" comment in `mapFormat` now says a valid `UPC_E` never gets there and an invalid one still does.
+- Tests: the old "UPC_E falls back" test now uses an invalid payload (`01234566`, bad check digit) and asserts one notify; the `'A'`/`'B'`/`'C'` dedupe tests are kept with a comment explaining they are the invalid-UPC-E path; a new `UPC-E expansion (Story 16.25)` block covers every expansion case, number system 1, lowercase label, trailing newline, the EAN13 hint, five invalid shapes, a PII check on the telemetry, a mixed multi-code scan (plus `selectCode`) and a valid + invalid UPC-E pair in one scan.
+
+**Found, not fixed:**
+
+- `docs/sprint-artifacts/stories/10-4-display-barcode-on-wear-os.md` (lines 76-78, 288, 325) still says watchOS returns `nil` for EAN8/CODE39/UPCA. That is stale — and the Code Map's correction ("falls back to Code 128") is stale too: since Story 16.28, `targets/watch/BarcodeGenerator.swift` encodes EAN-8, UPC-A and Code 39 in their own symbology (`modules(for:)`, around `:153-166`; see the `cacheVersion` comment). Not relevant to this story, since UPC-E is now stored as EAN-13.
+- UNVERIFIED (medium if true): the patched `ImageCodeScanner.swift` passes Vision's `.upce` `payloadStringValue` through unchanged, and its length is unknown. If Vision ever returns 6 or 7 digits (number system or check digit dropped) or the expanded 12-digit UPC-A while still labelling it `UPC_E`, `expandUpcE` returns `null` and the card is still stored as CODE128 (with the fallback notify, so it would show in Sentry). Accepting those lengths would change the frozen "exactly 8 digits" rule. The device acceptance criterion settles it by recording the payload length Vision returned.
+
+**Not done here:** the device round-trip acceptance criterion (real iPhone, rendered barcode read by a second device) needs a human with hardware.
+
+**Device check (2026-11-09):**
+
+- iOS Simulator, iPhone 17 Pro, iOS 26.4. A debug build loaded this branch's JS from Metro started in this worktree. The path was add card → Esselunga → "Scansiona da immagine".
+- The synthetic UPC-E images `01234565` and `12345694` were added to the library with `simctl addmedia`. Beforehand, `zxing-wasm` decoded both as UPCE `0012345000065` / `0123456000094`, so the images are valid.
+- Vision on the simulator detected no barcode in them. It also detected none in a real barcode photo already in the library. Every pick ended in the pre-existing "notFound" banner, so the simulator cannot reach the changed path.
+- **Unchecked: iOS image scan of a UPC-E.** It needs a real iPhone, which is this story's device acceptance criterion and goes to the human. It also settles the payload-length question under Found, not fixed.
+- **Android cannot reach the change.** `ImageCodeScannerModule.kt` registers `FORMAT_UPC_E` only when `UPC_E` is requested, and the app requests only `UPC_A`.
+- The change has no UI, so there are no light or dark states to capture.
+- Screenshots are kept outside the repository, in the session scratchpad: `device-check/ios-sim-upce-image-notfound.png` and `device-check/ios-sim-real-barcode-notfound.png`.
+
+**Review loops (2026-11-09):**
+
+- Code-review loop, round 1 (Sonnet): `VERDICT: APPROVED` with zero comments.
+- QA loop, round 1 (Sonnet), which mapped every matrix row and acceptance criterion to its evidence: `VERDICT: APPROVED` with zero comments. The real-iPhone acceptance criterion maps to the device check's "unchecked" entry and goes to the human.
+
 ## Spec Change Log
 
 ## Review Triage Log
+
+Step-4 review: blind hunter, edge-case hunter, verification-gap and project-conventions layers. The verification-gap and conventions layers reported nothing.
+
+| #   | Layer       | Finding                                                                           | Verdict     | Route  | Evidence                                                                                                                                                                                                  |
+| --- | ----------- | --------------------------------------------------------------------------------- | ----------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | edge, blind | A `UPC_E` payload of 12/13 digits is not expanded and falls back to CODE128       | maybe-false | defer  | Swift passes Vision's payload through raw (`ImageCodeScanner.swift`, `case .upce`); its length is unknown. Settled by the device AC's payload-length record. Under Found, not fixed (unverified, medium). |
+| 2   | edge, blind | A 6- or 7-digit `UPC_E` payload is not expanded                                   | maybe-false | defer  | Same root cause as #1, grouped with it.                                                                                                                                                                   |
+| 3   | edge        | Non-canonical UPC-E (d6=3 with d3≤2, d6=4 with d4=0, d6≥5 with d5=0) is accepted  | low         | reject | Conforming encoders never print these; the expansion is still lossless for what the symbol says. The fix adds guard branches the frozen rule does not ask for.                                            |
+| 4   | blind       | A successful expansion leaves no telemetry trace                                  | low         | reject | New behaviour the intent does not ask for; an invalid UPC-E still notifies. Adding an event is more than a direct correction.                                                                             |
+| 5   | blind       | `'upc_e'` literal instead of `ImageBarcodeFormat.UPC_E`                           | false       | reject | `BARCODE_FORMAT_MAP` keys the same decoder labels as lowercase literals (`upc_a`, `ean_13`, …); the literal follows that convention and breaks no caller.                                                 |
+| 6   | blind       | `upcACheckDigit` duplicates the weighted checksum in `isValidEAN13Checksum`       | low         | patch  | Two checksum implementations can drift; replaced by `isValidEAN13Checksum('0' + upcA)`.                                                                                                                   |
+| 7   | blind       | Multi-code results are not de-duplicated after expansion                          | false       | reject | One UPC-E symbol (51 modules) cannot also decode as EAN-13 (95 modules), so Vision yields one observation per symbol; duplicates need two printed symbols, which is unchanged behaviour.                  |
+| 8   | blind       | EAN13-hint test does not assert the absence of the notify; no invalid + hint test | low         | patch  | Assertion added. An invalid UPC-E with a hint takes the unchanged pre-existing CODE128 path, so no new test is owed for it.                                                                               |
+| 9   | blind       | The lowercase-label test copies `scanOne`'s setup                                 | low         | patch  | `scanOne` takes an optional format.                                                                                                                                                                       |
+| 10  | blind       | Number system 1 is presented as standard                                          | low         | patch  | GS1 assigns only 0 to UPC-E; a header note now says number system 1 is accepted for decoder compatibility.                                                                                                |
+| 11  | blind       | The diff leaves out the spec and tracker; the device AC is open                   | false       | reject | The exclusion is deliberate (DIFF FOR REVIEW). The device AC is open and goes to the human.                                                                                                               |
+| 12  | blind       | No exhaustive round-trip / property test of the expansion                         | low         | reject | Every table row is pinned by fixed vectors plus a published GS1 example; a compressor for a property test adds code no requirement asks for.                                                              |
 
 ## Verification
 
