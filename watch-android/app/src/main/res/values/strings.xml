@@ -45,4 +45,8 @@
 
     <!-- DEBUG-only; never shown in release builds -->
     <string name="debug_import_sample_cards">Import sample cards</string>
+
+    <!-- Only in a build made with -PsentryTestCrash=true (Story 24.5); never in a shipped build.
+         Not translated: it is a developer control, read by whoever runs the crash check. -->
+    <string name="sentry_test_crash" translatable="false">Test crash</string>
 </resources>

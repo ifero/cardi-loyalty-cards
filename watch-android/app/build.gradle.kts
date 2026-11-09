@@ -16,6 +16,9 @@ plugins {
     alias(libs.plugins.ksp)
     // Room's schema-export plugin (configured in the `room { }` block below).
     alias(libs.plugins.room)
+    // Sentry (Story 24.5): uploads the release R8 mapping so Wear crashes deobfuscate. Configured
+    // in the `sentry { }` block below to install and instrument nothing.
+    alias(libs.plugins.sentry.android.gradle)
 }
 
 /**
@@ -159,6 +162,84 @@ val wearVersionCode: Int =
         computed.toInt()
     }
 
+/**
+ * Crash reporting (Story 24.5). The Wear app reports to its OWN Sentry project, not the phone's
+ * `react-native` one: a separate DSN, a separate R8 mapping, a separate release name.
+ *
+ * The DSN comes from the Gradle property `wearSentryDsn`, else the `WEAR_SENTRY_DSN` environment
+ * variable (the release workflows set it from the repository secret of the same name). Blank or
+ * absent means "no DSN": the app then never initialises Sentry and reports nothing, which is what
+ * every local and CI build without the secret gets. An unset GitHub secret interpolates to the
+ * empty string, so blank is treated exactly like absent rather than as an error.
+ *
+ * A present value must have the shape of a Sentry DSN, `https://<key>@<host>/<project-id>` (an
+ * optional `:<secret>` after the key, `:<port>` after the host and path prefix before the numeric
+ * project id, as the SDK's own parser allows), or the build fails. Two reasons: the value is baked
+ * into a Java string literal in BuildConfig, so a stray quote or backslash would break or inject into
+ * the source; and the SDK parses the DSN in `Application.onCreate`, so a malformed secret would
+ * otherwise surface as a launch-time failure in the field instead of a red build.
+ */
+val sentryDsnShape =
+    Regex("""^https://[A-Za-z0-9]+(:[A-Za-z0-9]+)?@[A-Za-z0-9.-]+(:\d{1,5})?(/[A-Za-z0-9._~-]+)*/\d+$""")
+val wearSentryDsn: String =
+    providers.gradleProperty("wearSentryDsn")
+        // A blank property falls through to the environment variable rather than shadowing it.
+        .filter { it.isNotBlank() }
+        .orElse(providers.environmentVariable("WEAR_SENTRY_DSN"))
+        .orNull?.trim().orEmpty()
+        .also { dsn ->
+            if (dsn.isNotEmpty() && !sentryDsnShape.matches(dsn)) {
+                throw GradleException(
+                    "wearSentryDsn / WEAR_SENTRY_DSN is not a Sentry DSN " +
+                        "(https://<key>@<host>/<project-id>, no quotes, spaces or backslashes). " +
+                        "Unset it to build without crash reporting.",
+                )
+            }
+        }
+
+/**
+ * The test-crash trigger (Story 24.5) exists only in a build made with `-PsentryTestCrash=true`.
+ * Nothing in CI sets it, and `test/sentry-test-crash-flags.test.ts` pins that. Exactly `true`
+ * opts in; anything else, including unset, builds without the trigger.
+ */
+val sentryTestCrash: Boolean =
+    providers.gradleProperty("sentryTestCrash").orNull?.trim() == "true"
+
+/**
+ * Whether this build uploads its R8 mapping to Sentry. Three conditions, each with its own skip
+ * notice below:
+ *
+ * 1. `SENTRY_AUTH_TOKEN` is set, as on the phone lanes;
+ * 2. `SENTRY_DISABLE_AUTO_UPLOAD` (which the workflows set to `true` when the token is missing) is
+ *    not `true`, as on the phone lanes;
+ * 3. a Wear DSN is set. The token alone is not enough: every Android release job already carries the
+ *    phone's token, but the `wear-os` project exists only once ifero creates it, and an upload to a
+ *    missing project fails `bundleRelease`. A DSN exists only once the project does, so it is the
+ *    signal that there is somewhere to upload to.
+ *
+ * When any is missing the release build still succeeds; it just ships a mapping nobody can
+ * deobfuscate with.
+ */
+val sentryAuthToken: String =
+    providers.environmentVariable("SENTRY_AUTH_TOKEN").orNull?.trim().orEmpty()
+val sentryUploadDisabled: Boolean =
+    providers.environmentVariable("SENTRY_DISABLE_AUTO_UPLOAD").orNull?.trim()?.lowercase() == "true"
+val sentryMappingSkipReason: String? =
+    when {
+        sentryAuthToken.isEmpty() -> "SENTRY_AUTH_TOKEN not set"
+        sentryUploadDisabled -> "SENTRY_DISABLE_AUTO_UPLOAD=true"
+        wearSentryDsn.isEmpty() -> "WEAR_SENTRY_DSN not set (no Wear OS Sentry project to upload to)"
+        else -> null
+    }
+val sentryUploadMapping: Boolean = sentryMappingSkipReason == null
+
+if (sentryMappingSkipReason != null && gradle.startParameter.taskNames.any { it.contains("Release") }) {
+    logger.warn(
+        "WARNING: $sentryMappingSkipReason — skipping the Wear OS R8 mapping upload to Sentry. " +
+            "Release crashes from this build will not be deobfuscated.",
+    )
+}
+
 android {
     // The R class / code package. Deliberately distinct from `applicationId`:
     // it namespaces Wear sources without changing the identity Play sees.
@@ -186,6 +267,13 @@ android {
         versionCode = wearVersionCode
         // Independent of the phone app's `expo.version`; the two ship separately.
         versionName = "1.0.0"
+
+        // Story 24.5 — see `wearSentryDsn` and `sentryTestCrash` above. The flag is a `boolean`
+        // constant, so without it R8 strips the trigger. The DSN is a `String`, whose
+        // `isNotBlank()` check is not constant-folded: the init path stays in the binary and
+        // simply returns early when the DSN is empty.
+        buildConfigField("String", "SENTRY_DSN", "\"$wearSentryDsn\"")
+        buildConfigField("boolean", "SENTRY_TEST_CRASH", sentryTestCrash.toString())
     }
 
     buildTypes {
@@ -243,6 +331,45 @@ room {
     schemaDirectory("$projectDir/schemas")
 }
 
+/**
+ * Sentry Android Gradle plugin (Story 24.5), used for ONE thing: uploading the release build's R8
+ * `mapping.txt` to the Wear project, so a crash from a minified build reads as source names.
+ *
+ * Everything else the plugin can do is switched off on purpose. It does not add the SDK (the
+ * dependency below is declared by hand, core only), it does not rewrite bytecode for performance
+ * tracing (tracing is off: crash diagnostics only, Story 24-1 decision 1), it does not bundle
+ * source context or a dependency report, and it sends no build telemetry of its own.
+ *
+ * `org`, `projectName` and `url` name the EU organisation and the Wear project ifero creates. The
+ * project slug defaults to `wear-os`; `WEAR_SENTRY_PROJECT` overrides it if the project was created
+ * under another name.
+ */
+sentry {
+    org.set("andrea-pacino")
+    projectName.set(providers.environmentVariable("WEAR_SENTRY_PROJECT").orElse("wear-os"))
+    url.set("https://de.sentry.io/")
+    if (sentryAuthToken.isNotEmpty()) {
+        authToken.set(sentryAuthToken)
+    }
+
+    includeProguardMapping.set(true)
+    autoUploadProguardMapping.set(sentryUploadMapping)
+    ignoredBuildTypes.set(setOf("debug"))
+
+    uploadNativeSymbols.set(false)
+    includeNativeSources.set(false)
+    includeSourceContext.set(false)
+    includeDependenciesReport.set(false)
+    telemetry.set(false)
+
+    tracingInstrumentation {
+        enabled.set(false)
+    }
+    autoInstallation {
+        enabled.set(false)
+    }
+}
+
 dependencies {
     val composeBom = platform(libs.androidx.compose.bom)
     implementation(composeBom)
@@ -278,6 +405,10 @@ dependencies {
     // KSP processor that generates the DAO/database implementations at compile time.
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
+
+    // Crash reporting (Story 24.5): the Sentry Android SDK, core module only. Initialised by
+    // WearApplication only when a DSN was baked in and the build is not DEBUG; see crash/.
+    implementation(libs.sentry.android.core)
 
     // Wear-specific @Preview annotations, used by the card list previews.
     implementation(libs.wear.compose.ui.tooling)

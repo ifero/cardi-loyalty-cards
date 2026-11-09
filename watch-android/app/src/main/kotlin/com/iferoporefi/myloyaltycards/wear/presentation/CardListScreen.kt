@@ -1,6 +1,8 @@
 package com.iferoporefi.myloyaltycards.wear.presentation
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -53,6 +55,9 @@ import com.iferoporefi.myloyaltycards.wear.sort.WatchSortMode
  * mirroring watchOS.
  *
  * @param onImportSampleCards DEBUG-only seeder; `null` in release, which hides the seed button.
+ * @param onTestCrash the Sentry test crash (Story 24.5); `null` unless the build was made with
+ *   `-PsentryTestCrash=true`. Offered in the empty state, which is what a flagged build on an
+ *   unpaired emulator shows.
  */
 @Composable
 fun CardListScreen(
@@ -62,6 +67,7 @@ fun CardListScreen(
     onOpenSort: () -> Unit,
     onImportSampleCards: (() -> Unit)?,
     modifier: Modifier = Modifier,
+    onTestCrash: (() -> Unit)? = null,
 ) {
     val sorter = remember { CardSorter() }
     val sortedCards = remember(cards, sortMode) { sorter.sort(cards, sortMode) }
@@ -70,6 +76,7 @@ fun CardListScreen(
         ScreenScaffold(modifier = modifier) { contentPadding ->
             EmptyState(
                 onImportSampleCards = onImportSampleCards,
+                onTestCrash = onTestCrash,
                 modifier = Modifier.padding(contentPadding),
             )
         }
@@ -141,7 +148,8 @@ private fun SortControlButton(
 /**
  * Empty state (AC10): a clear message that cards come from the phone — deliberately not phrased as
  * an error, because it is what a user sees before the first sync. In DEBUG builds it also offers
- * the sample-card seeder ([onImportSampleCards] non-null).
+ * the sample-card seeder ([onImportSampleCards] non-null), and a build made with
+ * `-PsentryTestCrash=true` offers the Sentry test crash ([onTestCrash] non-null, Story 24.5).
  *
  * One glyph, one title, one subtitle, all cream: the glyph at 50 %, the title full, the subtitle
  * at 60 % (`cardi-watch-grammar.md` §3.2).
@@ -149,12 +157,17 @@ private fun SortControlButton(
 @Composable
 private fun EmptyState(
     onImportSampleCards: (() -> Unit)?,
+    onTestCrash: (() -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     val description = stringResource(R.string.cards_empty_content_description)
     Column(
+        // Scrollable so a build that adds buttons (the DEBUG seeder, the Story 24.5 test crash) does
+        // not push them past a round screen's edge. `fillMaxSize()` before `verticalScroll` keeps the
+        // screen height as the minimum, so the plain empty state stays centred.
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 12.dp)
             .semantics(mergeDescendants = true) { contentDescription = description },
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -184,6 +197,12 @@ private fun EmptyState(
             Spacer(Modifier.height(12.dp))
             Button(onClick = onImportSampleCards) {
                 Text(text = stringResource(R.string.debug_import_sample_cards), maxLines = 1)
+            }
+        }
+        if (onTestCrash != null) {
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = onTestCrash) {
+                Text(text = stringResource(R.string.sentry_test_crash), maxLines = 1)
             }
         }
     }

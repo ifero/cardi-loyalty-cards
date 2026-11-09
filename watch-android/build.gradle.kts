@@ -17,4 +17,6 @@ plugins {
     // gradle/libs.versions.toml in one place, like the plugins above.
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.room) apply false
+    // Sentry's Gradle plugin uploads the release R8 mapping (Story 24.5).
+    alias(libs.plugins.sentry.android.gradle) apply false
 }
