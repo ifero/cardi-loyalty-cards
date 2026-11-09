@@ -144,7 +144,9 @@ export const en = {
       appVersion: 'App Version',
       catalogue: 'Catalogue',
       helpFaq: 'Help & FAQ',
-      privacyPolicy: 'Privacy Policy'
+      privacyPolicy: 'Privacy Policy',
+      // Only in a build made with EXPO_PUBLIC_SENTRY_TEST_CRASH=1 (Story 24.5)
+      sentryTestCrash: 'Sentry test crash'
     },
     data: {
       exportData: 'Export Data',
