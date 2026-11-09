@@ -2,7 +2,7 @@
 title: 'Map UPC-E so a UPC-E barcode is not stored as Code 128'
 type: 'bugfix'
 created: '2026-11-04'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 baseline_commit: 'bf26bd417ebd2b47c9152db07d2679a6246fc114'
 review_loop_iteration: 0
