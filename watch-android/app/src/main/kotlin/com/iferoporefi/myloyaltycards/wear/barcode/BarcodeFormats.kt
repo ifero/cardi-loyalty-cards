@@ -38,6 +38,25 @@ internal object BarcodeFormats {
     /** Whether [format] is the QR symbology — the branch that drives square-vs-linear layout. */
     fun isQr(format: String?): Boolean = normalize(format) == QR
 
+    /**
+     * The quiet zone [format]'s specification asks for, in modules — the **ratio** the layout splits
+     * its leftover white space in (Story 16.38), ported from watchOS's `quietZone(for:)`
+     * (`BarcodeGenerator.swift`). EAN-13 is the one asymmetric case: 11 leading, 7 trailing. QR's own
+     * 4-module quiet zone is part of its matrix, so it gets the symmetric fallback here.
+     */
+    fun quietZone(format: String?): BarcodeQuietZone = when (normalize(format)) {
+        "EAN13" -> BarcodeQuietZone(leading = 11, trailing = 7)
+        "EAN8" -> BarcodeQuietZone(leading = 7, trailing = 7)
+        "UPCA" -> BarcodeQuietZone(leading = 9, trailing = 9)
+        else -> BarcodeQuietZone(leading = 10, trailing = 10)
+    }
+
     /** Trims and upper-cases, mirroring watchOS's format normalisation exactly. */
     private fun normalize(format: String?): String = format?.trim()?.uppercase().orEmpty()
+}
+
+/** A symbology's quiet zone in modules, leading (left) and trailing (right). */
+data class BarcodeQuietZone(val leading: Int, val trailing: Int) {
+    val total: Int
+        get() = leading + trailing
 }

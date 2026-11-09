@@ -10,9 +10,9 @@ import com.google.zxing.common.BitMatrix
  * Converts a ZXing [BitMatrix] into an opaque **black-on-white** [ImageBitmap] for display.
  *
  * White background, black bars is a hardware-scanner requirement (the UX spec's "Luminance
- * Scannability"), not an aesthetic choice — so it is fixed here, never themed. The matrix already
- * carries ZXing's quiet zone; this copies it pixel-for-pixel and crops **nothing**, because a
- * cropped quiet zone is exactly what stops a scanner from reading the symbol.
+ * Scannability"), not an aesthetic choice — so it is fixed here, never themed. This copies the
+ * matrix pixel-for-pixel and crops **nothing**: a QR's quiet zone is inside its matrix, and a linear
+ * symbol's is the white space the layout plans around it (Story 16.38).
  *
  * This is the one barcode function that touches Android types, so it is validated on-device
  * (AC4/AC12) rather than in a JVM unit test. Call it off the main thread — the pixel copy for a

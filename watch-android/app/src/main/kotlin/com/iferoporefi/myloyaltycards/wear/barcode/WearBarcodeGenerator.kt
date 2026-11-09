@@ -46,7 +46,8 @@ sealed interface BarcodeResult {
  * Android type, so the JVM unit tests still run without an emulator.
  *
  * @param maxCacheEntries retained-barcode cap; a watch shows one barcode at a time, so a handful
- *   covers re-opens and round/square resizes.
+ *   covers re-opens, the cards the pager composes beside it and round/square resizes. Every card
+ *   takes two entries — its [measure] and its planned symbol — so the cap counts both.
  */
 @Stable
 class WearBarcodeGenerator(maxCacheEntries: Int = DEFAULT_CACHE_ENTRIES) {
@@ -54,9 +55,15 @@ class WearBarcodeGenerator(maxCacheEntries: Int = DEFAULT_CACHE_ENTRIES) {
     private val writer = MultiFormatWriter()
 
     /**
-     * Encodes [value] as [format] into a [width]×[height]-pixel [BitMatrix] with a white background,
-     * black bars, and ZXing's format-correct quiet zone preserved (AC2). Returns a typed error
-     * instead of throwing, so the UI always has a state to render.
+     * Encodes [value] as [format] into a [width]×[height]-pixel [BitMatrix] with a white background
+     * and black bars. Returns a typed error instead of throwing, so the UI always has a state to
+     * render.
+     *
+     * Every module is a whole number of pixels: ZXing draws `⌊width / modules⌋` px per module and
+     * centres the remainder. A **linear** symbol carries **no** quiet zone (MARGIN 0, Story 16.38) —
+     * request exactly `module × symbolUnits` wide and it fills the width edge to edge, while the
+     * layout ([BarcodeLayoutMetrics]) draws the quiet zone as white space around it. A **QR** keeps
+     * its own 4-module quiet zone inside the matrix.
      *
      * Runs the encode on the calling thread — call it from a background dispatcher (AC10). The result
      * is memoised, so a second call with the same arguments returns the cached instance without
@@ -71,6 +78,14 @@ class WearBarcodeGenerator(maxCacheEntries: Int = DEFAULT_CACHE_ENTRIES) {
         return cache.getOrPut(key) { encode(value, zxingFormat, width, height) }
     }
 
+    /**
+     * The symbol's size in modules, as a 1-module-per-pixel [BitMatrix] whose `width` is the
+     * module count [BarcodeLayoutMetrics.make] solves against (linear: bars and spaces only; QR: the
+     * matrix with its quiet zone). The same typed errors as [generate], so a bad value fails here,
+     * before any layout. Cached like any other request.
+     */
+    fun measure(value: String?, format: String?): BarcodeResult = generate(value, format, 1, 1)
+
     private fun encode(value: String, format: BarcodeFormat, width: Int, height: Int): BarcodeResult =
         try {
             BarcodeResult.Success(writer.encode(value, format, width, height, hintsFor(format)))
@@ -83,11 +98,13 @@ class WearBarcodeGenerator(maxCacheEntries: Int = DEFAULT_CACHE_ENTRIES) {
         }
 
     /**
-     * Encoding hints. The MARGIN is deliberately left unset so each writer applies its own
-     * spec-correct quiet zone (QR 4 modules, the 1D writers their standard side margins) — the
-     * story's "preserve the quiet zone via ZXing's margin hint, not a hand-cropped bitmap". QR adds
-     * UTF-8 (loyalty QRs are often URLs) and error-correction level M, matching the phone's render
-     * options and giving robustness against screen glare without bloating the symbol.
+     * Encoding hints. QR leaves MARGIN unset, keeping its spec 4-module quiet zone, and adds UTF-8
+     * (loyalty QRs are often URLs) and error-correction level M, matching the phone's render options.
+     *
+     * Linear codes set MARGIN 0. ZXing's 1D default margin (9 modules for UPC/EAN, 10 otherwise) sits
+     * in its module divisor, so it competed with the bars for pixels at the same price; without it the
+     * module is sized against the symbol alone and the layout gives the quiet zone the leftover, split
+     * in the symbology's ratio with a 4-module floor per side (Story 16.38, as watchOS's 16.27).
      */
     private fun hintsFor(format: BarcodeFormat): Map<EncodeHintType, Any> =
         if (format == BarcodeFormat.QR_CODE) {
@@ -96,11 +113,32 @@ class WearBarcodeGenerator(maxCacheEntries: Int = DEFAULT_CACHE_ENTRIES) {
                 EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
             )
         } else {
-            emptyMap()
+            mapOf(EncodeHintType.MARGIN to 0)
         }
 
     companion object {
-        /** Default retained-barcode cap. */
-        const val DEFAULT_CACHE_ENTRIES = 8
+        /** Default retained-barcode cap: 8 cards, each a [measure] entry plus its planned symbol. */
+        const val DEFAULT_CACHE_ENTRIES = 16
     }
+}
+
+/**
+ * The narrowest run of same-coloured pixels across the matrix's middle row — the narrowest element a
+ * decoder sees, i.e. the drawn module width. Logged by the barcode screen's `BarcodeGeometry` debug
+ * line so the module can be measured on a device, and asserted by the tests. 0 for an empty matrix.
+ */
+internal fun BitMatrix.narrowestElementPx(): Int {
+    if (width == 0 || height == 0) return 0
+    val row = height / 2
+    var narrowest = Int.MAX_VALUE
+    var run = 1
+    for (x in 1 until width) {
+        if (this[x, row] == this[x - 1, row]) {
+            run++
+        } else {
+            narrowest = minOf(narrowest, run)
+            run = 1
+        }
+    }
+    return minOf(narrowest, run)
 }
