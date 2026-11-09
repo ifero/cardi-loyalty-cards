@@ -1,209 +1,296 @@
 package com.iferoporefi.myloyaltycards.wear.barcode
 
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
 
 /**
- * Barcode layout, ported from watchOS's `WatchBarcodeLayoutMetrics.make`
- * (`WatchPresentationLayout.swift`) so AC3's "≥ 80 % of the container width" is **measured**
- * ([widthFillRatio]) rather than eyeballed, and kept as one testable source of truth.
+ * The barcode's **module plan**: how many device pixels each module gets, where the symbol sits, and
+ * how tall its bars are — Wear's port of watchOS's `WatchBarcodeModulePlan.resolve`
+ * (`WatchPresentationLayout.swift`, Story 16.27), and the one place that owns the geometry
+ * (Story 16.38).
  *
- * All values are in **density-independent (dp) units**; the composable converts the barcode size to
- * pixels for [WearBarcodeGenerator] at the edge. The watchOS QR-vs-linear branch, the `112` QR floor,
- * and the linear `0.52`-of-height / 88–110 clamp are reproduced verbatim.
+ * Everything is in **whole device pixels**, because the module width is the only measurement that
+ * decides whether a scan succeeds: every 1D decoder normalises against the narrowest element, so one
+ * stray pixel on a 2–3 px module is a 30–50 % error (`cardi-watch-grammar.md` §6).
  *
- * Two deliberate Wear adaptations:
- * 1. **Round-screen safety** ([make]'s `isRound`): watchOS screens are always rectangular, Wear
- *    screens are frequently round, and a symbol sized against the full bounding box loses its corners
- *    (QR) or ends (linear) on a round display. The symbol (plus its title/value) is inscribed in the
- *    circle instead — `boxW² + boxH² ≤ D²` (AC4).
- * 2. **A reserved title header** ([headerReservedHeight]): watchOS shows the card name in the system
- *    nav bar, outside the barcode container. Wear has no such slot for a full-screen surface, so the
- *    name sits on the white surface above the symbol, and its height is reserved here — symmetrically
- *    with the value footer — so a tall QR can never overlap it on a square screen (AC1).
+ * The rules, as on watchOS since 16.27:
+ * - **The module is sized against the symbol's own modules**, not the symbol plus its spec quiet
+ *   zone. Only [MIN_QUIET_ZONE_MODULES] per side is reserved in the divisor; whatever the symbol does
+ *   not use becomes quiet zone. On square it is split in the symbology's ratio ([BarcodeQuietZone]),
+ *   each side clamped to the floor. On round the box is the chord at `units + 8` modules, so there is
+ *   no leftover to split: both sides are exactly the [MIN_QUIET_ZONE_MODULES] floor.
+ * - **The bars span the whole cross axis** that the title and value rows leave, and there is no inner
+ *   padding: the white screen is the white box.
+ * - **The whole screen is used.** The caller passes the real screen size, not a padded one.
  *
- * On the [QR_FLOOR] and AC3's ≥ 80 %: **no-clip always wins.** Because the title + value chrome is a
- * fixed dp cost, the 112 dp floor can never be honoured without overflowing the box, so the
- * containment clamp (the inscribed circle on round, the container height on square) supersedes it on
- * any screen too short to fit it — the floor is the ported watchOS lower bound, binding only on the
- * tall screens watchOS targets. For the same reason, on a round screen **below ≈ 181 dp diameter**
- * the fill ratio can dip under 0.8; that is an accepted trade-off (a fully-visible smaller symbol
- * beats a clipped larger one) and is below the smallest real Wear round hardware (~192 dp), on which
- * AC3 holds — verified by [make]'s tests at 192/227/240 dp.
+ * Wear adds the round screen, which watchOS never has. There the title + bars + value box is inscribed
+ * in the real screen circle, `boxWidth² + boxHeight² ≤ D²`, and the solver picks the **largest whole
+ * module** whose box still fits with the bars at least [ROUND_BAR_HEIGHT_FLOOR_RATIO] of the symbol's
+ * drawn width tall (a common EAN truncation) — a wide, shallow symbol beats a narrow tall one, down to
+ * that floor. When no module meets the floor, the largest module that leaves any bar (at least 1 px)
+ * is taken, however shallow; no other shallowness limit is enforced.
  *
- * @property barcodeWidth symbol width (dp). Equals [barcodeHeight] for QR.
- * @property barcodeHeight symbol height (dp).
- * @property usableWidth width of the region **allotted to the symbol** — the denominator of
- *   [widthFillRatio], and the honest reading of AC3's "container". For a linear barcode that is the
- *   full content width; for a QR it is the *square* area available (a QR is height- or circle-bound,
- *   not width-bound, so measuring it against the full bounding-box width would understate a symbol
- *   that already fills its square). On a round screen it is the circle's inscribed-square side.
- * @property headerReservedHeight height reserved above the symbol for the title, if shown.
- * @property footerReservedHeight height reserved below the symbol for the value label, if shown.
+ * QR keeps its square fill: the largest integer multiple of its matrix (its own 4-module quiet zone
+ * included) that fits the free square, or the circle on a round screen.
+ *
+ * **Too long to draw** ([canRender] false): a linear symbol whose modules plus
+ * [MIN_QUIET_ZONE_MODULES] per side do not fit at even 1 px per module (square: `units + 8 > width`;
+ * round: no module leaves a bar of at least 1 px inside the circle). Nothing is encoded then; as on
+ * watchOS (`canRender`, Story 16.28's "key it in by hand"), the screen shows the value as text in
+ * the free area this plan describes ([boxWidthPx] × [barHeightPx]), so the cashier can type it.
+ *
+ * **For a linear symbol the quiet-zone floor is a guarantee wherever [canRender] holds:** every side
+ * then keeps at least [MIN_QUIET_ZONE_MODULES] modules, because the module is only ever chosen so that
+ * the symbol plus that floor on both sides fits the box. A QR's 4-module quiet zone is inside its
+ * matrix ([symbolWidthPx]), so its outer leftover is only centring and may be smaller. Where
+ * [canRender] is false there is no symbol and no quiet zone ([modulePx], [symbolWidthPx] and both
+ * quiet zones are 0).
+ *
+ * The title and value rows are sp text, so their reserved heights scale with the font scale as well
+ * as the density.
+ *
+ * @property canRender whether a symbol is drawn: false when it is too long for 1 px per module.
+ * @property modulePx device pixels per module, the same for every element. At least 1 when
+ *   [canRender], 0 otherwise.
+ * @property symbolUnits modules across the symbol (linear: bars and spaces, no quiet zone; QR: its
+ *   matrix including its quiet zone).
+ * @property symbolWidthPx the symbol's drawn width, `modulePx × symbolUnits`.
+ * @property barHeightPx the symbol's drawn height (equal to [symbolWidthPx] for QR); when [canRender]
+ *   is false, the height of the free area the value placeholder takes.
+ * @property boxWidthPx the white box's width: the symbol plus its quiet zones. On round it is the
+ *   circle's chord at the box's top and bottom edges; the title and value rows are capped to it.
+ * @property leadingQuietPx white space left of the symbol inside [boxWidthPx].
+ * @property trailingQuietPx white space right of the symbol inside [boxWidthPx].
+ * @property headerPx height reserved above the symbol for the title, if shown.
+ * @property footerPx height reserved below the symbol for the value, if shown.
+ * @property barHeightFloorPx the round bar-height floor the module was solved against (0 elsewhere,
+ *   and 0 when no module met it).
  */
 data class BarcodeLayoutMetrics(
     val isQr: Boolean,
-    val boxInnerPadding: Float,
-    val cornerRadius: Float,
-    val contentSpacing: Float,
-    val headerReservedHeight: Float,
-    val footerReservedHeight: Float,
-    val barcodeWidth: Float,
-    val barcodeHeight: Float,
-    val usableWidth: Float,
-    val valueFontSize: Float,
-    val valueHorizontalPadding: Float,
+    val isRound: Boolean,
+    val canRender: Boolean,
+    val modulePx: Int,
+    val symbolUnits: Int,
+    val symbolWidthPx: Int,
+    val barHeightPx: Int,
+    val boxWidthPx: Int,
+    val leadingQuietPx: Int,
+    val trailingQuietPx: Int,
+    val headerPx: Int,
+    val footerPx: Int,
+    val barHeightFloorPx: Int,
 ) {
-    /** Fraction of [usableWidth] the symbol spans (AC3, ≥ 0.8). Capped at 1. */
-    val widthFillRatio: Float
-        get() = min(barcodeWidth / usableWidth, 1f)
+    /** The full box height: title header + symbol + value footer. */
+    val boxHeightPx: Int
+        get() = headerPx + barHeightPx + footerPx
 
-    /** The white box that must fit the display: symbol + inner padding on each side. */
-    val boxWidth: Float
-        get() = barcodeWidth + boxInnerPadding * 2
-
-    /** Full box height: title header + symbol + value footer + inner padding top and bottom. */
-    val boxHeight: Float
-        get() = headerReservedHeight + barcodeHeight + footerReservedHeight + boxInnerPadding * 2
+    /** Quiet zone per side in whole modules outside the symbol — for a linear symbol never below
+     *  [MIN_QUIET_ZONE_MODULES] when [canRender]; a QR's own quiet zone is inside its matrix. */
+    val leadingQuietModules: Int
+        get() = if (modulePx > 0) leadingQuietPx / modulePx else 0
+    val trailingQuietModules: Int
+        get() = if (modulePx > 0) trailingQuietPx / modulePx else 0
 
     companion object {
-        const val QR_FLOOR = 112f
-        const val LINEAR_HEIGHT_RATIO = 0.52f
-        const val LINEAR_MIN_HEIGHT = 88f
-        const val LINEAR_MAX_HEIGHT = 110f
-        private const val BOX_INNER_PADDING = 2f
-        private const val CORNER_RADIUS = 8f
-        private const val CONTENT_SPACING = 4f
+        /** The quiet zone each side of a linear symbol keeps at the least, in modules (watchOS's
+         *  `minimumQuietZoneUnitsPerSide`): it stops a bar landing against the black bezel. */
+        const val MIN_QUIET_ZONE_MODULES = 4
 
-        // Title header (Wear-only; watchOS uses the nav bar). A single ellipsised titleSmall line.
-        private const val TITLE_LABEL_HEIGHT = 20f
+        /** Round only: bars at least this fraction of the symbol's drawn width tall. */
+        const val ROUND_BAR_HEIGHT_FLOOR_RATIO = 0.5f
 
-        // Value footer (watchOS's `valueLabelReservedHeight`, 10 pt label ⇒ ~12 dp line).
-        private const val VALUE_LABEL_HEIGHT = 12f
-        private const val VALUE_FONT_SIZE = 10f
-        private const val VALUE_HORIZONTAL_PADDING = 2f
+        // Title header (Wear-only; watchOS shows the name in the nav bar): a 20 dp line at font scale
+        // 1 + a 4 dp gap.
+        const val TITLE_LABEL_HEIGHT_DP = 20f
+        const val CONTENT_SPACING_DP = 4f
+
+        // Value footer (watchOS's `valueLabelReservedHeight`): a 12 dp line for the 10 sp digits at font
+        // scale 1 + 4 dp.
+        const val VALUE_LABEL_HEIGHT_DP = 12f
+        const val VALUE_FONT_SIZE_SP = 10f
 
         /**
-         * Computes the layout for a [containerWidth]×[containerHeight]-dp drawable area.
+         * Solves the module plan for a [screenWidthPx]×[screenHeightPx] screen.
          *
-         * @param isRound whether the display is round (`LocalConfiguration.isScreenRound`). When
-         *   `true`, the title + symbol + value box is inscribed in the circle so nothing is clipped
-         *   (AC4).
-         * @param isQr whether the symbol is a QR code — drives the square-vs-linear branch.
-         * @param showsTitle whether the card name is rendered above the symbol; reserves header space.
-         * @param showsValueLabel whether the value is rendered below the symbol; reserves footer
-         *   space, matching watchOS's default (Out of scope #4).
+         * @param density device pixels per dp, to turn the title and value rows into pixels.
+         * @param fontScale the user's font scale: the title and value are sp text, so their rows grow
+         *   with it (a linear scale, the upper bound of Android 14's non-linear one).
+         * @param isRound whether the display is round (`Configuration.isScreenRound`): the box is then
+         *   inscribed in the circle of the screen's shorter side.
+         * @param isQr whether the symbol is a QR code — the square branch.
+         * @param symbolUnits the symbol's modules ([WearBarcodeGenerator.measure]).
+         * @param quietZone the symbology's quiet-zone ratio; ignored for QR.
+         * @param showsTitle whether the card name is drawn above the symbol.
+         * @param showsValueLabel whether the value is drawn below it.
          */
         fun make(
-            containerWidth: Float,
-            containerHeight: Float,
+            screenWidthPx: Int,
+            screenHeightPx: Int,
+            density: Float,
+            fontScale: Float,
             isRound: Boolean,
             isQr: Boolean,
+            symbolUnits: Int,
+            quietZone: BarcodeQuietZone,
             showsTitle: Boolean,
             showsValueLabel: Boolean,
         ): BarcodeLayoutMetrics {
-            val safeWidth = maxOf(containerWidth, 1f)
-            val safeHeight = maxOf(containerHeight, 1f)
-            val headerReservedHeight = if (showsTitle) TITLE_LABEL_HEIGHT + CONTENT_SPACING else 0f
-            val footerReservedHeight = if (showsValueLabel) VALUE_LABEL_HEIGHT + CONTENT_SPACING else 0f
-            val verticalChrome = headerReservedHeight + footerReservedHeight + BOX_INNER_PADDING * 2
-            val contentWidth = maxOf(safeWidth - BOX_INNER_PADDING * 2, 1f)
-            // Height left for the symbol once the title, value and padding are accounted for.
-            val contentHeight = maxOf(safeHeight - verticalChrome, 1f)
-            // Round displays are square-bounding, so the inscribed circle's diameter is the shorter side.
-            val diameter = min(safeWidth, safeHeight)
+            val width = max(screenWidthPx, 1)
+            val height = max(screenHeightPx, 1)
+            val units = max(symbolUnits, 1)
+            val scale = max(fontScale, 0f)
+            val headerPx = if (showsTitle) rowPx(TITLE_LABEL_HEIGHT_DP, scale, density) else 0
+            val footerPx = if (showsValueLabel) rowPx(VALUE_LABEL_HEIGHT_DP, scale, density) else 0
+            val chrome = headerPx + footerPx
+            val diameter = min(width, height)
 
-            val barcodeWidth: Float
-            val barcodeHeight: Float
-            val usableWidth: Float
+            var module = 0
+            var barHeight = 0
+            var boxWidth = 0
+            var barHeightFloor = 0
 
             if (isQr) {
-                // The square area a QR is allotted: bounded by width and by the height left after chrome
-                // on a square screen, by the inscribed square on a round one.
-                val squareRegion = if (isRound) inscribedSquareSide(diameter) else min(contentWidth, contentHeight)
-                // watchOS: fill that available square, floored at 112, never wider than the content.
-                var side = min(contentWidth, maxOf(contentHeight, QR_FLOOR))
-                side = if (isRound) {
-                    // No-clip wins over the 112 floor: inscribe the whole box in the circle. A clipped
-                    // barcode fails worse than a small one, so the floor yields on a tight round screen.
-                    min(side, maxSquareSideInCircle(diameter, headerReservedHeight, footerReservedHeight))
-                } else {
-                    // Same principle on a square screen: never let the box overflow the container
-                    // height, even if that drops below the 112 floor (see Dev Notes on the floor).
-                    min(side, contentHeight)
+                val side = if (isRound) maxSquareSideInCircle(diameter, chrome) else min(width, height - chrome)
+                module = max(side, 0) / units
+                barHeight = module * units
+                boxWidth = if (isRound) chordAt(diameter, chrome + barHeight, width) else width
+            } else if (isRound) {
+                val reserved = units + MIN_QUIET_ZONE_MODULES * 2
+                var fallback = 0
+                var fallbackBar = 0
+                for (candidate in diameter / reserved downTo 1) {
+                    val freeBar = chordAt(diameter, candidate * reserved, height) - chrome
+                    if (freeBar < 1) continue
+                    if (fallback == 0) {
+                        fallback = candidate
+                        fallbackBar = freeBar
+                    }
+                    val floorPx = ceil(candidate * units * ROUND_BAR_HEIGHT_FLOOR_RATIO).toInt()
+                    if (freeBar >= floorPx) {
+                        module = candidate
+                        barHeight = freeBar
+                        barHeightFloor = floorPx
+                        break
+                    }
                 }
-                barcodeWidth = side
-                barcodeHeight = side
-                usableWidth = squareRegion
+                // No module meets the floor (a long symbol on a small circle): the largest module
+                // that leaves a bar at all. If none does, the symbol is too long to draw.
+                if (module == 0 && fallback > 0) {
+                    module = fallback
+                    barHeight = fallbackBar
+                }
+                if (module > 0) boxWidth = chordAt(diameter, chrome + barHeight, width)
+            } else if (units + MIN_QUIET_ZONE_MODULES * 2 <= width && height - chrome >= 1) {
+                module = width / (units + MIN_QUIET_ZONE_MODULES * 2)
+                barHeight = height - chrome
+                boxWidth = width
+            }
+
+            if (module == 0) return valueOnly(width, height, diameter, isRound, isQr, units, headerPx, footerPx)
+
+            val symbolWidth = module * units
+            val leftover = boxWidth - symbolWidth
+            val leading = if (isQr) {
+                leftover / 2
             } else {
-                var height =
-                    min(maxOf(safeHeight * LINEAR_HEIGHT_RATIO, LINEAR_MIN_HEIGHT), LINEAR_MAX_HEIGHT)
-                var width = contentWidth
-                if (isRound) {
-                    width = min(width, maxContentWidthInCircle(diameter, height, headerReservedHeight, footerReservedHeight))
-                } else {
-                    // Never let the box overflow the container height on a very short square screen.
-                    height = min(height, contentHeight)
-                }
-                barcodeWidth = width
-                barcodeHeight = height
-                // A linear barcode uses the full width, so it is measured against the full safe width
-                // (the inscribed square on round — a short barcode can even exceed it, hence the cap).
-                usableWidth = if (isRound) inscribedSquareSide(diameter) else safeWidth
+                // The module was chosen so that the symbol plus the floor on both sides fits the box,
+                // so `leftover ≥ 2 × floor` here: the symbology's ratio, each side clamped to the floor.
+                val floorPx = MIN_QUIET_ZONE_MODULES * module
+                val proportional = leftover * quietZone.leading / max(quietZone.total, 1)
+                min(max(proportional, floorPx), leftover - floorPx)
             }
 
             return BarcodeLayoutMetrics(
                 isQr = isQr,
-                boxInnerPadding = BOX_INNER_PADDING,
-                cornerRadius = CORNER_RADIUS,
-                contentSpacing = CONTENT_SPACING,
-                headerReservedHeight = headerReservedHeight,
-                footerReservedHeight = footerReservedHeight,
-                barcodeWidth = barcodeWidth,
-                barcodeHeight = barcodeHeight,
-                usableWidth = usableWidth,
-                valueFontSize = VALUE_FONT_SIZE,
-                valueHorizontalPadding = VALUE_HORIZONTAL_PADDING,
+                isRound = isRound,
+                canRender = true,
+                modulePx = module,
+                symbolUnits = units,
+                symbolWidthPx = symbolWidth,
+                barHeightPx = barHeight,
+                boxWidthPx = boxWidth,
+                leadingQuietPx = leading,
+                trailingQuietPx = leftover - leading,
+                headerPx = headerPx,
+                footerPx = footerPx,
+                barHeightFloorPx = barHeightFloor,
             )
         }
 
-        /** The largest centered square inscribable in a circle of [diameter]: side = D / √2. */
-        private fun inscribedSquareSide(diameter: Float): Float = diameter / SQRT_2
+        /**
+         * The plan for a symbol too long to draw: no symbol, and the free area the value placeholder
+         * takes in its place — the whole height the text rows leave on a square screen, and on a round
+         * one the box inscribed in the circle's inscribed square, so it clears the mask.
+         */
+        private fun valueOnly(
+            width: Int,
+            height: Int,
+            diameter: Int,
+            isRound: Boolean,
+            isQr: Boolean,
+            units: Int,
+            headerPx: Int,
+            footerPx: Int,
+        ): BarcodeLayoutMetrics {
+            val chrome = headerPx + footerPx
+            val freeHeight: Int
+            val freeWidth: Int
+            if (isRound) {
+                val inscribed = floor(diameter / sqrt(2.0)).toInt()
+                freeHeight = max(inscribed - chrome, 1)
+                freeWidth = chordAt(diameter, chrome + freeHeight, width)
+            } else {
+                freeHeight = max(height - chrome, 1)
+                freeWidth = width
+            }
+            return BarcodeLayoutMetrics(
+                isQr = isQr,
+                isRound = isRound,
+                canRender = false,
+                modulePx = 0,
+                symbolUnits = units,
+                symbolWidthPx = 0,
+                barHeightPx = freeHeight,
+                boxWidthPx = freeWidth,
+                leadingQuietPx = 0,
+                trailingQuietPx = 0,
+                headerPx = headerPx,
+                footerPx = footerPx,
+                barHeightFloorPx = 0,
+            )
+        }
+
+        /** A text row's reserved height in px: its sp line scaled by [fontScale], plus the dp gap. */
+        private fun rowPx(lineDp: Float, fontScale: Float, density: Float): Int =
+            ceil((lineDp * fontScale + CONTENT_SPACING_DP) * density).toInt()
 
         /**
-         * Largest square symbol side `s` whose white box — width `s + 2·pad`, height
-         * `s + chrome` (where `chrome = header + footer + 2·pad`) — fits centred in a circle of
-         * [diameter], i.e. `boxW² + boxH² ≤ D²`.
-         *
-         * Let `u = s + 2·pad` and `k = header + footer`; then `u² + (u + k)² = D²`, whose positive
-         * root is `u = (−k + √(2·D² − k²)) / 2`. Returns `s = u − 2·pad`, floored at 1.
+         * The chord of a circle of [diameter] at a centred box of height [boxHeight]: the widest box
+         * of that height inside the circle, `⌊√(D² − H²)⌋`, never wider than [cap]. Zero when the
+         * height alone exceeds the diameter.
          */
-        private fun maxSquareSideInCircle(diameter: Float, header: Float, footer: Float): Float {
-            val k = header + footer
-            val discriminant = 2f * diameter * diameter - k * k
-            if (discriminant <= 0f) return 1f
-            val u = (-k + sqrt(discriminant)) / 2f
-            return maxOf(u - BOX_INNER_PADDING * 2, 1f)
+        private fun chordAt(diameter: Int, boxHeight: Int, cap: Int): Int {
+            val d = diameter.toDouble()
+            val h = boxHeight.toDouble()
+            val squared = d * d - h * h
+            if (squared <= 0.0) return 0
+            return min(floor(sqrt(squared)).toInt(), cap)
         }
 
         /**
-         * Largest content width `w` whose white box — width `w + 2·pad`, height
-         * `barcodeHeight + header + footer + 2·pad` — fits centred in a circle of [diameter]:
-         * `w = √(D² − boxH²) − 2·pad`. Returns 1 when the box height alone exceeds the diameter
-         * (a degenerately small round screen; the caller's width clamp then dominates).
+         * Largest square side `s` whose box — `s` wide, `s + chrome` tall — fits a circle of
+         * [diameter]: `s² + (s + k)² ≤ D²`, positive root `s = (−k + √(2D² − k²)) / 2`.
          */
-        private fun maxContentWidthInCircle(
-            diameter: Float,
-            barcodeHeight: Float,
-            header: Float,
-            footer: Float,
-        ): Float {
-            val boxHeight = barcodeHeight + header + footer + BOX_INNER_PADDING * 2
-            val available = diameter * diameter - boxHeight * boxHeight
-            if (available <= 0f) return 1f
-            return maxOf(sqrt(available) - BOX_INNER_PADDING * 2, 1f)
+        private fun maxSquareSideInCircle(diameter: Int, chrome: Int): Int {
+            val d = diameter.toDouble()
+            val k = chrome.toDouble()
+            val discriminant = 2.0 * d * d - k * k
+            if (discriminant <= 0.0) return 0
+            return max(floor((-k + sqrt(discriminant)) / 2.0).toInt(), 0)
         }
-
-        private val SQRT_2 = sqrt(2f)
     }
 }

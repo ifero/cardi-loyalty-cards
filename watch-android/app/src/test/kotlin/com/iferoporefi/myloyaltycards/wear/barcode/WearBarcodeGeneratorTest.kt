@@ -97,19 +97,60 @@ class WearBarcodeGeneratorTest {
     }
 
     @Test
-    fun quietZoneIsPreserved_bordersAreWhite() {
-        // Request a size well beyond the natural symbol so ZXing's quiet zone shows as a white margin.
-        // QR carries a 4-module quiet zone on all sides; a 1D symbol is centred with white side
-        // margins. Cropping the quiet zone is the story's named anti-pattern — it must survive.
+    fun qrKeepsItsQuietZone_bordersAreWhite() {
+        // QR carries its 4-module quiet zone inside the matrix. Cropping it is the named anti-pattern.
         val qr = (generator.generate("https://example.com", "QR", 300, 300) as BarcodeResult.Success).matrix
         assertFalse("QR top-left corner should be quiet-zone white", qr[0, 0])
         assertFalse("QR top-right corner should be quiet-zone white", qr[qr.width - 1, 0])
         assertFalse("QR bottom-left corner should be quiet-zone white", qr[0, qr.height - 1])
+    }
 
-        val ean = (generator.generate("5901234123457", "EAN13", 600, 160) as BarcodeResult.Success).matrix
-        val midRow = ean.height / 2
-        assertFalse("EAN-13 left edge should be quiet-zone white", ean[0, midRow])
-        assertFalse("EAN-13 right edge should be quiet-zone white", ean[ean.width - 1, midRow])
+    // --- Story 16.38: the module plan's half --------------------------------------------------------
+
+    @Test
+    fun measure_linear_isTheSymbolsModuleCount_withNoQuietZone() {
+        // EAN-13 / UPC-A are 95 modules, EAN-8 67: ZXing's default 9-module margin is gone.
+        assertEquals(95, measuredUnits("5901234123457", "EAN13"))
+        assertEquals(95, measuredUnits("012345678905", "UPCA"))
+        assertEquals(67, measuredUnits("96385074", "EAN8"))
+    }
+
+    @Test
+    fun measure_qr_includesItsOwnQuietZone() {
+        // The smallest QR (version 1) is 21 modules; plus 4 quiet-zone modules each side.
+        assertEquals(29, measuredUnits("HELLO", "QR"))
+    }
+
+    @Test
+    fun measure_rejectsBadValuesLikeGenerate() {
+        assertEquals(BarcodeResult.InvalidValue, generator.measure("5901234123450", "EAN13"))
+        assertEquals(BarcodeResult.UnsupportedFormat, generator.measure("123", "AZTEC"))
+    }
+
+    @Test
+    fun linearBarRun_isModuleTimesSymbolModules_withWholePixelElements() {
+        for ((format, value) in validValues - "QR") {
+            val units = measuredUnits(value, format)
+            for (module in 1..4) {
+                val matrix = (generator.generate(value, format, module * units, 120) as BarcodeResult.Success).matrix
+                val midRow = matrix.height / 2
+                assertEquals("$format @${module}px: matrix is exactly the bar run", module * units, matrix.width)
+                assertTrue("$format @${module}px: starts on a bar (no margin)", matrix[0, midRow])
+                assertTrue("$format @${module}px: ends on a bar (no margin)", matrix[matrix.width - 1, midRow])
+                assertEquals("$format @${module}px: narrowest element is one module", module, matrix.narrowestElementPx())
+                for (run in matrix.runs(midRow)) {
+                    assertEquals("$format @${module}px: every element is whole modules", 0, run % module)
+                }
+            }
+        }
+    }
+
+    @Test
+    fun qr_atAnIntegerMultiple_isExactlyThatSize() {
+        val units = measuredUnits("https://example.com", "QR")
+        val matrix = (generator.generate("https://example.com", "QR", units * 6, units * 6) as BarcodeResult.Success).matrix
+        assertEquals(units * 6, matrix.width)
+        assertEquals(6, matrix.narrowestElementPx())
     }
 
     @Test
@@ -135,6 +176,23 @@ class WearBarcodeGeneratorTest {
         assertEquals("CODE128 non-encodable char", BarcodeResult.InvalidValue, generator.generate("AB→", "CODE128", 300, 120))
         // A payload beyond the largest QR's capacity cannot be encoded.
         assertEquals("QR over capacity", BarcodeResult.InvalidValue, generator.generate("A".repeat(4000), "QR", 300, 300))
+    }
+
+    private fun measuredUnits(value: String, format: String): Int =
+        (generator.measure(value, format) as BarcodeResult.Success).matrix.width
+
+    /** The lengths of same-coloured runs across [row]. */
+    private fun BitMatrix.runs(row: Int): List<Int> {
+        val runs = mutableListOf<Int>()
+        var run = 1
+        for (x in 1 until width) {
+            if (this[x, row] == this[x - 1, row]) run++ else {
+                runs += run
+                run = 1
+            }
+        }
+        runs += run
+        return runs
     }
 
     /** True when the matrix has at least one black and one white module — i.e. a real, non-solid symbol. */

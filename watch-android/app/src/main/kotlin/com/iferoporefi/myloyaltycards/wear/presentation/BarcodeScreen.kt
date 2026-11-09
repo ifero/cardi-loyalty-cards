@@ -3,19 +3,22 @@ package com.iferoporefi.myloyaltycards.wear.presentation
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import android.util.Log
 import android.view.WindowManager
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -34,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
@@ -41,18 +45,24 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.LocalReduceMotion
@@ -64,11 +74,15 @@ import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.ScreenScaffold
 import androidx.wear.compose.material3.Text
 import androidx.wear.compose.ui.tooling.preview.WearPreviewDevices
+import com.iferoporefi.myloyaltycards.wear.BuildConfig
 import com.iferoporefi.myloyaltycards.wear.R
-import com.iferoporefi.myloyaltycards.wear.barcode.BarcodeFormats
 import com.iferoporefi.myloyaltycards.wear.barcode.BarcodeLayoutMetrics
+import com.iferoporefi.myloyaltycards.wear.barcode.BarcodeRender
+import com.iferoporefi.myloyaltycards.wear.barcode.BarcodeRenderPipeline
+import com.iferoporefi.myloyaltycards.wear.barcode.BarcodeRenderRequest
 import com.iferoporefi.myloyaltycards.wear.barcode.BarcodeResult
 import com.iferoporefi.myloyaltycards.wear.barcode.WearBarcodeGenerator
+import com.iferoporefi.myloyaltycards.wear.barcode.narrowestElementPx
 import com.iferoporefi.myloyaltycards.wear.barcode.toBarcodeImageBitmap
 import com.iferoporefi.myloyaltycards.wear.data.WearCard
 import com.iferoporefi.myloyaltycards.wear.sort.CardSorter
@@ -76,6 +90,7 @@ import com.iferoporefi.myloyaltycards.wear.sort.WatchSortMode
 import com.iferoporefi.myloyaltycards.wear.usage.CardUsageRecorder
 import com.iferoporefi.myloyaltycards.wear.usage.UsageTimestamps
 import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -316,6 +331,11 @@ private fun Modifier.crossfadeInPlace(pagerState: PagerState, page: Int): Modifi
  * and its error state. Carries no per-card effect — the haptic, the usage event and the awake call
  * belong to the screen and the card at rest on it — but reports whether it failed, so the screen
  * can release full brightness on an error card.
+ *
+ * The barcode is solved against the **whole screen** (Story 16.38): the scaffold's content padding
+ * is not applied to it, because with the clock hidden the system draws nothing into those edges and
+ * on a round screen the circle maths already keeps the box clear of the mask — applying both was the
+ * double penalty. The error state keeps the padding, unchanged.
  */
 @Composable
 private fun BarcodePage(
@@ -329,7 +349,6 @@ private fun BarcodePage(
     val currentOnRenderFailedChange by rememberUpdatedState(onRenderFailedChange)
     val isRound = LocalConfiguration.current.isScreenRound
     val density = LocalDensity.current
-    val isQr = BarcodeFormats.isQr(card.barcodeFormat)
     val value = card.barcodeValue
     val showsValueLabel = !value.isNullOrEmpty()
     val title = barcodeScreenTitle(card.name, stringResource(R.string.barcode_untitled_card))
@@ -337,87 +356,150 @@ private fun BarcodePage(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
-            .semantics(mergeDescendants = true) { customActions = accessibilityActions }
-            .padding(contentPadding),
+            .semantics(mergeDescendants = true) { customActions = accessibilityActions },
     ) {
-        val metrics = remember(maxWidth, maxHeight, isRound, isQr, showsValueLabel) {
-            BarcodeLayoutMetrics.make(
-                containerWidth = maxWidth.value,
-                containerHeight = maxHeight.value,
-                isRound = isRound,
-                isQr = isQr,
-                showsTitle = true,
-                showsValueLabel = showsValueLabel,
-            )
-        }
-        val widthPx = with(density) { metrics.barcodeWidth.dp.roundToPx() }
-        val heightPx = with(density) { metrics.barcodeHeight.dp.roundToPx() }
-
-        val state = rememberBarcodeRenderState(barcodeGenerator, value, card.barcodeFormat, widthPx, heightPx)
+        val request = BarcodeRenderRequest(
+            value = value,
+            format = card.barcodeFormat,
+            screenWidthPx = constraints.maxWidth,
+            screenHeightPx = constraints.maxHeight,
+            density = density.density,
+            fontScale = density.fontScale,
+            isRound = isRound,
+            showsTitle = true,
+            showsValueLabel = showsValueLabel,
+        )
+        val state = rememberBarcodeRenderState(barcodeGenerator, request)
         val failed = state is BarcodeRenderState.Failed
         LaunchedEffect(failed) { currentOnRenderFailedChange(failed) }
+        val contentDescription = stringResource(R.string.barcode_content_description, title)
 
         when (state) {
-            BarcodeRenderState.Loading ->
-                // Reserve the symbol's footprint so the layout does not jump when it lands.
-                Spacer(Modifier.size(metrics.barcodeWidth.dp, metrics.barcodeHeight.dp))
+            // Paging composes the neighbouring cards ahead, so this is rarely seen; it draws nothing
+            // rather than guess a footprint the module plan has not solved yet.
+            BarcodeRenderState.Loading -> Unit
 
             is BarcodeRenderState.Rendered ->
                 BarcodeSuccessContent(
                     image = state.image,
                     title = title,
                     value = value,
-                    metrics = metrics,
-                    contentDescription = stringResource(R.string.barcode_content_description, title),
+                    metrics = state.metrics,
+                    contentDescription = contentDescription,
+                    onImagePlaced = { drawn, placedX ->
+                        if (BuildConfig.DEBUG) logBarcodeGeometry(card.barcodeFormat, request, state, drawn, placedX)
+                    },
                 )
 
-            is BarcodeRenderState.Failed -> BarcodeErrorContent(state.result)
+            // Too long for 1 px per module: the value in the symbol's place, title kept — not the
+            // error screen, and the screen stays bright, so the cashier can key it in.
+            is BarcodeRenderState.ValueOnly -> {
+                if (BuildConfig.DEBUG) {
+                    LaunchedEffect(request) { logBarcodeGeometry(card.barcodeFormat, request, state.metrics) }
+                }
+                BarcodeValueOnlyContent(
+                    title = title,
+                    value = value.orEmpty(),
+                    metrics = state.metrics,
+                    contentDescription = contentDescription,
+                )
+            }
+
+            is BarcodeRenderState.Failed ->
+                BarcodeErrorContent(state.result, modifier = Modifier.padding(contentPadding))
         }
     }
 }
 
-
 /** The UI state of the barcode area. */
 private sealed interface BarcodeRenderState {
     data object Loading : BarcodeRenderState
-    data class Rendered(val image: ImageBitmap) : BarcodeRenderState
+    data class Rendered(
+        val image: ImageBitmap,
+        val metrics: BarcodeLayoutMetrics,
+        val matrixWidthPx: Int,
+        val matrixHeightPx: Int,
+        val narrowestElementPx: Int,
+    ) : BarcodeRenderState
+    data class ValueOnly(val metrics: BarcodeLayoutMetrics) : BarcodeRenderState
     data class Failed(val result: BarcodeResult) : BarcodeRenderState
 }
 
 /**
- * Generates the barcode off the main thread (AC10) and exposes it as a [BarcodeRenderState]. Encoding
- * is cached in [generator]; the pixel→[ImageBitmap] copy runs on [Dispatchers.Default] too, so the UI
- * thread does no barcode work. Re-runs only when a key changes (value, format, or size).
+ * Generates the barcode off the main thread (AC10) and exposes it as a [BarcodeRenderState], through
+ * the pure [BarcodeRenderPipeline] (measure → plan → encode). Encoding is cached in [generator]; the
+ * pixel→[ImageBitmap] copy runs on [Dispatchers.Default] too, so the UI thread does no barcode work.
+ * Re-runs only when the [request] changes.
  */
 @Composable
 private fun rememberBarcodeRenderState(
     generator: WearBarcodeGenerator,
-    barcodeValue: String?,
-    barcodeFormat: String?,
-    widthPx: Int,
-    heightPx: Int,
+    request: BarcodeRenderRequest,
 ): BarcodeRenderState =
-    produceState<BarcodeRenderState>(
-        BarcodeRenderState.Loading,
-        generator,
-        barcodeValue,
-        barcodeFormat,
-        widthPx,
-        heightPx,
-    ) {
+    produceState<BarcodeRenderState>(BarcodeRenderState.Loading, generator, request) {
         // Wait for a real measurement before encoding.
-        if (widthPx <= 0 || heightPx <= 0) return@produceState
-        value = withContext(Dispatchers.Default) {
-            when (val result = generator.generate(barcodeValue, barcodeFormat, widthPx, heightPx)) {
-                is BarcodeResult.Success -> BarcodeRenderState.Rendered(result.matrix.toBarcodeImageBitmap())
-                else -> BarcodeRenderState.Failed(result)
-            }
-        }
+        if (request.screenWidthPx <= 0 || request.screenHeightPx <= 0) return@produceState
+        value = withContext(Dispatchers.Default) { renderBarcode(generator, request) }
     }.value
 
+private fun renderBarcode(generator: WearBarcodeGenerator, request: BarcodeRenderRequest): BarcodeRenderState =
+    when (val render = BarcodeRenderPipeline.render(generator, request)) {
+        is BarcodeRender.Drawn -> BarcodeRenderState.Rendered(
+            image = render.matrix.toBarcodeImageBitmap(),
+            metrics = render.metrics,
+            matrixWidthPx = render.matrix.width,
+            matrixHeightPx = render.matrix.height,
+            narrowestElementPx = render.matrix.narrowestElementPx(),
+        )
+        is BarcodeRender.ValueOnly -> BarcodeRenderState.ValueOnly(render.metrics)
+        is BarcodeRender.Failed -> BarcodeRenderState.Failed(render.result)
+    }
+
 /**
- * The scannable content: card name (title-level), the symbol at its measured size with no
+ * DEBUG-only geometry record (Story 16.38), the Wear twin of watchOS's `BarcodeGeometry` log: the
+ * planned module plan beside what was actually encoded and laid out, so the module can be re-measured
+ * on any device with `adb logcat -s BarcodeGeometry`. A symbol too long to draw logs `canRender=false`
+ * and its placeholder's free area, with nothing drawn.
+ */
+private fun logBarcodeGeometry(
+    format: String?,
+    request: BarcodeRenderRequest,
+    metrics: BarcodeLayoutMetrics,
+    drawn: String = "none",
+) {
+    val m = metrics
+    Log.d(
+        "BarcodeGeometry",
+        "format=$format screen=${request.screenWidthPx}x${request.screenHeightPx}px " +
+            "density=${request.density} fontScale=${request.fontScale} round=${request.isRound} " +
+            "canRender=${m.canRender} " +
+            "planned: module=${m.modulePx}px units=${m.symbolUnits} symbol=${m.symbolWidthPx}x${m.barHeightPx}px " +
+            "quiet=${m.leadingQuietPx}/${m.trailingQuietPx}px " +
+            "(${m.leadingQuietModules}/${m.trailingQuietModules} modules) box=${m.boxWidthPx}x${m.boxHeightPx}px " +
+            "barFloor=${m.barHeightFloorPx}px | drawn: $drawn",
+    )
+}
+
+private fun logBarcodeGeometry(
+    format: String?,
+    request: BarcodeRenderRequest,
+    state: BarcodeRenderState.Rendered,
+    image: IntSize,
+    placedX: Int,
+) = logBarcodeGeometry(
+    format,
+    request,
+    state.metrics,
+    drawn = "matrix=${state.matrixWidthPx}x${state.matrixHeightPx}px " +
+        "image=${image.width}x${image.height}px " +
+        "placedX=${placedX}px (planned leading ${state.metrics.leadingQuietPx}px) " +
+        "narrowest=${state.narrowestElementPx}px",
+)
+
+/**
+ * The scannable content: card name (title-level), the symbol at its planned pixel size with no
  * interpolation (crisp modules, mirroring watchOS's `.interpolation(.none)`), and the value below.
+ * The symbol's quiet zones are white space on the white screen, placed in the symbology's ratio.
  */
 @Composable
 private fun BarcodeSuccessContent(
@@ -427,51 +509,145 @@ private fun BarcodeSuccessContent(
     metrics: BarcodeLayoutMetrics,
     contentDescription: String,
     modifier: Modifier = Modifier,
+    onImagePlaced: (size: IntSize, placedX: Int) -> Unit = { _, _ -> },
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(horizontal = metrics.boxInnerPadding.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Text(
-            text = title,
-            color = Color.Black,
-            style = MaterialTheme.typography.titleSmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier
-                .widthIn(max = metrics.usableWidth.dp)
-                .padding(bottom = metrics.contentSpacing.dp),
-        )
+    // Reports only a change: the pager's slide moves the image on screen every frame, not in its box.
+    val lastPlaced = remember { arrayOfNulls<Pair<IntSize, Int>>(1) }
+    BarcodeRows(title = title, value = value, metrics = metrics, modifier = modifier) {
         Image(
             bitmap = image,
             contentDescription = contentDescription,
             contentScale = ContentScale.Fit,
             filterQuality = FilterQuality.None,
-            modifier = Modifier.size(metrics.barcodeWidth.dp, metrics.barcodeHeight.dp),
+            modifier = Modifier
+                .placeSymbol(metrics)
+                .onGloballyPositioned { image ->
+                    // The symbol's actual x inside the box `placeSymbol` lays out, not the planned one.
+                    val box = image.parentCoordinates ?: return@onGloballyPositioned
+                    val placed = image.size to box.localPositionOf(image, Offset.Zero).x.roundToInt()
+                    if (placed != lastPlaced[0]) {
+                        lastPlaced[0] = placed
+                        onImagePlaced(placed.first, placed.second)
+                    }
+                },
         )
-        if (!value.isNullOrEmpty()) {
-            Text(
+    }
+}
+
+/**
+ * A symbol too long to draw at 1 px per module (Story 16.38's decision, watchOS's `canRender` and
+ * `barcodePlaceholder`): the value in large monospaced text where the symbol would be, inside a thin
+ * outline the size of the plan's free area, so the cashier can type it. The title and value rows stay.
+ * Not the error screen: the card is fine, its symbol is just longer than the watch can draw.
+ */
+@Composable
+private fun BarcodeValueOnlyContent(
+    title: String,
+    value: String,
+    metrics: BarcodeLayoutMetrics,
+    contentDescription: String,
+    modifier: Modifier = Modifier,
+) {
+    val density = LocalDensity.current
+    BarcodeRows(title = title, value = value, metrics = metrics, modifier = modifier) {
+        Box(
+            modifier = Modifier
+                .size(
+                    with(density) { metrics.boxWidthPx.toDp() },
+                    with(density) { metrics.barHeightPx.toDp() },
+                )
+                .border(1.dp, Color.Black.copy(alpha = PLACEHOLDER_OUTLINE_ALPHA), RoundedCornerShape(6.dp))
+                .padding(horizontal = 4.dp)
+                .semantics { this.contentDescription = contentDescription },
+            contentAlignment = Alignment.Center,
+        ) {
+            BasicText(
                 text = value,
-                color = Color.Black,
-                fontFamily = FontFamily.Monospace,
-                fontSize = metrics.valueFontSize.sp,
+                style = TextStyle(
+                    color = Color.Black,
+                    fontFamily = FontFamily.Monospace,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                ),
                 maxLines = 1,
+                // Past 50 % it truncates visibly, as watchOS's one-line `Text` does, rather than clip.
                 overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .widthIn(max = metrics.usableWidth.dp)
-                    .padding(
-                        start = metrics.valueHorizontalPadding.dp,
-                        top = metrics.contentSpacing.dp,
-                        end = metrics.valueHorizontalPadding.dp,
-                    ),
+                autoSize = TextAutoSize.StepBased(
+                    minFontSize = (PLACEHOLDER_FONT_SIZE_SP * PLACEHOLDER_MIN_SCALE).sp,
+                    maxFontSize = PLACEHOLDER_FONT_SIZE_SP.sp,
+                ),
             )
         }
     }
+}
+
+/** watchOS's placeholder: 14 pt semibold monospaced, shrinking to 50 %, in a 30 %-black outline. */
+private const val PLACEHOLDER_FONT_SIZE_SP = 14f
+private const val PLACEHOLDER_MIN_SCALE = 0.5f
+private const val PLACEHOLDER_OUTLINE_ALPHA = 0.3f
+
+/**
+ * The barcode's three rows, sized by the plan: the title header, the [symbol] row, and the value
+ * footer. The header and footer are fixed-height boxes as wide as the white box, so the laid-out box is
+ * the planned one.
+ */
+@Composable
+private fun BarcodeRows(
+    title: String,
+    value: String?,
+    metrics: BarcodeLayoutMetrics,
+    modifier: Modifier = Modifier,
+    symbol: @Composable () -> Unit,
+) {
+    val density = LocalDensity.current
+    val boxWidth = with(density) { metrics.boxWidthPx.toDp() }
+    Column(
+        modifier = modifier.fillMaxSize(),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        if (metrics.headerPx > 0) {
+            Box(
+                modifier = Modifier.size(boxWidth, with(density) { metrics.headerPx.toDp() }),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                Text(
+                    text = title,
+                    color = Color.Black,
+                    style = MaterialTheme.typography.titleSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+        symbol()
+        if (metrics.footerPx > 0 && !value.isNullOrEmpty()) {
+            Box(
+                modifier = Modifier.size(boxWidth, with(density) { metrics.footerPx.toDp() }),
+                contentAlignment = Alignment.BottomCenter,
+            ) {
+                Text(
+                    text = value,
+                    color = Color.Black,
+                    fontFamily = FontFamily.Monospace,
+                    fontSize = BarcodeLayoutMetrics.VALUE_FONT_SIZE_SP.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Lays the symbol out in **exact device pixels** — a dp round trip could move a module boundary by a
+ * pixel — inside a box as wide as the white box, offset by the leading quiet zone.
+ */
+private fun Modifier.placeSymbol(metrics: BarcodeLayoutMetrics): Modifier = layout { measurable, _ ->
+    val placeable = measurable.measure(Constraints.fixed(metrics.symbolWidthPx, metrics.barHeightPx))
+    layout(metrics.boxWidthPx, metrics.barHeightPx) { placeable.place(metrics.leadingQuietPx, 0) }
 }
 
 /**
@@ -552,29 +728,55 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
 @WearPreviewDevices
 @Composable
 private fun BarcodeSuccessPreview() {
-    val metrics = BarcodeLayoutMetrics.make(
-        containerWidth = 220f,
-        containerHeight = 220f,
-        isRound = true,
-        isQr = false,
-        showsTitle = true,
-        showsValueLabel = true,
-    )
-    val density = LocalDensity.current
-    val image = remember {
-        val widthPx = with(density) { metrics.barcodeWidth.dp.roundToPx() }
-        val heightPx = with(density) { metrics.barcodeHeight.dp.roundToPx() }
-        (WearBarcodeGenerator().generate("5901234123457", "EAN13", widthPx, heightPx)
-            as BarcodeResult.Success).matrix.toBarcodeImageBitmap()
+    val value = "5901234123457"
+    BarcodePreview(value = value, format = "EAN13") { rendered ->
+        if (rendered is BarcodeRenderState.Rendered) {
+            BarcodeSuccessContent(
+                image = rendered.image,
+                title = "Esselunga",
+                value = value,
+                metrics = rendered.metrics,
+                contentDescription = "Barcode for Esselunga",
+            )
+        }
     }
-    Box(Modifier.fillMaxSize().background(Color.White), contentAlignment = Alignment.Center) {
-        BarcodeSuccessContent(
-            image = image,
-            title = "Esselunga",
-            value = "5901234123457",
-            metrics = metrics,
-            contentDescription = "Barcode for Esselunga",
+}
+
+@WearPreviewDevices
+@Composable
+private fun BarcodeValueOnlyPreview() {
+    val value = "LOYALTY-CARD-ABCDEFGHIJKLMNOPQRSTUVWXYZ-ABCDEFGHIJKL"
+    BarcodePreview(value = value, format = "CODE128") { rendered ->
+        if (rendered is BarcodeRenderState.ValueOnly) {
+            BarcodeValueOnlyContent(
+                title = "Esselunga",
+                value = value,
+                metrics = rendered.metrics,
+                contentDescription = "Barcode for Esselunga",
+            )
+        }
+    }
+}
+
+/** Renders [value] synchronously against the preview's screen, on a white ground, and shows [content]. */
+@Composable
+private fun BarcodePreview(value: String, format: String, content: @Composable (BarcodeRenderState) -> Unit) {
+    val density = LocalDensity.current
+    val isRound = LocalConfiguration.current.isScreenRound
+    BoxWithConstraints(Modifier.fillMaxSize().background(Color.White)) {
+        val request = BarcodeRenderRequest(
+            value = value,
+            format = format,
+            screenWidthPx = constraints.maxWidth,
+            screenHeightPx = constraints.maxHeight,
+            density = density.density,
+            fontScale = density.fontScale,
+            isRound = isRound,
+            showsTitle = true,
+            showsValueLabel = true,
         )
+        val generator = remember { WearBarcodeGenerator() }
+        content(remember(request) { renderBarcode(generator, request) })
     }
 }
 

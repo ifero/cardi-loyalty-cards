@@ -387,12 +387,22 @@ six here at no extra cost, so Wear deliberately exceeds watchOS parity. This asy
 and documented — the watchOS gap is a real, unstoried defect flagged for @ifero, not something to
 "fix" by hobbling Wear.
 
-**Layout is ported, with two Wear adaptations** (`BarcodeLayoutMetrics`, the single testable source of
-truth). The watchOS QR-vs-linear branch, the `112` QR floor and the linear `0.52`-of-height / 88–110
-clamp are reproduced. Added for Wear: (1) on a **round** screen the symbol + title + value box is
-inscribed in the circle (`boxW² + boxH² ≤ D²`) so no corner or end clips — no-clip always wins over the
-floor; (2) a reserved **title header**, because Wear has no nav-bar title slot for a full-screen surface
-like watchOS does. `widthFillRatio` makes Story 5-10's "≥ 80 % of the container" measurable.
+**Layout is a module plan, as on watchOS since Story 16.27** (`BarcodeLayoutMetrics`, the single
+testable source of truth; Story 16.38). Everything is in whole device pixels, and the barcode is solved
+against the whole screen, not a scaffold-padded box:
+
+- **Module size:** sized against the symbol's own modules, with a guaranteed 4-module quiet zone per
+  side. Linear codes are encoded with ZXing `MARGIN 0` at exactly `module × modules` wide.
+- **Quiet zones:** the leftover white space is split in the symbology's ratio (EAN-13 11:7).
+- **Bars:** they span the height the title and value rows leave.
+- **Round screens:** the title + bars + value box is inscribed in the real screen circle
+  (`boxW² + boxH² ≤ D²`). The solver takes the largest module whose bars stay at least half the
+  symbol's width tall.
+- **QR:** the largest whole multiple of its matrix that fits.
+- **Too long to draw:** a symbol too long for even 1 px per module (`canRender` false) is not drawn.
+  The value is shown as text so it can be keyed in, as on watchOS.
+- **Measuring:** the `BarcodeGeometry` debug log (`adb logcat -s BarcodeGeometry`) records the plan
+  and what was drawn.
 
 **Scanner reliability.** The screen is held awake and at **maximum brightness** while a barcode is
 shown and both are restored on exit (a lifecycle-scoped `DisposableEffect`) — parity with the phone's

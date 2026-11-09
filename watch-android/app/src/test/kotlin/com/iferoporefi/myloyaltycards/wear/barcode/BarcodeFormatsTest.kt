@@ -27,6 +27,14 @@ class BarcodeFormatsTest {
     }
 
     @Test
+    fun quietZone_normalisesLikeToZxing() {
+        assertEquals(BarcodeQuietZone(leading = 11, trailing = 7), BarcodeFormats.quietZone(" ean13 "))
+        assertEquals(BarcodeQuietZone(leading = 7, trailing = 7), BarcodeFormats.quietZone("ean8"))
+        assertEquals(BarcodeQuietZone(leading = 9, trailing = 9), BarcodeFormats.quietZone("UpcA "))
+        assertEquals(BarcodeQuietZone(leading = 10, trailing = 10), BarcodeFormats.quietZone(" code128"))
+    }
+
+    @Test
     fun unknownEmptyOrNullFormat_isNull() {
         assertNull(BarcodeFormats.toZxing("AZTEC")) // real ZXing format, but not one of our six
         assertNull(BarcodeFormats.toZxing("PDF417"))
