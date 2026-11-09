@@ -2,7 +2,7 @@
 title: 'Give the Wear OS barcode the whole screen'
 type: 'bugfix'
 created: '2026-11-04'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 1
 baseline_commit: 'afe7f7a90e7c648cb196351b9d3c7936289261c8'
