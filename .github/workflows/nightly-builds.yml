@@ -337,6 +337,12 @@ jobs:
       EXPO_PUBLIC_SUPABASE_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_KEY }}
       EXPO_PUBLIC_SENTRY_DSN: ${{ secrets.EXPO_PUBLIC_SENTRY_DSN }}
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      # Wear OS crash reporting (Story 24.5): the Wear project's own DSN, read by
+      # watch-android/app/build.gradle.kts. Unset means the Wear app reports nothing. The
+      # same SENTRY_AUTH_TOKEN uploads the Wear R8 mapping during `bundleRelease`, but only
+      # once this DSN is set: without it there is no Wear project to upload to, so the
+      # upload is skipped with a notice and the build still succeeds.
+      WEAR_SENTRY_DSN: ${{ secrets.WEAR_SENTRY_DSN }}
       FASTLANE_SKIP_UPDATE_CHECK: '1'
       FASTLANE_DISABLE_COLORS: '1'
     steps:
@@ -372,10 +378,10 @@ jobs:
       - name: Configure Sentry symbol upload
         run: |
           if [ -n "$SENTRY_AUTH_TOKEN" ]; then
-            echo "SENTRY_AUTH_TOKEN present — Sentry symbol/source-map upload enabled."
+            echo "SENTRY_AUTH_TOKEN present — Sentry symbol/source-map upload enabled (the Wear OS R8 mapping upload also needs WEAR_SENTRY_DSN)."
             echo "SENTRY_DISABLE_AUTO_UPLOAD=false" >> "$GITHUB_ENV"
           else
-            echo "::warning::SENTRY_AUTH_TOKEN not set — skipping Sentry symbol upload (crashes won't be symbolicated). Add the SENTRY_AUTH_TOKEN repo secret to enable."
+            echo "::warning::SENTRY_AUTH_TOKEN not set — skipping Sentry symbol upload (crashes won't be symbolicated) and the Wear OS R8 mapping upload (Wear crashes won't be deobfuscated). Add the SENTRY_AUTH_TOKEN repo secret to enable."
             echo "SENTRY_DISABLE_AUTO_UPLOAD=true" >> "$GITHUB_ENV"
           fi
       - name: Compute Android versionCodes (phone + Wear)

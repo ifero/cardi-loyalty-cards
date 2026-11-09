@@ -378,6 +378,32 @@ platform :android do
     track = options.fetch(:track)
     ENV['WEAR_RELEASE_TRACK'] = wear_band_for(track)
 
+    # Wear OS crash reporting (Story 24.5). The DSN and the token reach Gradle from the job's
+    # environment (`WEAR_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`); watch-android/app/build.gradle.kts bakes
+    # the DSN into BuildConfig and has the Sentry Gradle plugin upload the R8 mapping during
+    # `bundleRelease`. Neither is required: without them the bundle still builds, so these only say
+    # what this release will and will not report. The upload needs all three of a token, uploads
+    # not disabled, and a DSN (the `wear-os` project exists only once there is one); the notice
+    # names the first that is missing, in the order the Gradle build checks them.
+    wear_dsn_missing = ENV['WEAR_SENTRY_DSN'].to_s.strip.empty?
+    if wear_dsn_missing
+      UI.important("WEAR_SENTRY_DSN not set — this Wear OS build will report no crashes to Sentry.")
+    end
+    wear_mapping_skip_reason =
+      if ENV['SENTRY_AUTH_TOKEN'].to_s.strip.empty?
+        "SENTRY_AUTH_TOKEN not set"
+      elsif ENV['SENTRY_DISABLE_AUTO_UPLOAD'].to_s.strip.downcase == "true"
+        "SENTRY_DISABLE_AUTO_UPLOAD=true"
+      elsif wear_dsn_missing
+        "WEAR_SENTRY_DSN not set (no Wear OS Sentry project to upload to)"
+      end
+    if wear_mapping_skip_reason
+      UI.important(
+        "#{wear_mapping_skip_reason} — skipping the Wear OS R8 mapping upload. Wear crashes from " \
+        "this build will not be deobfuscated in Sentry."
+      )
+    end
+
     gradle(
       task: "bundleRelease",
       project_dir: "watch-android",
