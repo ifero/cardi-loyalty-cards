@@ -2,7 +2,7 @@
 title: 'Android screens crash fix'
 type: 'bugfix'
 created: '2026-11-04'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'c9beef8a55bc80f8ba98492d48595e6640be9937'
 route: 'dispatch'
 review_loop_iteration: 0
