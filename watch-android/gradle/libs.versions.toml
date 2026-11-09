@@ -54,6 +54,13 @@ ksp = "2.3.11"
 # supports API 36 (this module's compileSdk); the tests pin API 35 (targetSdk) via
 # `src/test/resources/robolectric.properties`. First CI run downloads the android-all runtime.
 robolectric = "4.16.1"
+# Sentry crash reporting (Story 24.5). The SDK is `sentry-android-core` alone: no NDK (this app has
+# no native code), no session replay, no auto-instrumentation. The Gradle plugin is used ONLY to
+# upload the R8 `mapping.txt` from the release lanes; it is configured not to install or instrument
+# anything (see app/build.gradle.kts). The two are versioned independently by Sentry. Both are the
+# current stable releases at implementation time (Maven Central / Gradle Plugin Portal `<release>`).
+sentryAndroid = "8.63.0"
+sentryGradlePlugin = "6.26.0"
 
 [libraries]
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivity" }
@@ -85,6 +92,8 @@ androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 # Robolectric — JVM Android runtime for the Room DAO and migration tests (see `robolectric` above).
 robolectric = { module = "org.robolectric:robolectric", version.ref = "robolectric" }
+# Sentry Android SDK, core module only (Story 24.5).
+sentry-android-core = { module = "io.sentry:sentry-android-core", version.ref = "sentryAndroid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -96,3 +105,5 @@ ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 # configuration cache (both ON in gradle.properties), which a raw `room.schemaLocation` KSP arg
 # does not. Shares the single `room` version with the runtime and compiler.
 room = { id = "androidx.room", version.ref = "room" }
+# Sentry Android Gradle plugin (Story 24.5): uploads the release R8 mapping, nothing else.
+sentry-android-gradle = { id = "io.sentry.android.gradle", version.ref = "sentryGradlePlugin" }

@@ -38,6 +38,8 @@ private const val ARG_CARD_ID = "cardId"
  * @param usageRecorder the AC8 seam invoked when a barcode opens; defaults to the no-op recorder.
  *   Story 10-6 swaps in a Data Layer-backed implementation from `MainActivity` — no change here.
  * @param onImportSampleCards DEBUG-only seeder passed through to the empty state; `null` in release.
+ * @param onTestCrash the Sentry test crash (Story 24.5), passed through to the empty state; `null`
+ *   unless the build was made with `-PsentryTestCrash=true`.
  */
 @Composable
 fun WearApp(
@@ -45,6 +47,7 @@ fun WearApp(
     sortPreferenceRepository: SortPreferenceRepository,
     usageRecorder: CardUsageRecorder = NoOpCardUsageRecorder,
     onImportSampleCards: (() -> Unit)? = null,
+    onTestCrash: (() -> Unit)? = null,
 ) {
     MyLoyaltyCardsWearTheme {
         val navController = rememberSwipeDismissableNavController()
@@ -66,6 +69,7 @@ fun WearApp(
                         onCardClick = { cardId -> navController.navigateOnce("$ROUTE_BARCODE/$cardId") },
                         onOpenSort = { navController.navigateOnce(ROUTE_SORT) },
                         onImportSampleCards = onImportSampleCards,
+                        onTestCrash = onTestCrash,
                     )
                 }
                 composable(ROUTE_SORT) {

@@ -1,6 +1,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { isSentryTestCrashEnabled, triggerSentryTestCrash } from '@/core/observability/test-crash';
+
 import { ActionRow } from '@/shared/components/ui';
 
 import { SettingsSection } from './SettingsSection';
@@ -17,6 +19,9 @@ type AboutSectionProps = {
  * ABOUT (frame A, plus What We Collect after Privacy Policy — ifero, 2026-10-15). App Version and
  * Catalogue are information, not controls: no press, no chevron, at full strength, each read as
  * its label and its value.
+ *
+ * A build made with `EXPO_PUBLIC_SENTRY_TEST_CRASH=1` adds a last row that crashes the app on
+ * purpose (Story 24.5); no other build renders it.
  */
 export const AboutSection = ({
   appVersion,
@@ -64,6 +69,15 @@ export const AboutSection = ({
         label={t('settings.about.catalogue')}
         value={catalogueVersion}
       />
+      {isSentryTestCrashEnabled() ? (
+        <ActionRow
+          testID="settings-sentry-test-crash-row"
+          variant="plain"
+          showBottomBorder={false}
+          label={t('settings.about.sentryTestCrash')}
+          onPress={triggerSentryTestCrash}
+        />
+      ) : null}
     </SettingsSection>
   );
 };

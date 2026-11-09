@@ -68,8 +68,12 @@ native SDK), so the Sentry project has to trim them on the server.
       offline then back online with a bad network), checked the same way.
 - [ ] **Privacy-policy URL.** `https://cardiapp.eu/privacy-policy.html` is live (Story 18-9), and
       shows the same last-updated date as the in-app policy.
-- [ ] **Wear OS.** Story 24-5 has merged, and a Wear OS test crash from a release build is checked
-      in Sentry the same way as the phone's native crash.
+- [ ] **Wear OS.** Story 24-5 has merged. The `wear-os` Sentry project is a separate project, so
+      the boxes above do not cover it: turn on "Prevent Storing of IP Addresses" there too, add
+      rules 1–5 above to it (the Wear app's own `beforeSend` already removes the same fields, so the
+      rules are a second line), and check its retention. Then a Wear OS test crash from a release
+      build (`watch-android/README.md` § Crash reporting) is checked in Sentry the same way as the
+      phone's native crash.
 - [ ] **Mailboxes.** `support@cardiapp.eu` and `privacy@cardiapp.eu` deliver mail.
 
 ## App Store Connect: App Privacy

@@ -5,10 +5,12 @@
  * Rendered through the real `StoryDecorator` and the real rows, because what makes App Version and
  * Catalogue information rather than controls is the shared row's.
  */
-import { render, screen, userEvent } from '@testing-library/react-native';
+import { fireEvent, render, screen, userEvent } from '@testing-library/react-native';
 import React from 'react';
 import { StyleSheet } from 'react-native';
 import { Svg } from 'react-native-svg';
+
+import { SENTRY_TEST_CRASH_MESSAGE } from '@/core/observability/test-crash';
 
 import { LIGHT_THEME } from '@/shared/theme/colors';
 
@@ -109,6 +111,43 @@ describe('AboutSection (frame A)', () => {
         LIGHT_THEME.textPrimary
       );
       expect(screen.getByText('v3 · Mar 2026')).toBeTruthy();
+    });
+  });
+
+  // Story 24.5: the test crash exists only in a build made with EXPO_PUBLIC_SENTRY_TEST_CRASH=1.
+  describe('Sentry test crash row', () => {
+    const original = process.env.EXPO_PUBLIC_SENTRY_TEST_CRASH;
+
+    afterEach(() => {
+      if (original === undefined) {
+        delete process.env.EXPO_PUBLIC_SENTRY_TEST_CRASH;
+      } else {
+        process.env.EXPO_PUBLIC_SENTRY_TEST_CRASH = original;
+      }
+    });
+
+    it('is absent without the flag', () => {
+      delete process.env.EXPO_PUBLIC_SENTRY_TEST_CRASH;
+      renderAbout();
+      expect(screen.queryByTestId('settings-sentry-test-crash-row')).toBeNull();
+    });
+
+    it('is absent when the flag is anything but "1"', () => {
+      process.env.EXPO_PUBLIC_SENTRY_TEST_CRASH = 'true';
+      renderAbout();
+      expect(screen.queryByTestId('settings-sentry-test-crash-row')).toBeNull();
+    });
+
+    it('comes last with the flag, and throws the test crash when pressed', () => {
+      process.env.EXPO_PUBLIC_SENTRY_TEST_CRASH = '1';
+      renderAbout();
+      const tree = JSON.stringify(screen.toJSON());
+      expect(tree.indexOf('"settings-sentry-test-crash-row"')).toBeGreaterThan(
+        tree.indexOf('"settings-catalogue-row"')
+      );
+      const row = screen.getByTestId('settings-sentry-test-crash-row');
+      expect(row.props.accessibilityLabel).toBe('Sentry test crash');
+      expect(() => fireEvent.press(row)).toThrow(SENTRY_TEST_CRASH_MESSAGE);
     });
   });
 });

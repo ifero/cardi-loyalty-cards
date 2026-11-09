@@ -3,6 +3,7 @@ package com.iferoporefi.myloyaltycards.wear
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import com.iferoporefi.myloyaltycards.wear.crash.WearCrashReporting
 import com.iferoporefi.myloyaltycards.wear.prefs.DataStoreSortPreferenceRepository
 import com.iferoporefi.myloyaltycards.wear.prefs.sortPreferencesDataStore
 import com.iferoporefi.myloyaltycards.wear.presentation.WearApp
@@ -38,6 +39,15 @@ class MainActivity : ComponentActivity() {
                 null
             }
 
+        // Sentry test crash (Story 24.5), present only in a build made with -PsentryTestCrash=true.
+        // A compile-time constant like DEBUG above, so R8 removes the trigger from every other build.
+        val onTestCrash: (() -> Unit)? =
+            if (BuildConfig.SENTRY_TEST_CRASH) {
+                { WearCrashReporting.crashForTest() }
+            } else {
+                null
+            }
+
         // Usage-event seam (AC8 of Story 10-4), now backed by Story 10-6's durable outbox: a card
         // open is persisted first and delivered whenever the phone is next reachable.
         val usageRecorder = WearGraph.cardUsageRecorder(applicationContext)
@@ -52,6 +62,7 @@ class MainActivity : ComponentActivity() {
                 sortPreferenceRepository = sortPreferenceRepository,
                 usageRecorder = usageRecorder,
                 onImportSampleCards = onImportSampleCards,
+                onTestCrash = onTestCrash,
             )
         }
     }

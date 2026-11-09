@@ -14,7 +14,11 @@
       next sync. `allowBackup` covers Android 11; `dataExtractionRules` is the
       Android 12+ replacement and excludes both cloud backup and device transfer.
     -->
+    <!--
+      `.WearApplication` starts crash reporting before any Activity (Story 24.5).
+    -->
     <application
+        android:name=".WearApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:icon="@mipmap/ic_launcher"
@@ -25,6 +29,15 @@
         <uses-library
             android:name="com.google.android.wearable"
             android:required="true" />
+
+        <!--
+          Sentry's manifest auto-init is OFF (Story 24.5). WearApplication initialises the SDK
+          itself, and only when the build carries a DSN: auto-init with no DSN would fail at
+          startup, and with one it would skip this app's trimming options.
+        -->
+        <meta-data
+            android:name="io.sentry.auto-init"
+            android:value="false" />
 
         <!--
           NON-STANDALONE, deliberately.

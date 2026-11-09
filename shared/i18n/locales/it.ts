@@ -146,7 +146,9 @@ export const it = {
       appVersion: 'Versione app',
       catalogue: 'Catalogo',
       helpFaq: 'Aiuto e FAQ',
-      privacyPolicy: 'Informativa sulla privacy'
+      privacyPolicy: 'Informativa sulla privacy',
+      // Only in a build made with EXPO_PUBLIC_SENTRY_TEST_CRASH=1 (Story 24.5)
+      sentryTestCrash: 'Crash di prova Sentry'
     },
     data: {
       exportData: 'Esporta dati',
