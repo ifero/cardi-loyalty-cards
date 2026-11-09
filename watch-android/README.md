@@ -729,6 +729,73 @@ Two toolchain facts that are easy to get wrong:
   compiles against and what CI runners provide out of the box; moving to 37 means installing a
   platform on every machine and in CI for no current benefit.
 
+## Crash reporting (Story 24.5)
+
+The Wear app reports crashes to its **own** Sentry project (`wear-os` in the `andrea-pacino` EU
+organisation, `https://de.sentry.io/`), not to the phone's `react-native` one. The Apple Watch app
+still reports nothing.
+
+| Piece                 | Where                                                                                                                                                                                                                  |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SDK                   | `io.sentry:sentry-android-core` only (no NDK, no replay), `gradle/libs.versions.toml`                                                                                                                                  |
+| Init                  | [`WearApplication`](app/src/main/kotlin/com/iferoporefi/myloyaltycards/wear/WearApplication.kt) → [`crash/WearCrashReporting.kt`](app/src/main/kotlin/com/iferoporefi/myloyaltycards/wear/crash/WearCrashReporting.kt) |
+| Scrubber (beforeSend) | [`crash/WearEventScrubber.kt`](app/src/main/kotlin/com/iferoporefi/myloyaltycards/wear/crash/WearEventScrubber.kt), the Kotlin twin of the phone's `scrubEvent`                                                        |
+| Manifest auto-init    | **Off** (`io.sentry.auto-init` = `false` in `AndroidManifest.xml`)                                                                                                                                                     |
+| R8 mapping upload     | The Sentry Android Gradle plugin, during `bundleRelease`, configured in `app/build.gradle.kts` `sentry { }` to upload and do nothing else                                                                              |
+
+**When it initialises.** Only when the build carries a DSN and is not DEBUG. The DSN comes from the
+Gradle property `wearSentryDsn`, else the `WEAR_SENTRY_DSN` environment variable, and is baked into
+`BuildConfig.SENTRY_DSN`. Blank or absent means no init and no log line. A value that is not shaped
+like a Sentry DSN (`https://<key>@<host>/<project-id>`, no quotes, spaces or backslashes) fails the
+build, so a malformed secret is a red build rather than a launch-time failure.
+
+**What it sends**, trimmed exactly as Story 24-1 trims the phone: `sendDefaultPii` off; no tracing, no
+profiling, no session tracking, no client reports, no screenshot or view hierarchy, no user-interaction,
+system-event or network breadcrumbs. `beforeSend` removes the user (the SDK fills it with the
+installation id), the request and the server name, keeps only model, family, manufacturer, brand and
+simulator from the device context (so no `device.id`, locale, timezone, memory or battery) and only
+version, build, name and identifier from the app context (so no `device_app_hash`), and drops any
+`culture` context and `app.device` tag. Every other context, the OS one included, passes through, as
+on the phone. It also masks every UUID (card and account ids) as `[uuid]` in the exception values and
+the message, redacts sensitive-looking keys (barcode, card number, token, email, …, the phone's
+pattern) in `extra` and in `contexts`, and masks UUIDs in `extra`'s strings. A `beforeBreadcrumb`
+(also applied to an event's breadcrumbs) drops `console`, `touch` and `ui` breadcrumbs and their
+dotted children (`ui.lifecycle` included), strips the query and fragment from a `url`, and masks UUIDs
+in the message and data. Unlike the phone's JS hooks, these run for crashes too: the Android SDK
+applies `beforeSend` before writing a crash to disk. IP-derived location is the Sentry
+project's "Prevent Storing of IP Addresses" setting, which ifero turns on.
+
+**Release name:** `com.iferoporefi.myloyaltycards.wear@<versionName>+<versionCode>`, for example
+`…wear@1.0.0+2000040` for an RC. The `.wear` suffix is the code namespace; the `applicationId` stays
+shared with the phone.
+
+**Mapping upload.** The release lanes build with `SENTRY_AUTH_TOKEN` in the job environment, and the
+plugin uploads `app/build/outputs/mapping/release/mapping.txt` with the ProGuard UUID it also injects
+into the bundle's assets, so Sentry matches a crash to its mapping. It uploads only when the token is
+set, `SENTRY_DISABLE_AUTO_UPLOAD` is not `true`, **and** a Wear DSN is set: every release job already
+carries the phone's token, but the `wear-os` project (and so a DSN) exists only once ifero creates
+it, and an upload to a missing project would fail `bundleRelease`. When any condition is missing the
+build still succeeds: the plugin runs `sentry-cli upload-proguard --no-upload`, and Gradle's
+`WARNING:` and `build_wear_bundle!`'s notice both name the cause (`SENTRY_AUTH_TOKEN not set`,
+`SENTRY_DISABLE_AUTO_UPLOAD=true`, or `WEAR_SENTRY_DSN not set`). Plugin 6.26.0 was checked against AGP 9.3.1 (Story 24.5), so the `sentry-cli`
+fallback the spec allowed for was not needed. The project slug defaults to `wear-os`;
+`WEAR_SENTRY_PROJECT` overrides it.
+
+**The test crash.** A build made with `-PsentryTestCrash=true` shows a "Test crash" button in the
+empty card list (what an unpaired emulator shows). It throws `SentryTestCrashException`; relaunch the
+app and the event is sent. No workflow sets the property, and `test/sentry-test-crash-flags.test.ts`
+fails if one does. To prove the pipeline on a round AVD:
+
+```bash
+# from watch-android/, with a real DSN and an auth token for the Wear project
+WEAR_SENTRY_DSN=… SENTRY_AUTH_TOKEN=… ./gradlew bundleRelease -PsentryTestCrash=true
+# sign the bundle with a debug or upload key, install it with bundletool, tap "Test crash", reopen
+```
+
+Then the issue in the `wear-os` project should show `SentryTestCrashException` thrown from
+`WearCrashReporting.crashForTest`, not R8's short names, and the event should hold no `user`, no
+`contexts.device.id`, no `device_app_hash` and no `ui.lifecycle` breadcrumbs.
+
 ## CI
 
 [`.github/workflows/wear-os-build.yml`](../.github/workflows/wear-os-build.yml) runs
@@ -778,8 +845,12 @@ coverage:
   this job; that stops being true the moment anyone reaches for `warningsAsErrors`, and `lint.xml`
   says so next to the check.
 - ❌ **No instrumented or on-device test.** Install-and-launch and the round/square layout check (AC8)
-  are done by hand on Wear OS emulators, not by CI. With effectively no Android telemetry, that manual
-  two-shape check is the only real gate against a round-screen layout defect.
+  are done by hand on Wear OS emulators, not by CI. Crash reporting (Story 24.5) only reports what
+  crashes in the field, so that manual two-shape check is still the only gate against a round-screen
+  layout defect.
+- ✅ **No Sentry upload from this job.** It has no `SENTRY_AUTH_TOKEN`, so the Sentry Gradle plugin
+  runs `sentry-cli upload-proguard --no-upload` and the build logs the skip warning. It has no DSN
+  either, so the bundle it builds reports nothing.
 
 `ci-quality-gates.yml` is untouched and does **not** compile Kotlin as a side effect: `yarn lint` is
 `eslint . --ext .ts,.tsx`, and `jest.config.js` matches only `**/*.test.[jt]s?(x)` — `.kt` files are
@@ -790,9 +861,10 @@ output here).
 
 Flagged rather than silently carried:
 
-- **No production telemetry.** Sentry has effectively no Android coverage (~10 events / 90 days, ~100 %
-  iOS), so nothing about this app will be observable in production at launch. "No crash in Sentry"
-  proves nothing here.
+- **Crash reporting needs ifero's Sentry setup before it reports anything.** Story 24.5 wired the SDK
+  (see [Crash reporting](#crash-reporting-story-245)), but until the `wear-os` Sentry project exists and
+  the `WEAR_SENTRY_DSN` secret is set, every build has an empty DSN, sends nothing and uploads no R8
+  mapping. "No crash in Sentry" proves nothing until a Wear test crash has been seen there.
 - **No Wear OS complication.** The Epic 5 generic-complication follow-up was parked into Epic 10 but has
   no story number yet. Note that a complication is also the only surface that would need brand artwork —
   the card list renders initials on a coloured circle, so Epic 10 as scoped needs no Wear drawable

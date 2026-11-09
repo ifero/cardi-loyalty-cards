@@ -16,6 +16,7 @@ This document describes the current GitHub Actions and Fastlane CI/CD pipeline f
   - [Store Upload (Final Release)](#store-upload-final-release)
   - [Nightly Internal Builds](#nightly-internal-builds)
 - [Fastlane & Native Build Notes](#fastlane--native-build-notes)
+- [Sentry (crash reporting)](#sentry-crash-reporting)
 - [Release Runbooks](#release-runbooks)
   - [Why releases are published, not just tagged](#why-releases-are-published-not-just-tagged)
   - [Ship to TestFlight](#ship-to-testflight)
@@ -285,6 +286,77 @@ Android lanes summary:
 - `ship_ios!` / `ship_android!` (private) — the shared lane bodies. `beta`, `upload_release` and `nightly` differ only in whether they upload and where to: on Android the track and release status, on iOS the destination (TestFlight or the App Store)
 - `build_wear_bundle!` (private) — builds and signing-parity-checks the Wear AAB; runs **before** either upload so a build failure cannot strand a phone-only release
 - `upload_wear_bundle!` (private) — uploads that AAB to the `wear:` form-factor track, and translates Play's `Track not found` into the Console steps that fix it
+
+## Sentry (crash reporting)
+
+Story 24.5. Two Sentry projects in the `andrea-pacino` organisation, EU region
+(`https://de.sentry.io/`). The Apple Watch app reports nothing.
+
+| Project        | App                                    | DSN (repository secret)                                                             | Release name                                                      |
+| -------------- | -------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `react-native` | Phone, iOS and Android (JS and native) | `EXPO_PUBLIC_SENTRY_DSN`, inlined into the JS bundle and written to `.env`          | `com.iferoporefi.myloyaltycards@<version>+<build>`                |
+| `wear-os`      | Wear OS app                            | `WEAR_SENTRY_DSN`, baked into `BuildConfig` by `watch-android/app/build.gradle.kts` | `com.iferoporefi.myloyaltycards.wear@<versionName>+<versionCode>` |
+
+One auth token, the `SENTRY_AUTH_TOKEN` secret, uploads debug files for both. Every release job
+(`android-release.yml`, `ios-release.yml`, `beta-releases.yml`, `store-upload.yml`,
+`nightly-builds.yml`) carries it at job level and runs the same guard, **Configure Sentry symbol
+upload**:
+
+- token present: `SENTRY_DISABLE_AUTO_UPLOAD=false`, uploads run (the Wear mapping upload also
+  needs `WEAR_SENTRY_DSN`, below);
+- token absent: a `::warning::` in the job log, `SENTRY_DISABLE_AUTO_UPLOAD=true`, uploads are
+  skipped and **the build still succeeds**. Crashes still arrive, just unsymbolicated.
+
+What each lane uploads when the token is present:
+
+| Lane / workflow                                      | Phone                                                                                                 | Wear OS                                                                                                                                     |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| iOS (`ios-release`, `beta`, `store-upload`, nightly) | JS source maps and dSYMs, through the Sentry Expo plugin's Xcode build phase                          | —                                                                                                                                           |
+| Android `adhoc` (`android-release.yml`)              | JS source maps, through the plugin's `sentry.gradle`. Phone R8 is off, so Java frames need no mapping | — (no Wear artifact)                                                                                                                        |
+| Android `beta`, `upload_release`, `nightly`          | as `adhoc`                                                                                            | The R8 `mapping.txt`, by the Sentry Android Gradle plugin during `bundleRelease` (`build_wear_bundle!`), only once `WEAR_SENTRY_DSN` is set |
+| `wear-os-build.yml` (PR CI)                          | —                                                                                                     | Nothing: no token, so the plugin runs `upload-proguard --no-upload`; no DSN, so the bundle reports nothing                                  |
+
+The Wear lanes also need `WEAR_SENTRY_DSN` (job-level env in `beta-releases.yml`, `store-upload.yml`
+and `nightly-builds.yml`). The Wear mapping upload runs only when all three hold: the token is set,
+`SENTRY_DISABLE_AUTO_UPLOAD` is not `true`, **and** `WEAR_SENTRY_DSN` is set. The DSN condition is
+there because every Android release job already carries the phone's token, while the `wear-os`
+project exists only once ifero creates it (and a DSN exists only once the project does); an upload
+to a missing project would fail `bundleRelease`. Without the DSN the Wear AAB builds, ships and
+reports nothing, and uploads no mapping. Each skipped upload is announced with its actual cause
+(`SENTRY_AUTH_TOKEN not set`, `SENTRY_DISABLE_AUTO_UPLOAD=true`, or `WEAR_SENTRY_DSN not set`), both
+as a Gradle `WARNING:` and as a `build_wear_bundle!` notice. A `WEAR_SENTRY_DSN` that is set but is
+not shaped like a DSN (`https://<key>@<host>/<project-id>`) fails the build. The phone Sentry options live in
+`core/observability/sentry.ts` (Story 24-1), the Wear ones in
+`watch-android/app/src/main/kotlin/com/iferoporefi/myloyaltycards/wear/crash/`; both are trimmed to
+what the privacy policy discloses. Setup that lives in the Sentry console, not the repository (IP
+storage off, Advanced Data Scrubbing, retention) is listed in `docs/store/privacy-disclosures.md`
+under "Before submitting", for each project.
+
+### Reading a crash
+
+1. Open the project (`react-native` for the phone, `wear-os` for the watch) and filter by
+   `release:` with the name from the table above; the build number or `versionCode` tells you which
+   lane made it (Wear bands: `watch-android/README.md` § versionCode bands).
+2. A symbolicated phone JS frame shows a source file under `app/`, `features/`, `core/` or
+   `shared/`; a minified one shows `index.android.bundle` and a column offset, meaning the source
+   map for that release was not uploaded (check that job's "Configure Sentry symbol upload" step).
+3. A deobfuscated Wear frame shows `com.iferoporefi.myloyaltycards.wear.*` class and method names;
+   an obfuscated one shows one- or two-letter names, meaning the mapping for that build's ProGuard
+   UUID was not uploaded.
+
+### Test crashes
+
+Neither app ships a crash trigger. A hand-made build can include one:
+
+- **Phone:** build with `EXPO_PUBLIC_SENTRY_TEST_CRASH=1` in the environment (or `.env`) and a
+  release configuration; Settings → About gains a last row, "Sentry test crash", that throws a JS
+  error. The issue appears in `react-native` with message `Cardì Sentry test crash (Story 24.5)`.
+- **Wear OS:** `./gradlew bundleRelease -PsentryTestCrash=true` with the DSN and token set; the empty
+  card list gains a "Test crash" button. See `watch-android/README.md` § Crash reporting.
+
+No workflow, the Fastfile, `eas.json`, `app.json`, `app.config.ts`, `package.json`, `.env.example` or
+`watch-android/gradle.properties` may set either flag; `test/sentry-test-crash-flags.test.ts` fails
+if one does.
 
 ## Release Runbooks
 
