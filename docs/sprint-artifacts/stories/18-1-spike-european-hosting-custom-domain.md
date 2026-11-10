@@ -2,7 +2,7 @@
 title: 'Hosting and domain ADR (OVHcloud, cardiapp.eu)'
 type: 'chore'
 created: '2026-11-04'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'c971139395beae3dce679eb54689d425b67c76ce'
 route: 'dispatch'
 review_loop_iteration: 0
