@@ -1,0 +1,233 @@
+# Public site deploy (Story 18.9, ADR-2026-11-04-001)
+#
+# Publishes an explicit ALLOW-LIST of files from `docs/` to https://cardiapp.eu/ (OVHcloud free
+# web hosting, Apache, Let's Encrypt) over SFTP, then replaces the GitHub Pages site with two
+# redirect stubs. `docs/` also holds the PRD, the architecture and the sprint artifacts, so
+# anything not on the allow-list below must never reach either host.
+#
+# ⚠️ NO BUILD STEP (Epic 15 AC1). The `stage` step copies the allow-listed files as they are; the
+# deployed pages are byte-identical to `docs/` at the deployed commit, and the job checks that.
+#
+# ⚠️ ROLLBACK = a `workflow_dispatch` with `ref` set to an earlier commit. The staging logic lives
+# in THIS file (run from the dispatching branch), never in the checked-out ref, so a rollback to a
+# commit from before this workflow existed still works. See docs/cicd.md, "Roll back the site".
+
+name: Site Deploy
+
+on:
+  push:
+    branches: [main]
+    # Keep in step with the allow-list below; test/site-allow-list.test.ts holds them together.
+    paths:
+      - 'docs/index.html'
+      - 'docs/privacy-policy.html'
+      - 'docs/style.css'
+      - 'docs/.htaccess'
+      - 'docs/assets/**'
+      - '.github/pages-redirect-stubs/**'
+      - '.github/workflows/site-deploy.yml'
+
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit, branch or tag whose site files to deploy (default: the dispatched branch). Set an earlier commit to roll back.'
+        type: string
+        default: ''
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+# One deploy at a time. Never cancel a running one: an SFTP upload killed midway leaves a mix of
+# two commits on the host.
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to cardiapp.eu
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      # ── SITE ALLOW-LIST (Story 18.9, decision 2) ──────────────────────────────────────────
+      # Paths relative to `docs/`. Nothing else is ever published. test/site-allow-list.test.ts
+      # pins these values; change them there in the same commit, deliberately.
+      SITE_FILES: 'index.html privacy-policy.html style.css'
+      # Absent from refs older than Story 18.9, so a rollback to one keeps the live copy.
+      SITE_OPTIONAL_FILES: '.htaccess'
+      # Whole trees, minus files named in SITE_TREE_EXCLUDE.
+      SITE_TREES: 'assets'
+      SITE_TREE_EXCLUDE: 'README.md'
+      # ──────────────────────────────────────────────────────────────────────────────────────
+      SITE_URL: 'https://cardiapp.eu'
+      # The hosting plan's site root folder (Control Panel > My sites > Root folder).
+      SITE_ROOT: 'www'
+
+    steps:
+      # Only main's copy of this workflow may deploy to production, and the `github-pages`
+      # environment only accepts main anyway. Roll back by dispatching from main with `ref` set.
+      - name: Require main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Site Deploy runs only from main (got $GITHUB_REF). To roll back, dispatch from main with ref set."
+          exit 1
+
+      - name: Check out the files to deploy
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          path: source
+          persist-credentials: false
+
+      - name: Stage the allow-listed files
+        run: |
+          set -euo pipefail
+          src="source/docs"
+          rm -rf _site && mkdir _site
+
+          # A symlink could smuggle a file from outside the allow-list into the upload.
+          no_symlink() { [ ! -L "$1" ] || { echo "::error::$1 is a symlink; the published set must be plain files."; exit 1; }; }
+
+          for f in $SITE_FILES; do
+            [ -f "$src/$f" ] || { echo "::error::Required site file docs/$f is missing at this ref."; exit 1; }
+            no_symlink "$src/$f"
+            cp "$src/$f" "_site/$f"
+          done
+          for f in $SITE_OPTIONAL_FILES; do
+            if [ -f "$src/$f" ]; then no_symlink "$src/$f"; cp "$src/$f" "_site/$f"
+            else echo "::notice::docs/$f is absent at this ref; the live copy is left in place."; fi
+          done
+
+          excludes=()
+          for name in $SITE_TREE_EXCLUDE; do excludes+=(! -name "$name"); done
+          for tree in $SITE_TREES; do
+            [ -d "$src/$tree" ] || { echo "::error::Required site tree docs/$tree/ is missing at this ref."; exit 1; }
+            links="$(cd "$src" && find "$tree" -type l)"
+            [ -z "$links" ] || { echo "::error::Symlinks in docs/$tree/ are not allowed:"; echo "$links"; exit 1; }
+            (cd "$src" && find "$tree" -type f "${excludes[@]}" -print0) |
+              while IFS= read -r -d '' path; do
+                mkdir -p "_site/$(dirname "$path")"
+                cp "$src/$path" "_site/$path"
+              done
+          done
+
+          echo "Staged from $(git -C source rev-parse HEAD):"
+          (cd _site && find . -type f | sort)
+          {
+            echo "### Site files staged from \`$(git -C source rev-parse --short HEAD)\`"
+            echo '```'
+            (cd _site && find . -type f | sort)
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Install lftp
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq lftp
+
+      - name: Upload over SFTP
+        env:
+          OVH_SFTP_HOST: ${{ secrets.OVH_SFTP_HOST }}
+          OVH_SFTP_USER: ${{ secrets.OVH_SFTP_USER }}
+          LFTP_PASSWORD: ${{ secrets.OVH_SFTP_PASSWORD }}
+          OVH_SFTP_KNOWN_HOSTS: ${{ secrets.OVH_SFTP_KNOWN_HOSTS }}
+        run: |
+          set -euo pipefail
+          for name in OVH_SFTP_HOST OVH_SFTP_USER LFTP_PASSWORD OVH_SFTP_KNOWN_HOSTS; do
+            [ -n "${!name}" ] || { echo "::error::Secret for $name is not set (see docs/cicd.md, Site Deploy)."; exit 1; }
+          done
+
+          # The host key is pinned: an unknown or changed key fails the connection.
+          known_hosts="$RUNNER_TEMP/ovh_known_hosts"
+          printf '%s\n' "$OVH_SFTP_KNOWN_HOSTS" > "$known_hosts"
+          chmod 600 "$known_hosts"
+
+          # Order matters: trees and the stylesheet first, the pages last, so a page never goes
+          # live before what it references. `mirror --delete` is scoped to each allow-listed tree:
+          # nothing outside the allow-list in the site root (or above it) is ever deleted.
+          script="$RUNNER_TEMP/deploy.lftp"
+          {
+            echo "set cmd:fail-exit yes"
+            echo "set net:timeout 30"
+            echo "set net:max-retries 3"
+            echo "set net:reconnect-interval-base 5"
+            echo "set sftp:auto-confirm no"
+            echo "set sftp:connect-program \"ssh -a -x -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$known_hosts\""
+            echo "open --env-password -u \"$OVH_SFTP_USER\" \"sftp://$OVH_SFTP_HOST\""
+            echo "cd \"$SITE_ROOT\""
+            for tree in $SITE_TREES; do
+              echo "mirror --reverse --delete --transfer-all --no-perms --verbose \"_site/$tree\" \"$tree\""
+            done
+            pages=()
+            for f in $SITE_FILES $SITE_OPTIONAL_FILES; do
+              [ -f "_site/$f" ] || continue
+              case "$f" in
+                *.html) pages+=("$f") ;;
+                *) echo "put \"_site/$f\" -o \"$f\"" ;;
+              esac
+            done
+            for f in "${pages[@]}"; do echo "put \"_site/$f\" -o \"$f\""; done
+          } > "$script"
+          lftp -f "$script"
+
+      - name: Verify the live site
+        run: |
+          set -euo pipefail
+          # Byte-for-byte: what https://cardiapp.eu/ serves must be what was staged. `curl -f`
+          # also fails on an invalid certificate.
+          fetch() { curl -fsS --retry 3 --retry-delay 5 -H 'Cache-Control: no-cache' "$@"; }
+          for f in $SITE_FILES; do
+            path="$f"; [ "$f" = index.html ] && path=""
+            fetch "$SITE_URL/$path" -o "$RUNNER_TEMP/live"
+            cmp "_site/$f" "$RUNNER_TEMP/live" || { echo "::error::$SITE_URL/$path differs from docs/$f"; exit 1; }
+            echo "OK  $SITE_URL/$path"
+          done
+
+          # HTTP and www must 301 to the HTTPS apex (docs/.htaccess); the HTTPS apex must not redirect.
+          expect_redirect() {
+            local headers
+            headers="$(curl -sS -o /dev/null -D - --max-time 30 "$1")" ||
+              { echo "::error::$1 is unreachable"; exit 1; }
+            echo "$headers" | head -1 | grep -q ' 301' &&
+              echo "$headers" | tr -d '\r' | grep -qi "^location: $SITE_URL/\$" ||
+              { echo "::error::$1 does not 301 to $SITE_URL/"; echo "$headers"; exit 1; }
+            echo "OK  $1 -> 301 $SITE_URL/"
+          }
+          expect_redirect 'http://cardiapp.eu/'
+          expect_redirect 'http://www.cardiapp.eu/'
+          expect_redirect 'https://www.cardiapp.eu/'
+
+  pages:
+    # Replaces the old GitHub Pages site (which served the whole of docs/) with two redirect
+    # stubs. Needs the Pages source set to "GitHub Actions" (docs/cicd.md). Always publishes the
+    # stubs from the commit this workflow runs on, never from `inputs.ref`: a rollback of
+    # cardiapp.eu must not put the planning documents back on GitHub Pages.
+    name: Publish GitHub Pages redirect stubs
+    needs: deploy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Check out the stubs
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/pages-redirect-stubs
+          persist-credentials: false
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: .github/pages-redirect-stubs
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

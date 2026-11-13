@@ -1,8 +1,8 @@
 # CI/CD Pipeline & Quality Gates
 
-_Last updated: 2026-09-03_
+_Last updated: 2026-11-10_
 
-This document describes the current GitHub Actions and Fastlane CI/CD pipeline for the myLoyaltyCards repository. It is the single source of truth for how builds, tests, tags, and deploys run across iOS, Android, and watchOS.
+This document describes the current GitHub Actions and Fastlane CI/CD pipeline for the myLoyaltyCards repository. It is the single source of truth for how builds, tests, tags, and deploys run across iOS, Android, and watchOS, and the public site at `https://cardiapp.eu/`.
 
 ## Table of Contents
 
@@ -15,6 +15,7 @@ This document describes the current GitHub Actions and Fastlane CI/CD pipeline f
   - [Beta Releases (RC)](#beta-releases-rc)
   - [Store Upload (Final Release)](#store-upload-final-release)
   - [Nightly Internal Builds](#nightly-internal-builds)
+  - [Site Deploy](#site-deploy)
 - [Fastlane & Native Build Notes](#fastlane--native-build-notes)
 - [Sentry (crash reporting)](#sentry-crash-reporting)
 - [Release Runbooks](#release-runbooks)
@@ -24,6 +25,8 @@ This document describes the current GitHub Actions and Fastlane CI/CD pipeline f
   - [Run a nightly by hand](#run-a-nightly-by-hand)
   - [The nightly did not ship](#the-nightly-did-not-ship)
   - [Manual / AdHoc Build](#manual--adhoc-build)
+  - [Set up the site deploy](#set-up-the-site-deploy)
+  - [Roll back the site](#roll-back-the-site)
 - [watchOS CI/CD](#watchos-ci-cd)
 - [Provisioning & match](#provisioning--match)
 - [Troubleshooting](#troubleshooting)
@@ -39,6 +42,9 @@ flowchart LR
   PUSH -->|binary-affecting paths change| ANDA["android-release.yml"]
   RCREL["Published pre-release v*.*.*-rc.*"] --> BETA["beta-releases.yml"]
   RELREL["Published release v*.*.*"] --> STORE["store-upload.yml"]
+  PUSH -->|public site files change| SITE["site-deploy.yml"]
+  SITE -->|SFTP| OVH["cardiapp.eu (OVHcloud)"]
+  SITE -->|redirect stubs| PAGES["GitHub Pages"]
   CRON["Nightly cron 02:17 UTC<br/>or workflow_dispatch"] --> NIGHTLY["nightly-builds.yml"]
   NIGHTLY --> PRE{"preflight: anything<br/>binary-affecting changed<br/>since nightly/*?"}
   PRE -->|no| SKIP["skipped (green)"]
@@ -56,6 +62,7 @@ flowchart LR
 - `.github/workflows/beta-releases.yml`
 - `.github/workflows/store-upload.yml`
 - `.github/workflows/nightly-builds.yml`
+- `.github/workflows/site-deploy.yml`
 
 ## Workflow Details
 
@@ -253,6 +260,56 @@ Notes:
 - **A skip is a green run**, never a red X and never a warning: the common case must not train everyone to ignore the signal. It explains itself in the job summary — baseline SHA, head SHA, file counts and the triggering files.
 - Every job sets `timeout-minutes`. The older release workflows do not, which is worth fixing separately.
 
+### Site Deploy
+
+File: `.github/workflows/site-deploy.yml` (Story 18.9, [ADR-2026-11-04-001](adr-2026-11-04-share-page-hosting.md))
+
+Publishes the public site to `https://cardiapp.eu/` on OVHcloud's free web hosting (Apache, Let's Encrypt renewed automatically by OVHcloud), and replaces the old GitHub Pages site with redirect stubs.
+
+Triggers:
+
+- `push` to `main` touching an allow-listed file, `docs/.htaccess`, `.github/pages-redirect-stubs/**` or the workflow itself. Any other change does not deploy. Neither does the `[skip ci]` commit `mark-story-done.yml` lands after a merge, which is fine: it never touches the site.
+- `workflow_dispatch` with one input, `ref` (commit, branch or tag; empty = the dispatched branch). This is also the [rollback](#roll-back-the-site) path.
+
+**The allow-list** (`SITE_FILES`, `SITE_OPTIONAL_FILES`, `SITE_TREES`, `SITE_TREE_EXCLUDE` in the `deploy` job), relative to `docs/`:
+
+| Published                              | Notes                                                                   |
+| -------------------------------------- | ----------------------------------------------------------------------- |
+| `index.html`, `privacy-policy.html`    | Required                                                                |
+| `style.css`                            | Required                                                                |
+| `.htaccess`                            | HTTP → HTTPS and `www` → apex, both 301. Optional: absent from old refs |
+| `assets/**`, without `README.md` files | Badges, the Cardì mark, the screenshots                                 |
+
+Nothing else in `docs/` is ever published: not the `*.md` documents, `sprint-artifacts/`, `ux-design-directions.html` or `help.json`. `test/site-allow-list.test.ts` pins the list, the push `paths:` and the stubs, and fails if a published page links to a file outside the list. Widening the list is a deliberate change to both files. Stories 18.8 (`card/**`) and 18.10 (`.well-known/`) extend it.
+
+Jobs:
+
+- `deploy` checks out `ref` into `source/`, **copies** the allow-listed files into `_site/` (no build step, no transform; symlinks fail the job), uploads them with `lftp` over **SFTP** (never plain FTP) into the hosting plan's root folder `www/`, then verifies the live site: `index.html`, `privacy-policy.html` and `style.css` fetched over HTTPS must be byte-identical to the staged copies (`curl -f` also rejects an invalid certificate), and `http://cardiapp.eu/`, `http://www.cardiapp.eu/` and `https://www.cardiapp.eu/` must each 301 to `https://cardiapp.eu/`. Any failure is a red job.
+- `pages` (needs `deploy`) publishes `.github/pages-redirect-stubs/` (`index.html`, `privacy-policy.html`) to GitHub Pages. Each stub has an instant `meta refresh`, a `rel=canonical` and a plain link to the same path on `https://cardiapp.eu/`, because GitHub Pages cannot send HTTP redirects for a project page. Everything else on `ifero.github.io/myLoyaltyCards/` is a 404. The stubs always come from the commit the workflow runs on, never from `ref`, so a rollback cannot republish the planning documents.
+
+Notes:
+
+- **Deletion is scoped.** The upload runs `mirror --reverse --delete` per allow-listed tree (`assets/`) and `put` for the single files. A deploy deletes only files inside an allow-listed tree that the deployed ref no longer has. It never deletes anything else in `www/` (including `.htaccess` and, after 18.10, `.well-known/`), nor anything above `www/`, where OVHcloud keeps its own files (`.ovhconfig`).
+- **Upload order:** trees and non-HTML files first, the pages last, so a page never goes live before what it references.
+- **Concurrency:** one run at a time, never cancelled midway: a killed upload would leave two commits mixed on the host.
+- **The staging logic lives in the workflow, not in the deployed ref**, so a rollback to a commit from before this workflow existed still works.
+- **Byte-identical, so the git repository is the backup.** OVHcloud's own backups are best effort.
+
+Secrets (repository → Settings → Secrets and variables → Actions):
+
+| Secret                 | Value                                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `OVH_SFTP_HOST`        | The FTP server under _Hosting plans > FTP - SSH_, form `ftp.clusterNNN.hosting.ovh.net` (port 22)             |
+| `OVH_SFTP_USER`        | The FTP login with **SFTP** ticked                                                                            |
+| `OVH_SFTP_PASSWORD`    | That login's password                                                                                         |
+| `OVH_SFTP_KNOWN_HOSTS` | The pinned host key: `ssh-keyscan -p 22 ftp.clusterNNN.hosting.ovh.net` output, checked against a first login |
+
+Hosting facts (ADR-2026-11-04-001):
+
+- Plan: OVHcloud free web hosting (100 MB), activated with the domain. **Tier and datacentre: to be read by ifero** in the Control Panel (_Web Cloud > Hosting plans > cardiapp.eu > General information_) and recorded here. Expected: the free plan, in Gravelines (GRA). Live on 2026-11-10: `cardiapp.eu` answers from Apache with a Let's Encrypt certificate (`CN=cardiapp.eu`, expires 2027-02-02), still serving OVHcloud's placeholder page, with no HTTP redirect until the first deploy.
+- **Cluster moves:** OVHcloud may move the site to another cluster. That changes the SFTP host and its host key, and the upload then fails on the host-key check. Refresh `OVH_SFTP_HOST` and `OVH_SFTP_KNOWN_HOSTS`, then re-run.
+- **Uptime:** a Sentry uptime monitor (EU organisation) watches `https://cardiapp.eu/` and `https://cardiapp.eu/privacy-policy.html` and alerts ifero by email. Story 18.10 adds `/.well-known/apple-app-site-association`. OVHcloud incidents: `web-cloud.status-ovhcloud.com`.
+
 ## Fastlane & Native Build Notes
 
 Location:
@@ -437,6 +494,29 @@ bundle exec fastlane ios adhoc
 bundle exec fastlane android adhoc
 ```
 
+### Set up the site deploy
+
+One-time, ifero, before the first deploy:
+
+1. Control Panel → _Web Cloud > Hosting plans > cardiapp.eu > FTP - SSH_: tick **SFTP** for the FTP user. Note the FTP server name, and confirm under _My sites_ that the root folder is `www`.
+2. Record the host key with `ssh-keyscan -p 22 ftp.clusterNNN.hosting.ovh.net`, and check its fingerprint (`ssh-keygen -lf`) against a first manual `sftp` login.
+3. Add the four [secrets](#site-deploy).
+4. Repository → Settings → Pages → _Build and deployment_ → Source: **GitHub Actions**. The site already deployed from `main:/docs` stays up until the first `pages` job replaces it with the stubs, and that job only runs after `deploy` has succeeded.
+5. Just before merging, delete OVHcloud's placeholder page. A new hosting plan's `www/index.html` is a symlink owned by the `ovh` user, and an SFTP `put` would follow it instead of replacing it, so the first deploy fails. The FTP user can delete it, because it owns `www/`. Pin the host key as in step 2 (with `-o StrictHostKeyChecking=yes`, `ssh` refuses a host that is not in a known-hosts file and cannot prompt under `lftp`): `ssh-keyscan <ftp-server> > /tmp/ovh_known_hosts`, then `lftp -e 'set sftp:connect-program "ssh -a -x -o StrictHostKeyChecking=yes -o UserKnownHostsFile=/tmp/ovh_known_hosts"; open -u <ftp-user> sftp://<ftp-server>; cd www; rm index.html; bye'`. `https://cardiapp.eu/` returns 403 until the deploy, a few minutes later; that is shorter than the uptime monitor's 15-minute alert threshold.
+6. Merge (or dispatch the workflow on `main`). Both `deploy` and `pages` must be green.
+7. Smoke test: `curl -sI https://cardiapp.eu/` (200) and `curl -sI http://cardiapp.eu/` (301 to `https://cardiapp.eu/`). In a browser, `https://ifero.github.io/myLoyaltyCards/privacy-policy.html` lands on `https://cardiapp.eu/privacy-policy.html`, and `https://ifero.github.io/myLoyaltyCards/prd.md` is a 404. Once this passes, tick the "Privacy-policy URL" item in `docs/store/privacy-disclosures.md`.
+8. Record the plan tier and datacentre under [Site Deploy](#site-deploy). Turn on the Sentry uptime monitor "cardiapp.eu — privacy policy": it was created paused, because the page returns 404 before the first deploy.
+
+### Roll back the site
+
+Actions → **Site Deploy** → _Run workflow_ on `main`, with `ref` set to the commit to restore (`git log --oneline -- docs/index.html docs/privacy-policy.html docs/style.css docs/assets` lists candidates). That commit's allow-listed files go live; files in `assets/` that it lacks are deleted; a missing `.htaccess` keeps the live one. The GitHub Pages stubs stay as they are on `main`.
+
+The run must be dispatched from `main`: any other branch fails at the first step, before anything is uploaded.
+
+Only one run waits behind a running deploy, so a newer pending run (a push to `main`, say) cancels a rollback still queued. Check that the rollback run actually started, and dispatch it again if it shows as cancelled.
+
+To roll forward, run it again with `ref` empty, or push the fix to `main`.
+
 ## watchOS CI/CD
 
 The watchOS companion app is part of the iOS build pipeline.
@@ -571,3 +651,5 @@ CI keychain setup:
 - `.github/workflows/beta-releases.yml`
 - `.github/workflows/store-upload.yml`
 - `.github/workflows/nightly-builds.yml`
+- `.github/workflows/site-deploy.yml`
+- `docs/adr-2026-11-04-share-page-hosting.md`

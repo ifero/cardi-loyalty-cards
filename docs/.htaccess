@@ -1,0 +1,14 @@
+# cardiapp.eu (Story 18.9). Published by .github/workflows/site-deploy.yml; see docs/cicd.md.
+# OVHcloud shared hosting runs Apache with mod_rewrite (ADR-2026-11-04-001, row 3).
+#
+# Neither rule may match an HTTPS request to the apex: Apple and Android fetch /.well-known/
+# from https://cardiapp.eu/ and refuse any redirect (Story 18.10).
+RewriteEngine On
+
+# www -> apex, on HTTP and HTTPS
+RewriteCond %{HTTP_HOST} ^www\.cardiapp\.eu$ [NC]
+RewriteRule ^(.*)$ https://cardiapp.eu/$1 [R=301,L]
+
+# HTTP -> HTTPS on the apex
+RewriteCond %{SERVER_PORT} ^80$
+RewriteRule ^(.*)$ https://cardiapp.eu/$1 [R=301,L]

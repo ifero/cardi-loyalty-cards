@@ -36,8 +36,9 @@ targets/watch/Assets.xcassets/AppIcon.appiconset/Contents.json
 watch-android/app/schemas/
 
 # Hand-tuned HTML, deliberately left as authored.
-# docs/ is served publicly by GitHub Pages (https://ifero.github.io/myLoyaltyCards/,
-# source main:/docs) and supabase/templates/ are the transactional auth emails.
+# docs/index.html and docs/privacy-policy.html are the public site, deployed byte-identical to
+# https://cardiapp.eu/ by .github/workflows/site-deploy.yml (Story 18.9), and
+# supabase/templates/ are the transactional auth emails.
 # Prettier's HTML printer explodes every inline style="…" attribute across multiple
 # lines and reflows inline elements: ~1.2k lines of churn, no functional gain, and
 # multi-line attributes are exactly what older email clients mishandle. All risk,
