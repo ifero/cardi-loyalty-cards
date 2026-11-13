@@ -89,8 +89,19 @@ const runStage = (mutate: (docs: string) => void = () => {}): string[] => {
     const docs = path.join(dir, 'source', 'docs');
     fs.cpSync(path.join(repoRoot, 'docs'), docs, { recursive: true });
     mutate(docs);
+    // Git hooks export GIT_DIR and friends. Inherited, they point `git init` at the real
+    // repository (it once set core.bare there), so the temp repo gets an environment without them.
+    const gitEnv = {
+      ...Object.fromEntries(
+        Object.entries(process.env).filter(([name]) => !name.startsWith('GIT_'))
+      ),
+      NODE_ENV: 'test'
+    };
     const git = (...args: string[]) =>
-      execFileSync('git', ['-C', path.join(dir, 'source'), ...args], { stdio: 'ignore' });
+      execFileSync('git', ['-C', path.join(dir, 'source'), ...args], {
+        stdio: 'ignore',
+        env: gitEnv
+      });
     git('init', '-q');
     git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-q', '--allow-empty', '-m', 't');
 
