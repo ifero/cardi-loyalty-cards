@@ -2,7 +2,7 @@
 title: 'Migrate the public site to cardiapp.eu'
 type: 'chore'
 created: '2026-11-04'
-status: 'in-review'
+status: 'done'
 baseline_commit: '83e82333cc4955f4ad9f917ccc90bd3a829c3213'
 route: 'dispatch'
 review_loop_iteration: 0
