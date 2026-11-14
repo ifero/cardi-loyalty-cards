@@ -2,7 +2,7 @@
 title: 'Store listings and screenshots'
 type: 'feature'
 created: '2026-11-04'
-status: 'in-review'
+status: 'done'
 baseline_commit: '13530ce1308f50c1b46bcb98742e841881dad90f'
 route: 'dispatch'
 review_loop_iteration: 0
