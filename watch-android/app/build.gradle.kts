@@ -206,6 +206,16 @@ val sentryTestCrash: Boolean =
     providers.gradleProperty("sentryTestCrash").orNull?.trim() == "true"
 
 /**
+ * The store-screenshot demo seed (Story 24.6): a debug build made with `-PwearDemoSeed=true` seeds
+ * `DebugSampleCards.DEMO` (two catalogue brands, Esselunga and IKEA, beside invented shops; no test
+ * fixtures) instead of the error-path fixtures. Exactly `true` opts in. The release build type
+ * pins the field to `false` below, and the seeder itself is behind `BuildConfig.DEBUG`, so no
+ * release build carries either.
+ */
+val wearDemoSeed: Boolean =
+    providers.gradleProperty("wearDemoSeed").orNull?.trim() == "true"
+
+/**
  * Whether this build uploads its R8 mapping to Sentry. Three conditions, each with its own skip
  * notice below:
  *
@@ -274,10 +284,14 @@ android {
         // simply returns early when the DSN is empty.
         buildConfigField("String", "SENTRY_DSN", "\"$wearSentryDsn\"")
         buildConfigField("boolean", "SENTRY_TEST_CRASH", sentryTestCrash.toString())
+        // Story 24.6 — see `wearDemoSeed` above; `release` overrides it to `false`.
+        buildConfigField("boolean", "WEAR_DEMO_SEED", wearDemoSeed.toString())
     }
 
     buildTypes {
         release {
+            // Story 24.6: no release build seeds the demo set, whatever -PwearDemoSeed says.
+            buildConfigField("boolean", "WEAR_DEMO_SEED", "false")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

@@ -361,6 +361,33 @@ html[data-active-language='it'] .lang-en {
   transform: translateX(0.2rem) rotate(4deg) translateY(0.9rem);
 }
 
+/*
+ * Device frames for the real captures (Story 24.6). The bezel is drawn here, not in the images,
+ * so the captures stay exactly what the app shows. Ink in both colour schemes: it is the device,
+ * not page chrome.
+ */
+.device-preview,
+.device-preview img,
+.screenshot-card img {
+  border-radius: 2rem;
+}
+
+.device-preview img,
+.screenshot-card img {
+  width: 100%;
+  height: auto;
+  border: 0.5rem solid #181824;
+}
+
+.device-preview-watch,
+.device-preview-watch img {
+  border-radius: 1.6rem;
+}
+
+.device-preview-watch img {
+  border-width: 0.4rem;
+}
+
 .content-section {
   margin-top: 1.5rem;
   padding: clamp(1.35rem, 3vw, 2rem);
@@ -471,11 +498,6 @@ html[data-active-language='it'] .lang-en {
 
 .screenshot-card {
   padding: 1rem;
-}
-
-.screenshot-card img {
-  width: 100%;
-  border-radius: 1.5rem;
 }
 
 .screenshot-card figcaption {

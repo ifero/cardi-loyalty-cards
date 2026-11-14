@@ -59,10 +59,13 @@ object WearGraph {
      * [RoomCardRepository.seedIfEmpty]. Call **only** from a `BuildConfig.DEBUG` branch — that is
      * what keeps this method, and with it [DebugSampleCards], unreachable in release, so R8 strips
      * both from the APK (verified: 0 references to `DebugSampleCards` in the release dex).
+     *
+     * `demo` selects the store-screenshot set (Story 24.6); the caller passes
+     * `BuildConfig.WEAR_DEMO_SEED`.
      */
-    fun seedSampleCardsIfEmpty(context: Context) {
+    fun seedSampleCardsIfEmpty(context: Context, demo: Boolean) {
         applicationScope.launch {
-            repository(context).seedIfEmpty(DebugSampleCards.CARDS.map { it.toEntity() })
+            repository(context).seedIfEmpty(DebugSampleCards.forSeed(demo).map { it.toEntity() })
         }
     }
 

@@ -93,10 +93,10 @@
               </a>
               <a
                 class="store-link"
-                href="#"
+                href="https://play.google.com/store/apps/details?id=com.iferoporefi.myloyaltycards"
                 data-store-link="google-play"
-                data-store-label-en="Coming soon on Google Play"
-                data-store-label-it="Prossimamente su Google Play"
+                data-store-label-en="Get it on Google Play"
+                data-store-label-it="Disponibile su Google Play"
               >
                 <img class="lang-en" src="assets/badges/google-play.svg" alt="Get it on Google Play" />
                 <img class="lang-it" src="assets/badges/google-play-it.svg" alt="Disponibile su Google Play" />
@@ -107,32 +107,40 @@
           <div
             class="hero-stage"
             role="group"
-            aria-label="App preview placeholders"
-            data-aria-label-en="App preview placeholders"
-            data-aria-label-it="Anteprime placeholder dell'app"
+            aria-label="App previews"
+            data-aria-label-en="App previews"
+            data-aria-label-it="Anteprime dell'app"
           >
             <figure class="device-preview device-preview-phone">
               <img
                 class="lang-en"
-                src="assets/screenshots/home-card-list.svg"
-                alt="Placeholder preview of the iPhone home card list screen"
+                src="assets/screenshots/home-card-list.jpg"
+                width="660"
+                height="1434"
+                alt="Cardì on iPhone: the card list, with six loyalty cards"
               />
               <img
                 class="lang-it"
-                src="assets/screenshots/home-card-list-it.svg"
-                alt="Anteprima segnaposto della schermata elenco carte home su iPhone"
+                src="assets/screenshots/home-card-list-it.jpg"
+                width="660"
+                height="1434"
+                alt="Cardì su iPhone: l'elenco con sette carte, codice fiscale compreso"
               />
             </figure>
             <figure class="device-preview device-preview-watch">
               <img
                 class="lang-en"
-                src="assets/screenshots/watch-card-list.svg"
-                alt="Placeholder preview of the Apple Watch card list screen"
+                src="assets/screenshots/watch-card-list.jpg"
+                width="422"
+                height="514"
+                alt="Cardì on Apple Watch: the card list"
               />
               <img
                 class="lang-it"
-                src="assets/screenshots/watch-card-list-it.svg"
-                alt="Anteprima segnaposto della schermata elenco carte su Apple Watch"
+                src="assets/screenshots/watch-card-list-it.jpg"
+                width="422"
+                height="514"
+                alt="Cardì su Apple Watch: l'elenco delle carte"
               />
             </figure>
           </div>
@@ -204,7 +212,7 @@
               <p>
                 <span class="lang-en">Browse top Italian loyalty brands and add cards in seconds.</span>
                 <span class="lang-it"
-                  >Sfoglia i principali brand fedeltà italiani e aggiungi le carte in pochi secondi.</span
+                  >Sfoglia i principali brand fedeltà italiani e aggiungi le carte in pochi secondi, codice fiscale compreso.</span
                 >
               </p>
             </article>
@@ -295,8 +303,8 @@
         <section class="content-section section-card" aria-labelledby="screenshots-heading">
           <div class="section-heading-row">
             <p class="section-kicker">
-              <span class="lang-en">Placeholder frames ready for real captures</span>
-              <span class="lang-it">Cornici placeholder pronte per le catture reali</span>
+              <span class="lang-en">Straight from the app</span>
+              <span class="lang-it">Direttamente dall'app</span>
             </p>
             <h2 id="screenshots-heading" class="section-title">
               <span class="lang-en">Screenshots</span>
@@ -309,13 +317,17 @@
             <figure class="screenshot-card">
               <img
                 class="lang-en"
-                src="assets/screenshots/home-card-list.svg"
-                alt="Placeholder screenshot for the home card list screen"
+                src="assets/screenshots/home-card-list.jpg"
+                width="660"
+                height="1434"
+                alt="The card list on iPhone, favourites first"
               />
               <img
                 class="lang-it"
-                src="assets/screenshots/home-card-list-it.svg"
-                alt="Screenshot segnaposto della schermata elenco carte home"
+                src="assets/screenshots/home-card-list-it.jpg"
+                width="660"
+                height="1434"
+                alt="L'elenco delle carte su iPhone, con le preferite in cima"
               />
               <figcaption>
                 <span class="lang-en">Home card list</span>
@@ -327,13 +339,17 @@
             <figure class="screenshot-card">
               <img
                 class="lang-en"
-                src="assets/screenshots/barcode-display.svg"
-                alt="Placeholder screenshot for the barcode display screen"
+                src="assets/screenshots/barcode-display.jpg"
+                width="660"
+                height="1434"
+                alt="The Esselunga card opened on iPhone, its barcode ready to scan"
               />
               <img
                 class="lang-it"
-                src="assets/screenshots/barcode-display-it.svg"
-                alt="Screenshot segnaposto della schermata codice a barre"
+                src="assets/screenshots/barcode-display-it.jpg"
+                width="660"
+                height="1434"
+                alt="Il codice fiscale aperto su iPhone, pronto da mostrare"
               />
               <figcaption>
                 <span class="lang-en">Barcode display</span>
@@ -345,13 +361,17 @@
             <figure class="screenshot-card">
               <img
                 class="lang-en"
-                src="assets/screenshots/watch-card-list.svg"
-                alt="Placeholder screenshot for the Apple Watch card list screen"
+                src="assets/screenshots/watch-card-list.jpg"
+                width="422"
+                height="514"
+                alt="The card list on Apple Watch"
               />
               <img
                 class="lang-it"
-                src="assets/screenshots/watch-card-list-it.svg"
-                alt="Screenshot segnaposto della schermata elenco carte su Apple Watch"
+                src="assets/screenshots/watch-card-list-it.jpg"
+                width="422"
+                height="514"
+                alt="L'elenco delle carte su Apple Watch"
               />
               <figcaption>
                 <span class="lang-en">Apple Watch card list</span>
@@ -487,7 +507,13 @@
           });
         });
 
+        // A badge whose listing is not live yet keeps href="#" and says "coming soon"; one with a
+        // real store URL (Story 24.6) is an ordinary link.
         storeLinks.forEach(function (link) {
+          if (link.getAttribute('href') !== '#') {
+            return;
+          }
+
           link.addEventListener('click', function (event) {
             event.preventDefault();
 

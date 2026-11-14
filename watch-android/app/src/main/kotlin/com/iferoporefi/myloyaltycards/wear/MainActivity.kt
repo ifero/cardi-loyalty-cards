@@ -32,9 +32,10 @@ class MainActivity : ComponentActivity() {
         // and DebugSampleCards — from the release APK; the empty state only renders the seed button
         // when this callback is non-null. The seed itself is atomic + empty-state-gated inside
         // WearGraph, so it can never overwrite real cards that Story 10-6 syncs in concurrently.
+        // WEAR_DEMO_SEED (-PwearDemoSeed=true, debug only) swaps in the store-screenshot set.
         val onImportSampleCards: (() -> Unit)? =
             if (BuildConfig.DEBUG) {
-                { WearGraph.seedSampleCardsIfEmpty(applicationContext) }
+                { WearGraph.seedSampleCardsIfEmpty(applicationContext, BuildConfig.WEAR_DEMO_SEED) }
             } else {
                 null
             }

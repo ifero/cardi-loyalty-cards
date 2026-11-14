@@ -16,8 +16,96 @@ package com.iferoporefi.myloyaltycards.wear.data
  * format ZXing renders (CODE128, EAN8, CODE39 join the EAN13/UPCA/QR above) and for **both** error
  * states — an unsupported format and an invalid value. All barcode values below are real and valid
  * except the two deliberately-broken cards, whose names say so.
+ *
+ * [DEMO] is the store-screenshot set (Story 24.6): a debug build made with `-PwearDemoSeed=true`
+ * seeds it instead of [CARDS] (see [forSeed]). It holds two catalogue brands, Esselunga and IKEA
+ * (decision 2 as revised by ifero on 2026-11-13), beside invented shops; every barcode value is
+ * made up, and the EAN values use the GS1 restricted-circulation prefix `20`, which no real
+ * retailer card carries.
  */
 object DebugSampleCards {
+    /**
+     * The set the debug seeder writes: [DEMO] when the build's demo flag is on, else [CARDS].
+     * `demo` is `BuildConfig.WEAR_DEMO_SEED`, which the release build type pins to `false`.
+     */
+    fun forSeed(demo: Boolean): List<WearCard> = if (demo) DEMO else CARDS
+
+    /** Fictional store-listing cards (Story 24.6). Mirrors the phone and Apple Watch demo set. */
+    val DEMO: List<WearCard> = listOf(
+        WearCard(
+            id = "demo-esselunga",
+            name = "Esselunga",
+            brandId = "esselunga",
+            colorHex = "orange",
+            barcodeValue = "2047182903512", // valid EAN-13, GS1 prefix 20 (restricted circulation)
+            barcodeFormat = "EAN13",
+            usageCount = 14,
+            lastUsedAt = "2026-11-12T08:10:00.000Z",
+            createdAt = "2026-09-02T09:00:00.000Z",
+            isFavorite = true,
+        ),
+        WearCard(
+            id = "demo-verde-mercato",
+            name = "Verde Mercato",
+            brandId = null,
+            colorHex = "green",
+            barcodeValue = "2091305748269", // valid EAN-13, prefix 20
+            barcodeFormat = "EAN13",
+            usageCount = 9,
+            lastUsedAt = "2026-11-10T17:30:00.000Z",
+            createdAt = "2026-09-05T09:00:00.000Z",
+            isFavorite = true,
+        ),
+        WearCard(
+            id = "demo-libreria-pagina",
+            name = "Libreria Pagina",
+            brandId = null,
+            colorHex = "blue",
+            barcodeValue = "LP-204816",
+            barcodeFormat = "CODE128",
+            usageCount = 4,
+            lastUsedAt = "2026-11-03T15:00:00.000Z",
+            createdAt = "2026-09-12T09:00:00.000Z",
+            isFavorite = false,
+        ),
+        WearCard(
+            id = "demo-caffe-lumen",
+            name = "Caffè Lumen",
+            brandId = null,
+            colorHex = "red",
+            barcodeValue = "CARDI-DEMO-LUMEN-0427",
+            barcodeFormat = "QR",
+            usageCount = 6,
+            lastUsedAt = "2026-11-08T07:45:00.000Z",
+            createdAt = "2026-09-20T09:00:00.000Z",
+            isFavorite = false,
+        ),
+        WearCard(
+            id = "demo-palestra-onda",
+            name = "Palestra Onda",
+            brandId = null,
+            colorHex = "grey",
+            barcodeValue = "ONDA-0427",
+            barcodeFormat = "CODE39",
+            usageCount = 2,
+            lastUsedAt = "2026-10-28T19:00:00.000Z",
+            createdAt = "2026-10-01T09:00:00.000Z",
+            isFavorite = false,
+        ),
+        WearCard(
+            id = "demo-ikea",
+            name = "IKEA",
+            brandId = "ikea",
+            colorHex = "blue",
+            barcodeValue = "CARDI-DEMO-IKEA-0815", // made up, not an IKEA Family number
+            barcodeFormat = "QR",
+            usageCount = 8,
+            lastUsedAt = "2026-11-09T11:00:00.000Z",
+            createdAt = "2026-09-08T09:00:00.000Z",
+            isFavorite = false,
+        ),
+    )
+
     val CARDS: List<WearCard> = listOf(
         WearCard(
             id = "sample-esselunga",
