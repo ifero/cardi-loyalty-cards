@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.iferoporefi.myloyaltycards",
       "minimumOsVersion": "18.0",
       "appleTeamId": "7KU8K25XK5",
