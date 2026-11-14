@@ -1,0 +1,86 @@
+{
+  "version": "2.0",
+  "appVersion": "1.0.0",
+  "exportDate": "2026-11-13T09:00:00.000Z",
+  "cardCount": 6,
+  "cards": [
+    {
+      "id": "f9b93881-29be-5ffa-af69-c8cb46ea31d4",
+      "name": "Esselunga",
+      "barcode": "2047182903512",
+      "barcodeFormat": "EAN13",
+      "brandId": "esselunga",
+      "color": "orange",
+      "isFavorite": true,
+      "lastUsedAt": "2026-11-12T08:10:00.000Z",
+      "usageCount": 14,
+      "createdAt": "2026-09-02T09:00:00.000Z",
+      "updatedAt": "2026-09-02T09:00:00.000Z"
+    },
+    {
+      "id": "8f6044dd-a474-5faf-b424-bb80be4187c3",
+      "name": "Verde Mercato",
+      "barcode": "2091305748269",
+      "barcodeFormat": "EAN13",
+      "brandId": null,
+      "color": "green",
+      "isFavorite": true,
+      "lastUsedAt": "2026-11-10T17:30:00.000Z",
+      "usageCount": 9,
+      "createdAt": "2026-09-05T09:00:00.000Z",
+      "updatedAt": "2026-09-05T09:00:00.000Z"
+    },
+    {
+      "id": "0b252fb3-7949-542f-b8c7-be98d536b013",
+      "name": "IKEA",
+      "barcode": "CARDI-DEMO-IKEA-0815",
+      "barcodeFormat": "QR",
+      "brandId": "ikea",
+      "color": "blue",
+      "isFavorite": false,
+      "lastUsedAt": "2026-11-09T11:00:00.000Z",
+      "usageCount": 8,
+      "createdAt": "2026-09-08T09:00:00.000Z",
+      "updatedAt": "2026-09-08T09:00:00.000Z"
+    },
+    {
+      "id": "392da649-c684-5d79-ba51-deb9ace0444e",
+      "name": "Caffè Lumen",
+      "barcode": "CARDI-DEMO-LUMEN-0427",
+      "barcodeFormat": "QR",
+      "brandId": null,
+      "color": "red",
+      "isFavorite": false,
+      "lastUsedAt": "2026-11-08T07:45:00.000Z",
+      "usageCount": 6,
+      "createdAt": "2026-09-20T09:00:00.000Z",
+      "updatedAt": "2026-09-20T09:00:00.000Z"
+    },
+    {
+      "id": "7ea04f42-8465-551d-8172-9fc92d4beec4",
+      "name": "Libreria Pagina",
+      "barcode": "LP-204816",
+      "barcodeFormat": "CODE128",
+      "brandId": null,
+      "color": "blue",
+      "isFavorite": false,
+      "lastUsedAt": "2026-11-03T15:00:00.000Z",
+      "usageCount": 4,
+      "createdAt": "2026-09-12T09:00:00.000Z",
+      "updatedAt": "2026-09-12T09:00:00.000Z"
+    },
+    {
+      "id": "17f9e0bb-a897-5d9e-af5f-348fc9bfa46b",
+      "name": "Palestra Onda",
+      "barcode": "ONDA-0427",
+      "barcodeFormat": "CODE39",
+      "brandId": null,
+      "color": "grey",
+      "isFavorite": false,
+      "lastUsedAt": "2026-10-28T19:00:00.000Z",
+      "usageCount": 2,
+      "createdAt": "2026-10-01T09:00:00.000Z",
+      "updatedAt": "2026-10-01T09:00:00.000Z"
+    }
+  ]
+}

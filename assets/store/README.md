@@ -1,6 +1,6 @@
-# Play Store artwork
+# Store artwork
 
-Four files, uploaded to **Play Console by hand**. They are generated, gated and tested — none of
+Four Play Store files, uploaded to **Play Console by hand**. They are generated, gated and tested — none of
 which was true before Story 21.5.
 
 | file                                    | slot                   | frame       | format                   |
@@ -52,17 +52,26 @@ the banners share its PNG encoder — and `yarn icons:check` already runs in `.h
 that was wrong about Google's requirements. `test/store-artwork.test.ts` is the other half — it
 asserts the published specification and the brand's own rules against the committed pixels.
 
-## Listing TEXT is not here, and cannot be
+## Screenshots and listing text live beside this, not in it
 
-There is **no `fastlane/metadata/`** in this repository and no `eas.json`, and every metadata and
-image upload path is disabled in `fastlane/Fastfile`: `skip_metadata` / `skip_screenshots` on iOS,
-and `skip_upload_metadata` / `_changelogs` / `_images` / `_screenshots` on both Android lanes.
+- **Screenshots:** [`screenshots/`](screenshots/README.md), one folder per store and locale
+  (`screenshots/<app-store|play>/<en|it>/`), captured from the real app UI (Story 24.6).
+  `test/store-screenshots.test.ts` holds them to each console's size, aspect, count and no-alpha
+  rules. They are captures, not generated, so `yarn icons:check` does not cover them and the
+  artwork above is unchanged by them.
+- **Listing text:** [`docs/store/listing.md`](../../docs/store/listing.md): name, subtitle,
+  descriptions, keywords, categories, age-rating answers, URLs and the App Review note, in English
+  and Italian. `test/store-listing.test.ts` checks every field against its console limit.
 
-Title, short description, full description and keywords are maintained **by hand in App Store
-Connect and Play Console**. Do not create a `fastlane/metadata/` tree to make them look tracked: an
-unuploaded shadow copy of the listing looks authoritative and is never read.
+Both are uploaded **by hand**: there is **no `fastlane/metadata/`** in this repository and no
+`eas.json`, and every metadata and image upload path is disabled in `fastlane/Fastfile`:
+`skip_metadata` / `skip_screenshots` on iOS, and `skip_upload_metadata` / `_changelogs` /
+`_images` / `_screenshots` on both Android lanes. Do not create a `fastlane/metadata/` tree: an
+unuploaded shadow copy of the listing that looks like the upload source would be read as one.
+`docs/store/listing.md` is a dated record of what was pasted, and says so.
 
 ## Sources
 
 - [App icon design specifications](https://developer.android.com/distribute/google-play/resources/icon-design-specifications)
 - [Add preview assets to showcase your app](https://support.google.com/googleplay/android-developer/answer/9866151)
+- [App Store Connect: Screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/screenshot-specifications)
