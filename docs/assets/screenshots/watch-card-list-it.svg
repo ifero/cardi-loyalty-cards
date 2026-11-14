@@ -1,8 +1,0 @@
-<svg width="198" height="220" viewBox="0 0 198 220" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title-watch-it desc-watch-it">
-  <title id="title-watch-it">Segnaposto screenshot per elenco carte Apple Watch</title>
-  <desc id="desc-watch-it">Cornice segnaposto per Apple Watch pronta per essere sostituita con lo screenshot dell'elenco carte su Apple Watch.</desc>
-  <!-- SCREENSHOT: watch-card-list -->
-  <rect x="10" y="0" width="178" height="220" rx="58" fill="#181824"/>
-  <rect x="21" y="16" width="156" height="188" rx="46" fill="#F0F0E8" stroke="#55555F" stroke-width="4" stroke-dasharray="12 12"/>
-  <text x="99" y="112" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" font-size="10" font-weight="700" fill="#181824">Schermata: elenco carte</text>
-</svg>

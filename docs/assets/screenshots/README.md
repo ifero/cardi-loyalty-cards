@@ -1,13 +1,22 @@
-# Screenshot placeholders
+# Landing-page screenshots
 
-Replace placeholder SVGs with real screenshots at 390x844px (iPhone) / 198x220px (Apple Watch). Update the corresponding EN/IT `src` values in `index.html`.
+Web-sized copies of the store captures in
+[`assets/store/screenshots/app-store/`](../../../assets/store/screenshots/README.md) (Story 24.6),
+used by `docs/index.html`'s hero and Screenshots section. They live here because the site deploy
+publishes only `docs/`. This README is excluded from the deploy.
 
-They are drawn in the Cardì palette — ink `#181824` bezel, cream `#F0F0E8` screen, `#55555F`
-dashed edge, ink label — since Story 21.5. They were the pre-rebrand blue `#1A73E8` until then:
-Story 21.1's `docs/` sweep covered `index.html`, `privacy-policy.html`, `help.json` and
-`style.css`, but not this folder.
+| File                             | Source capture (`en` / `it`) | Size       |
+| -------------------------------- | ---------------------------- | ---------- |
+| `home-card-list.jpg`, `-it.jpg`  | `iphone-01-card-list.png`    | 660 × 1434 |
+| `barcode-display.jpg`, `-it.jpg` | `iphone-02-card-detail.png`  | 660 × 1434 |
+| `watch-card-list.jpg`, `-it.jpg` | `watch-01-card-list.png`     | 422 × 514  |
 
-⚠️ That blue is **still `--color-primary` in `style.css`**, so the page's own chrome has not been
-migrated to Ink & Beam and no story owns doing it. These frames are therefore deliberately neutral
-— ink on cream, which reads correctly against either palette — rather than matching a page that is
-itself out of date.
+The device frames are drawn in `docs/style.css`, not in the images. To refresh them after a new
+capture, from the repository root:
+
+```bash
+sips -s format jpeg -s formatOptions 82 --resampleWidth 660 assets/store/screenshots/app-store/en/iphone-01-card-list.png --out docs/assets/screenshots/home-card-list.jpg
+```
+
+(`iphone-02-card-detail` → `barcode-display`; the watch captures at their own size with
+`formatOptions 85`; the Italian files from `it/` with the `-it` suffix.)
