@@ -30,6 +30,7 @@ const mockSignOut = jest.fn();
 const mockDeleteAccount = jest.fn();
 const mockSendPasswordResetOtp = jest.fn();
 const mockClearLastSyncAt = jest.fn();
+const mockDeleteAllCards = jest.fn();
 const mockShowToast = jest.fn();
 
 const mockUseThemePreference = jest.fn();
@@ -80,6 +81,10 @@ jest.mock('@/shared/supabase/auth', () => ({
 
 jest.mock('@/shared/toast', () => ({
   showToast: (...args: unknown[]) => mockShowToast(...args)
+}));
+
+jest.mock('@/core/database', () => ({
+  deleteAllCards: () => mockDeleteAllCards()
 }));
 
 jest.mock('@/core/sync/sync-timestamp', () => ({
@@ -226,6 +231,7 @@ describe('SettingsScreen', () => {
     mockDeleteAccount.mockResolvedValue({ success: true, data: undefined });
     mockSendPasswordResetOtp.mockResolvedValue({ success: true, data: undefined });
     mockClearLastSyncAt.mockResolvedValue(undefined);
+    mockDeleteAllCards.mockResolvedValue(undefined);
   });
 
   afterEach(() => {
@@ -291,12 +297,167 @@ describe('SettingsScreen', () => {
     const { getByTestId } = render(<SettingsScreen />);
 
     fireEvent.press(getByTestId('settings-signout-row'));
-    fireEvent.press(getByTestId('signout-confirm'));
+    fireEvent.press(getByTestId('signout-keep'));
 
     await waitFor(() => {
       expect(mockSignOut).toHaveBeenCalled();
       expect(mockReplace).toHaveBeenCalledWith('/');
     });
+  });
+
+  /**
+   * Story 16.45: sign out keeping the cards on this device, or erasing them. Erasing runs only
+   * after a successful sign-out, and a failed erase still lands on `/`, with a toast.
+   */
+  describe('signing out, keeping or erasing the cards', () => {
+    const chooseSignOut = async (testID: 'signout-keep' | 'signout-erase') => {
+      await userEvent.press(screen.getByTestId('settings-signout-row'));
+      await userEvent.press(screen.getByTestId(testID));
+    };
+
+    it('keeps the cards: signs out, clears the sync timestamp, erases nothing', async () => {
+      signedIn();
+      render(<SettingsScreen />);
+      await chooseSignOut('signout-keep');
+
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/'));
+      expect(mockSignOut).toHaveBeenCalledTimes(1);
+      expect(mockClearLastSyncAt).toHaveBeenCalledTimes(1);
+      expect(mockDeleteAllCards).not.toHaveBeenCalled();
+      expect(mockShowToast).not.toHaveBeenCalled();
+    });
+
+    it('erases the cards after signing out and clearing the sync timestamp', async () => {
+      signedIn();
+      const order: string[] = [];
+      mockSignOut.mockImplementationOnce(async () => {
+        order.push('signOut');
+        return { success: true, data: undefined };
+      });
+      mockClearLastSyncAt.mockImplementationOnce(async () => {
+        order.push('clearLastSyncAt');
+      });
+      mockDeleteAllCards.mockImplementationOnce(async () => {
+        order.push('deleteAllCards');
+      });
+      mockReplace.mockImplementationOnce(() => {
+        order.push('replace');
+      });
+      render(<SettingsScreen />);
+      await chooseSignOut('signout-erase');
+
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/'));
+      expect(order).toEqual(['signOut', 'clearLastSyncAt', 'deleteAllCards', 'replace']);
+      expect(mockShowToast).not.toHaveBeenCalled();
+      await waitFor(() => expect(screen.queryByRole('header', { name: 'Sign Out?' })).toBeNull());
+    });
+
+    it.each([
+      ['resolves a failure', () => mockSignOut.mockResolvedValue({ success: false })],
+      ['throws', () => mockSignOut.mockRejectedValue(new Error('offline'))]
+    ])('erases nothing and keeps the sheet open when signing out %s', async (_label, fail) => {
+      signedIn();
+      fail();
+      render(<SettingsScreen />);
+      await chooseSignOut('signout-erase');
+
+      const banner = await screen.findByTestId('signout-error');
+      expect(within(banner).getByText('Unable to sign out')).toBeTruthy();
+      expect(screen.getByRole('header', { name: 'Sign Out?' })).toBeTruthy();
+      expect(mockDeleteAllCards).not.toHaveBeenCalled();
+      expect(mockClearLastSyncAt).not.toHaveBeenCalled();
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
+
+    it('still signs out and navigates when erasing fails, with an error toast', async () => {
+      signedIn();
+      mockDeleteAllCards.mockRejectedValue(new Error('disk I/O error'));
+      render(<SettingsScreen />);
+      await chooseSignOut('signout-erase');
+
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/'));
+      expect(mockShowToast).toHaveBeenCalledWith({
+        title: 'Signed out, but the cards on this device could not be erased',
+        preset: 'error'
+      });
+      expect(screen.queryByRole('header', { name: 'Sign Out?' })).toBeNull();
+      expect(screen.queryByTestId('signout-error')).toBeNull();
+    });
+
+    it('navigates with no sign-out banner when the erase-failed toast rejects', async () => {
+      signedIn();
+      mockDeleteAllCards.mockRejectedValue(new Error('disk I/O error'));
+      mockShowToast.mockRejectedValueOnce(new Error('toast unavailable'));
+      render(<SettingsScreen />);
+      await chooseSignOut('signout-erase');
+
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/'));
+      expect(mockShowToast).toHaveBeenCalledTimes(1);
+      await waitFor(() => expect(screen.queryByRole('header', { name: 'Sign Out?' })).toBeNull());
+      expect(screen.queryByTestId('signout-error', hidden)).toBeNull();
+    });
+
+    it('keeps the sheet open on Cancel while a sign-out is in flight', async () => {
+      signedIn();
+      let resolveSignOut: (value: unknown) => void = () => {};
+      mockSignOut.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveSignOut = resolve;
+          })
+      );
+      render(<SettingsScreen />);
+      await chooseSignOut('signout-erase');
+
+      await userEvent.press(screen.getByTestId('signout-cancel'));
+      expect(screen.getByRole('header', { name: 'Sign Out?' })).toBeTruthy();
+
+      await act(async () => {
+        resolveSignOut({ success: true, data: undefined });
+      });
+      expect(mockDeleteAllCards).toHaveBeenCalledTimes(1);
+      expect(mockReplace).toHaveBeenCalledWith('/');
+    });
+
+    it('still erases when clearing the sync timestamp fails', async () => {
+      signedIn();
+      mockClearLastSyncAt.mockRejectedValueOnce(new Error('storage unavailable'));
+      render(<SettingsScreen />);
+      await chooseSignOut('signout-erase');
+
+      await waitFor(() => expect(mockReplace).toHaveBeenCalledWith('/'));
+      expect(mockDeleteAllCards).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['signout-keep', 'signout-erase'],
+      ['signout-erase', 'signout-keep']
+    ] as const)(
+      'while %s is in flight, spins on it alone and ignores both choices',
+      async (pressed, other) => {
+        signedIn();
+        let resolveSignOut: (value: unknown) => void = () => {};
+        mockSignOut.mockImplementation(
+          () =>
+            new Promise((resolve) => {
+              resolveSignOut = resolve;
+            })
+        );
+        render(<SettingsScreen />);
+        await chooseSignOut(pressed);
+
+        expect(screen.getByTestId(`${pressed}-spinner`)).toBeTruthy();
+        expect(screen.queryByTestId(`${other}-spinner`)).toBeNull();
+        await userEvent.press(screen.getByTestId(pressed));
+        await userEvent.press(screen.getByTestId(other));
+        expect(mockSignOut).toHaveBeenCalledTimes(1);
+
+        await act(async () => {
+          resolveSignOut({ success: true, data: undefined });
+        });
+        expect(mockDeleteAllCards).toHaveBeenCalledTimes(pressed === 'signout-erase' ? 1 : 0);
+      }
+    );
   });
 
   it('still navigates when clearLastSyncAt fails after sign-out success', async () => {
@@ -306,7 +467,7 @@ describe('SettingsScreen', () => {
     const { getByTestId } = render(<SettingsScreen />);
 
     fireEvent.press(getByTestId('settings-signout-row'));
-    fireEvent.press(getByTestId('signout-confirm'));
+    fireEvent.press(getByTestId('signout-keep'));
 
     await waitFor(() => {
       expect(mockSignOut).toHaveBeenCalled();
@@ -653,7 +814,7 @@ describe('SettingsScreen', () => {
       render(<SettingsScreen />);
 
       await userEvent.press(screen.getByTestId('settings-signout-row'));
-      await userEvent.press(screen.getByTestId('signout-confirm'));
+      await userEvent.press(screen.getByTestId('signout-keep'));
 
       const banner = await screen.findByTestId('signout-error');
       expect(within(banner).getByText('Unable to sign out')).toBeTruthy();
@@ -668,7 +829,7 @@ describe('SettingsScreen', () => {
       render(<SettingsScreen />);
 
       await userEvent.press(screen.getByTestId('settings-signout-row'));
-      await userEvent.press(screen.getByTestId('signout-confirm'));
+      await userEvent.press(screen.getByTestId('signout-keep'));
       await screen.findByTestId('signout-error');
 
       await userEvent.press(screen.getByTestId('signout-cancel'));
@@ -690,12 +851,12 @@ describe('SettingsScreen', () => {
       render(<SettingsScreen />);
 
       await userEvent.press(screen.getByTestId('settings-signout-row'));
-      await userEvent.press(screen.getByTestId('signout-confirm'));
+      await userEvent.press(screen.getByTestId('signout-keep'));
       await screen.findByTestId('signout-error');
 
-      await userEvent.press(screen.getByTestId('signout-confirm'));
+      await userEvent.press(screen.getByTestId('signout-keep'));
       expect(screen.queryByTestId('signout-error')).toBeNull();
-      expect(screen.getByTestId('signout-confirm-spinner')).toBeTruthy();
+      expect(screen.getByTestId('signout-keep-spinner')).toBeTruthy();
 
       await act(async () => {
         resolveSecond({ success: true, data: undefined });
@@ -833,7 +994,7 @@ describe('SettingsScreen', () => {
       render(<SettingsScreen />);
 
       await userEvent.press(screen.getByTestId('settings-signout-row'));
-      await userEvent.press(screen.getByTestId('signout-confirm'));
+      await userEvent.press(screen.getByTestId('signout-keep'));
 
       const banner = await screen.findByTestId('signout-error');
       expect(within(banner).getByText('Unable to sign out')).toBeTruthy();
@@ -866,7 +1027,7 @@ describe('SettingsScreen', () => {
       render(<SettingsScreen />);
 
       await userEvent.press(screen.getByTestId('settings-signout-row'));
-      await userEvent.press(screen.getByTestId('signout-confirm'));
+      await userEvent.press(screen.getByTestId('signout-keep'));
 
       await waitFor(() => expect(screen.queryByRole('header', { name: 'Sign Out?' })).toBeNull());
       expect(mockReplace).toHaveBeenCalledWith('/');
@@ -1245,7 +1406,7 @@ describe('SettingsScreen', () => {
       mockSignOut.mockResolvedValue({ success: false, error: { message: 'offline' } });
       render(<SettingsScreen />);
       await userEvent.press(screen.getByTestId('settings-signout-row'));
-      await userEvent.press(screen.getByTestId('signout-confirm'));
+      await userEvent.press(screen.getByTestId('signout-keep'));
       await screen.findByTestId('signout-error');
 
       holdSlideOut();

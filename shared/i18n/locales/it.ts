@@ -214,7 +214,11 @@ export const it = {
     },
     signOutSheet: {
       title: 'Vuoi uscire?',
-      body: 'Tornerai in modalità ospite. Le tue carte resteranno su questo dispositivo.'
+      body: "Tornerai in modalità ospite. Puoi tenere le carte su questo dispositivo, oppure cancellarle da questo dispositivo e dallo smartwatch associato. L'account ne conserva una copia, ma se le cancelli le carte non ancora sincronizzate andranno perse per sempre.",
+      keepCards: 'Esci e tieni le carte',
+      eraseCards: 'Esci e cancella le carte',
+      eraseFailed:
+        'Disconnessione eseguita, ma non è stato possibile cancellare le carte da questo dispositivo'
     },
     deleteAccountSheet: {
       step1Title: "Eliminare l'account?",

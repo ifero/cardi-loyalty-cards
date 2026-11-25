@@ -6,6 +6,7 @@ import { ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { catalogueRepository } from '@/core/catalogue/catalogue-repository';
+import { deleteAllCards } from '@/core/database';
 import { clearLastSyncAt } from '@/core/sync/sync-timestamp';
 import { logger } from '@/core/utils/logger';
 
@@ -27,7 +28,7 @@ import { ImportErrorSheet } from '../components/ImportErrorSheet';
 import { ImportPreviewSheet } from '../components/ImportPreviewSheet';
 import { LanguagePickerSheet } from '../components/LanguagePickerSheet';
 import { PreferencesSection } from '../components/PreferencesSection';
-import { SignOutSheet } from '../components/SignOutSheet';
+import { SignOutSheet, type SignOutBusyAction } from '../components/SignOutSheet';
 import { ThemePickerSheet } from '../components/ThemePickerSheet';
 import { useAutoBrightnessPreference } from '../hooks/useAutoBrightnessPreference';
 import { useExportData } from '../hooks/useExportData';
@@ -49,7 +50,7 @@ const SettingsScreen = () => {
   const [isExportConfirmOpen, setIsExportConfirmOpen] = useState(false);
   const [isExportEmptyOpen, setIsExportEmptyOpen] = useState(false);
 
-  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [signOutBusyAction, setSignOutBusyAction] = useState<SignOutBusyAction>(null);
   const [signOutError, setSignOutError] = useState<string | null>(null);
 
   const [isDeleting, setIsDeleting] = useState(false);
@@ -170,9 +171,12 @@ const SettingsScreen = () => {
     }
   };
 
-  const confirmSignOut = async () => {
+  // Story 16.45: erasing runs only once sign-out has succeeded, and deletes local rows only (no
+  // pending-deletion entries), so the next sign-in downloads every card again. A failed erase is
+  // not a sheet error — the account is already signed out — so it is a toast on the way to `/`.
+  const confirmSignOut = async (eraseCards: boolean) => {
     setSignOutError(null);
-    setIsSigningOut(true);
+    setSignOutBusyAction(eraseCards ? 'erase' : 'keep');
 
     try {
       const result = await signOut();
@@ -188,13 +192,29 @@ const SettingsScreen = () => {
         logger.error('[SettingsScreen] Failed to clear sync timestamp on sign out', error);
       }
 
+      let eraseFailed = false;
+      if (eraseCards) {
+        try {
+          await deleteAllCards();
+        } catch (error) {
+          eraseFailed = true;
+          logger.error('[SettingsScreen] Failed to erase local cards on sign out', error);
+        }
+      }
+
       setIsSignOutSheetOpen(false);
       router.replace('/');
+      if (eraseFailed) {
+        showToast({ title: t('settings.signOutSheet.eraseFailed'), preset: 'error' }).catch(
+          (error: unknown) =>
+            logger.error('[SettingsScreen] Failed to show erase-failed toast', error)
+        );
+      }
     } catch (error) {
       logger.error('[SettingsScreen] Failed to sign out', error);
       setSignOutError(t('settings.account.signOutError'));
     } finally {
-      setIsSigningOut(false);
+      setSignOutBusyAction(null);
     }
   };
 
@@ -378,7 +398,7 @@ const SettingsScreen = () => {
 
       <SignOutSheet
         visible={isSignOutSheetOpen}
-        isLoading={isSigningOut}
+        busyAction={signOutBusyAction}
         error={signOutError}
         onConfirm={confirmSignOut}
         onClose={() => setIsSignOutSheetOpen(false)}
