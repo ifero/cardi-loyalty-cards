@@ -213,7 +213,10 @@ export const en = {
     },
     signOutSheet: {
       title: 'Sign Out?',
-      body: 'You will return to guest mode. Your cards will remain on this device.'
+      body: 'You will return to guest mode. Keep your cards on this device, or erase them from this device and its paired watch. Your account keeps its copy, but cards not yet synced to it are lost for good if you erase.',
+      keepCards: 'Sign out, keep cards',
+      eraseCards: 'Sign out and erase cards',
+      eraseFailed: 'Signed out, but the cards on this device could not be erased'
     },
     deleteAccountSheet: {
       step1Title: 'Delete Account?',

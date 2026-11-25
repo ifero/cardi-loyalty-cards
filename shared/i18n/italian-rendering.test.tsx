@@ -118,4 +118,26 @@ describe('Italian localization rendering', () => {
     // Two blues in one picker, so the deep one is qualified.
     expect(screen.getByText('Colore Blu scuro')).toBeTruthy();
   });
+
+  /**
+   * Story 16.45 — the erase-failed toast is the only sign-out copy that never renders inside the
+   * sheet, so `SignOutSheet`'s Italian test cannot reach it. Pin its Italian value here.
+   */
+  it('renders the Italian erase-failed sign-out toast', async () => {
+    await act(async () => {
+      await changeAppLanguage('it');
+    });
+
+    const ToastProbe = () => {
+      const { t } = useTranslation();
+      return <Text>{t('settings.signOutSheet.eraseFailed')}</Text>;
+    };
+    render(<ToastProbe />);
+
+    expect(
+      screen.getByText(
+        'Disconnessione eseguita, ma non è stato possibile cancellare le carte da questo dispositivo'
+      )
+    ).toBeTruthy();
+  });
 });
