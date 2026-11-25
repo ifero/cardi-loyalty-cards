@@ -21,6 +21,7 @@ import {
   type CloudUpsertFn
 } from './cloud-sync';
 import { CloudCardRow } from './mappers';
+import { clearLastSyncAt } from './sync-timestamp';
 
 const makeCard = (index: number): LoyaltyCard => ({
   id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`,
@@ -526,6 +527,59 @@ describe('downloadCloudCards — deletion drain (Story 16.11)', () => {
 
     await downloadCloudCards(userId, fetchFn, { forceSync: true, deletions: bundle() });
 
+    expect(deleteFromCloud).not.toHaveBeenCalled();
+    expect(removeDrained).not.toHaveBeenCalled();
+  });
+
+  // The erase test swaps AsyncStorage for a store of its own; put the shared mock back after it.
+  let storageStubs: (readonly [jest.Mock, ((...args: never[]) => unknown) | undefined])[] = [];
+  afterEach(() => {
+    for (const [fn, impl] of storageStubs) {
+      if (impl) fn.mockImplementation(impl);
+    }
+    storageStubs = [];
+  });
+
+  // Story 16.45: signing out with "erase" empties the local database without queueing deletions,
+  // and clears the sync timestamps, so the first (unforced) sync after signing back in — even
+  // within the cooldown of the last one — restores every cloud card and deletes none from cloud.
+  it('downloads every cloud card and deletes none after a sign-out erase', async () => {
+    const now = 1_000_000;
+    // A store of its own, so no earlier test's getItem stub can stand in for the cooldown key.
+    const store = new Map<string, string>();
+    storageStubs = (['getItem', 'setItem', 'removeItem'] as const).map((name) => {
+      const fn = AsyncStorage[name] as jest.Mock;
+      return [fn, fn.getMockImplementation()] as const;
+    });
+    (AsyncStorage.getItem as jest.Mock).mockImplementation(async (key: string) =>
+      store.has(key) ? store.get(key) : null
+    );
+    (AsyncStorage.setItem as jest.Mock).mockImplementation(async (key: string, value: string) => {
+      store.set(key, value);
+    });
+    (AsyncStorage.removeItem as jest.Mock).mockImplementation(async (key: string) => {
+      store.delete(key);
+    });
+    store.set(_LAST_CLOUD_SYNC_KEY, String(now - 1000)); // synced a second ago
+    await clearLastSyncAt();
+
+    getPending.mockResolvedValue([]);
+    mockGetAllCards.mockResolvedValue([]);
+    const cloudRows = [makeCloudRow(0), makeCloudRow(1), makeCloudRow(2)];
+    fetchFn.mockResolvedValue({ data: cloudRows, error: null });
+
+    const result = await downloadCloudCards(userId, fetchFn, {
+      now: () => now,
+      deletions: bundle()
+    });
+
+    expect(result.throttled).toBe(false);
+    expect(result.success).toBe(true);
+    expect(result.downloadedCount).toBe(3);
+    expect(result.mergeResult?.added).toBe(3);
+    expect(result.mergeResult?.merged.map((card) => card.id).sort()).toEqual(
+      cloudRows.map((row) => row.id).sort()
+    );
     expect(deleteFromCloud).not.toHaveBeenCalled();
     expect(removeDrained).not.toHaveBeenCalled();
   });

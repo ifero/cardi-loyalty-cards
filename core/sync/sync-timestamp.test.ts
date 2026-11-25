@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { _LAST_CLOUD_SYNC_KEY } from './cloud-sync';
 import {
   _CLOUD_SYNC_LAST_SYNC_AT_KEY,
   clearLastSyncAt,
@@ -47,6 +48,14 @@ describe('clearLastSyncAt', () => {
     await setLastSyncAt('2026-03-20T10:00:00.000Z');
     await clearLastSyncAt();
     expect(AsyncStorage.removeItem).toHaveBeenCalledWith(_CLOUD_SYNC_LAST_SYNC_AT_KEY);
+  });
+
+  // Story 16.45: the download cooldown must not throttle the first sync after signing back in.
+  it('also removes the download cooldown timestamp', async () => {
+    await AsyncStorage.setItem(_LAST_CLOUD_SYNC_KEY, String(Date.now()));
+    await clearLastSyncAt();
+    expect(AsyncStorage.removeItem).toHaveBeenCalledWith(_LAST_CLOUD_SYNC_KEY);
+    expect(await AsyncStorage.getItem(_LAST_CLOUD_SYNC_KEY)).toBeNull();
   });
 
   it('results in null after clearing', async () => {
