@@ -3,7 +3,7 @@ title: 'Signing out leaves every card on the device, with no choice to erase the
 type: 'bugfix'
 created: '2026-11-24'
 baseline_commit: '1d255089bc10cdd6157936cf74bca972a76050fb'
-status: 'in-review'
+status: 'done'
 route: 'dispatch'
 review_loop_iteration: 0
 context:
