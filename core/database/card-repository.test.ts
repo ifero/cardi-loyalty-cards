@@ -15,7 +15,12 @@ import {
   toggleFavorite
 } from './card-repository';
 import { LoyaltyCard } from '../schemas';
+import { pushCardsToWearable } from '../wearable-sync';
 import * as databaseModule from './database';
+
+jest.mock('../wearable-sync', () => ({
+  pushCardsToWearable: jest.fn().mockResolvedValue(undefined)
+}));
 
 type TestCardRow = {
   id: string;
@@ -43,6 +48,14 @@ const makeDb = (rows: Array<Partial<TestCardRow> | { count: number }> = []): SQL
 
 describe('card-repository', () => {
   afterEach(() => jest.restoreAllMocks());
+
+  // Story 16.45: erasing the cards on sign-out must also empty the paired watch's list.
+  test('deleteAllCards with no cards left pushes the empty card list to the wearable', async () => {
+    const db = makeDb([]);
+    await deleteAllCards(db);
+    expect(db.runAsync).toHaveBeenCalledWith('DELETE FROM loyalty_cards');
+    expect(pushCardsToWearable).toHaveBeenLastCalledWith([]);
+  });
   const sampleRow = {
     id: '1',
     name: 'Card A',
