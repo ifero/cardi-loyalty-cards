@@ -12,7 +12,7 @@ project_name: 'myLoyaltyCards'
 user_name: 'Ifero'
 date: '2025-01-03'
 totalEpics: 24
-totalStories: 215 # counted from `### Story` headings on 2026-11-08
+totalStories: 216 # counted from `### Story` headings on 2026-11-24
 aligned_with_tracker: '2026-08-02'
 authoritative_source: 'docs/sprint-artifacts/sprint-status.yaml'
 ---
@@ -3340,6 +3340,20 @@ It is **narrower still** than watchOS was. On a round display it additionally in
 - The device-side check requires everything the hosted policy requires (lowercase, uppercase, digit, symbol from the server's own symbol set), so a password the server would reject on those grounds cannot be submitted; the field's error names the rule.
 - A `weak_password` rejection from the server (for example from a policy the app does not know) shows a specific message about the password rather than the generic error.
 - The strength meter never rates a password that fails the rule above "Weak".
+- English and Italian copy are updated together.
+
+### Story 16.45: Signing out leaves every card on the device, with no choice to erase them
+
+**As a** person signing out of my Cardì account, **I want** to choose whether the cards on this phone stay or are erased, **So that** signing out on a shared or handed-on phone does not leave my cards behind, and signing out to use the app offline does not lose them.
+
+**Found 2026-11-24 by ifero.** Sign Out (Settings, Account) clears only the local Supabase session and the last-sync timestamp. Every card in the local database stays on the device, and nothing on the sign-out sheet says so.
+
+**Acceptance Criteria:**
+
+- The sign-out confirmation asks whether to keep or erase the cards stored on this device, and says what each choice does.
+- Choosing to keep them signs out and leaves every local card in place, as today.
+- Choosing to erase them signs out and removes every card stored on the device, so the card list is empty afterwards; cards already in the cloud account are not deleted.
+- A failed sign-out erases nothing.
 - English and Italian copy are updated together.
 
 ## Epic 17: Apple Wallet Pass Support
