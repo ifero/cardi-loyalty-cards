@@ -12,7 +12,7 @@ project_name: 'myLoyaltyCards'
 user_name: 'Ifero'
 date: '2025-01-03'
 totalEpics: 24
-totalStories: 216 # counted from `### Story` headings on 2026-11-24
+totalStories: 230 # counted from `### Story` headings on 2026-11-25 (14 added by the GitHub issue audit)
 aligned_with_tracker: '2026-08-02'
 authoritative_source: 'docs/sprint-artifacts/sprint-status.yaml'
 ---
@@ -3355,6 +3355,207 @@ It is **narrower still** than watchOS was. On a round display it additionally in
 - Choosing to erase them signs out and removes every card stored on the device, so the card list is empty afterwards; cards already in the cloud account are not deleted.
 - A failed sign-out erases nothing.
 - English and Italian copy are updated together.
+
+### Story 16.46: Signing out leaves per-account sync state behind, so an in-flight sync restores erased cards and the next account drains the previous account's deletion queue
+
+**As a** person signing out of my Cardì account, **I want** the sync state that belongs to my account to go with it, **So that** signing out and erasing the cards really empties the device, and the next account on it is not charged with my deletions.
+
+**Found 2026-11-25 in the GitHub issue audit** (`docs/audit/issue-audit-2026-11-25.md`, issues #310 and #311), from Story 16.45's "Found, not fixed" list. `performSync` writes the merged cards with `batchUpsertCards` after its cloud fetch, and nothing cancels that write or checks the session is still the one the sync started under; the pending-deletion queue is keyed on a single account-agnostic storage key whose `clearPendingDeletions` has no production caller.
+
+**Acceptance Criteria:**
+
+- A sync whose download is still in flight when the person signs out writes nothing to the local database, whether they keep or erase the cards.
+- The pending-deletion queue is scoped to the account that filled it: another account signing in on the same device drains nothing of theirs.
+- The same account signing out and back in still drains its own queued deletions, as today.
+- A sync that finishes under a stale session surfaces no error to the person.
+
+### Story 16.47: `yarn typecheck` fails after `expo start`, because the generated Expo types narrow `process.env.NODE_ENV`
+
+**As a** developer, **I want** the typecheck gate to mean the same thing before and after `expo start`, **So that** a green typecheck is evidence on my machine and not only in CI.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #312), from Story 16.45's "Found, not fixed" list. Metro writes the git-ignored `expo-env.d.ts` and `.expo/types`, `tsconfig.json` includes both, and the generated `expo/types` reference narrows `process.env.NODE_ENV` -- so the test's environment literal no longer type-checks.
+
+**Acceptance Criteria:**
+
+- `yarn typecheck` reports no errors on a clean checkout, and reports no errors after `expo start` has written its generated files.
+- The site's temp-repository test keeps its behaviour: `NODE_ENV=test`, and no `GIT_*` variable inherited from the outer repository.
+
+### Story 16.48: The sign-out design frames still draw the old two-button sheet
+
+**As a** designer working from the Cardì frames, **I want** the sign-out frame to match the screen that ships, **So that** the frames stay a specification and not a contradiction.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #313), from Story 16.45's "Found, not fixed" list. Story 16.45 replaced the sheet with three stacked actions; frame D and the Stitch settings prompt still draw two.
+
+**Acceptance Criteria:**
+
+- Frame D in `docs/design/cardi/frames/cardi-settings-frames.html` and the sign-out section of `docs/design/cardi/stitch-prompts-settings.txt` show the three actions -- keep, erase, Cancel -- in the shipped order, with the shipped body.
+- The rule that keeps the three actions distinguishable from each other is recorded in the design system, and applied to the shipped sheet.
+- `yarn frames:check` passes.
+
+### Story 16.49: The theme and typography follow-ups: dead components, token fallbacks, hard-coded English and an unrun Android device pass
+
+**As a** maintainer, **I want** the residue the typefaces left behind cleared, **So that** the next migration is not slowed by components nothing uses and strings that bypass i18n.
+
+**Found 2026-11-25 in the GitHub issue audit** (issues #248 and #258), from the "Found, not fixed" lists of Stories 21.6 and 22.2.
+
+**Acceptance Criteria:**
+
+- `VirtualLogo`, `FormatPicker` and `CatalogueGrid` are gone, and no comment claims a route that no longer exists.
+- The theme's tokens are used directly, so a missing token is a compile error rather than a silent `??` fallback.
+- Every hard-coded English string in the sync and migration paths comes from the locale file, in both languages.
+- The deleted `SEMANTIC_COLORS` token is no longer named in `docs/design/CONTRIBUTING-DESIGN.md`.
+- A wrapped `Button` label stays centred.
+- The OTP suite no longer depends on its own test order.
+- The SDK patch train is measured and each outdated package updated.
+- The bundled typefaces are run on an Android device, and the result recorded; the fonts carry a licence credit.
+
+### Story 16.50: The design-system follow-ups: an off-grid radius, retired token mocks, a short Storybook canvas and stale agent-context files
+
+**As a** maintainer, **I want** the design system and the files that describe it to agree with the code, **So that** an agent -- or a person -- reading them is not misled.
+
+**Found 2026-11-25 in the GitHub issue audit** (issues #251, #268 and #275), from the "Found, not fixed" lists of Stories 22.1, 22.6 and 22.9.
+
+**Acceptance Criteria:**
+
+- `ActionRow`'s outlined radius is one of the design system's two radii, never 14.
+- The confirm sheets order their actions as the frames draw them, the destructive action first.
+- Every test that mocks `TOUCH_TARGET` mocks the shape that exists.
+- The scanner component with no production consumer is gone.
+- A sheet story's scrim lies over the app surface, not over bare page.
+- `docs/project-context.md` and `docs/architecture.md` describe the palette and the styling engine the code actually uses.
+
+### Story 16.51: The release follow-ups: the shipped binary is not the tested one, Play ships at 100 %, and the rebrand's own docs carry the old palette
+
+**As a** release owner, **I want** what ships to be what was tested, and the release to have a brake, **So that** 1.0 goes out on a result.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #253), from Story 21.7's "Found, not fixed" list.
+
+**Acceptance Criteria:**
+
+- A production release starts staged rather than reaching 100 % on approval; the RC and nightly lanes keep their behaviour.
+- The App Store lane can run a dry run that uploads nothing and consumes no build number.
+- `docs/epics.md` states the version rule that was decided and describes the mark that ships.
+- The public site carries the Cardì palette.
+
+### Story 16.52: The wallet follow-ups: two subscriptions for one list, an offline strip that can never show, and a 28pt retry target
+
+**As a** person using the wallet, **I want** it to reflect the state of my cards and to be operable, **So that** the screen I read is the screen I have.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #258), from Story 22.2's "Found, not fixed" list.
+
+**Acceptance Criteria:**
+
+- One card subscription feeds the wallet, and the guest banner's threshold matches the list.
+- The offline strip can show on Home.
+- The migration banner's Retry and dismiss reach the 48pt minimum.
+- The load-error state offers a retry and does not print the raw error string.
+- Adding a card leaves exactly one Home on the stack.
+- The wallet's tests assert the real theme colours.
+
+### Story 16.53: The capture and document follow-ups: a camera that never re-checks its permission, and a FAQ that names a deleted screen
+
+**As a** person adding a card, **I want** the scanner to recover when I fix a permission and to tell me what is happening, **So that** a refusal does not become a dead end and a scan always gives feedback.
+
+**Found 2026-11-25 in the GitHub issue audit** (issues #266 and #273), from the "Found, not fixed" lists of Stories 22.5 and 22.8.
+
+**Acceptance Criteria:**
+
+- Returning to the app after granting the camera permission in Settings re-reads it.
+- An image scan started from the camera-error state shows its progress and its no-code result.
+- The back control stays reachable while an image decodes.
+- The camera does not run under the card-setup screen.
+- The FAQ names screens that exist, in both languages.
+- The dead route file and the unused module barrel are gone.
+- Every claim the privacy policy makes about consent matches what the app does.
+
+### Story 16.54: The onboarding follow-ups: a carousel that announces nothing, and a runtime version that never moves with a native module
+
+**As a** person using the onboarding, **I want** it to be readable by a screen reader and to run on the binary it was built for, **So that** it works and it does not leave an unusable update in the channel.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #281), from Story 22.10's "Found, not fixed" list.
+
+**Acceptance Criteria:**
+
+- The runtime version moves off `1.0.0` before any OTA is published from `main`, so no update targets a binary without the onboarding's native module.
+- The highlights carousel announces a page change and does not claim a role it does not support.
+- The recommended mode card's spoken name is one sentence, in both languages.
+- The slide titles carry the header role the other onboarding titles carry.
+- A sheet's Italian announcement reads correctly with any sheet's name.
+- Under Reduce Motion the carousel does not animate.
+- Screen-reader focus returns to the trigger when a sheet closes.
+- No comment cites a component that does not exist.
+
+### Story 16.55: The watch follow-ups: no CI runs the watch tests, and two of them fail on the baseline
+
+**As a** maintainer of the watch app, **I want** its tests to run, **So that** a change to the crown or the barcode cannot pass every gate and still be wrong.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #284), from Story 23.2's "Found, not fixed" list.
+
+**Acceptance Criteria:**
+
+- CI runs the watch unit tests and the watch UI tests, not only a build.
+- Both failing UI tests pass: the barcode image is addressable, and the import button is found exactly once.
+- Every watch test asserts something.
+- `.agents/skills/native-watchos/SKILL.md` describes how the barcode screen is actually dismissed and paged.
+- `core/schemas/card.ts`'s comment matches the watch's azure fallback.
+- The Stroili row shows the brand's logo.
+
+### Story 16.56: The store and OTA follow-ups: nothing checks the generated manifests, and the runtime version never moves
+
+**As a** release owner, **I want** the build product verified and the OTA channel safe, **So that** a store upload is not rejected by a manifest nobody checked and no update ships to a binary it does not fit.
+
+**Found 2026-11-25 in the GitHub issue audit** (issues #294 and #298), from the "Found, not fixed" lists of Stories 24.2 and 24.4.
+
+**Acceptance Criteria:**
+
+- A CI check asserts the generated privacy manifests, the Gradle SDK properties and the watch bundles' copied manifests, not only their sources.
+- The runtime version policy tracks the native surface, so an OTA is offered only to binaries it matches.
+- `expo.install.exclude` carries its exit condition, and AGENTS.md says an excluded package is installed with Yarn on purpose.
+- A Wearable-API-absent snapshot publish is not reported to Sentry; every other failure still is.
+
+### Story 16.57: A Code 39 over 80 characters shows the error screen instead of the value, and nothing pins the Wear barcode's placement
+
+**As a** person whose card carries a long Code 39, **I want** to see the value and key it in, **So that** a symbology limit does not read as a broken card.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #303), from Story 16.38's "Found, not fixed" list. ZXing's `Code39Writer` rejects content longer than 80 characters, and the pipeline treats that rejection as an invalid value rather than as a symbol that does not fit.
+
+**Acceptance Criteria:**
+
+- An over-length Code 39 whose characters are otherwise valid shows the value as text, not the error screen.
+- A Code 39 with an unencodable character still shows the error screen.
+- A Compose UI test pins the barcode image's placement against the layout metrics.
+
+### Story 16.58: Two concurrent requests for the same barcode each render it, because the generator caches results but never in-flight work
+
+**As a** person on a 40 mm watch, **I want** the barcode drawn once, **So that** paging between cards does not spend the watch's battery rendering the same symbol twice.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #45, item 2), from Story 5.4's follow-ups. The EAN/UPC/CODE39 renderers (item 1) were closed by Story 16.28.
+
+**Acceptance Criteria:**
+
+- Two concurrent requests for the same barcode perform one render and both receive the same image.
+- Two requests for different barcodes do not wait for each other.
+- No pending render is left behind after a failure or a cancellation.
+- A warm cache returns the cached image without rendering.
+
+### Story 16.59: The settings follow-ups: a dead language screen, two import sheets at once, and a delete that can be reported as failed
+
+**As a** person in Settings, **I want** the screen to show one thing at a time and to tell me the truth about what happened, **So that** a failure I can act on is not hidden behind another sheet.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #271), from Story 22.7's "Found, not fixed" list. The screen was rebuilt without a cleanup pass: a screen that has been dead since Story 13.6 is still exported, a failed import leaves two sheets on screen, the Sync row's relative time is hard-coded outside i18n, and a deletion that succeeded can be reported as failed.
+
+**Acceptance Criteria:**
+
+- The dead language list screen is gone, and no route registers it.
+- A failed import shows the error sheet alone; the preview sheet is not left behind it.
+- The Sync row's relative time comes from the locale files.
+- A sheet's contents are not announced to a screen reader after it closes.
+- The sort sheet uses the shared option list.
+- The dark-mode secondary button follows a settled rule rather than being beam by accident.
+- The Italian delete keyword is decided and applied consistently, and the keyboard cannot change it.
+- A delete whose server call succeeded but whose local sign-out failed is reported as a success, and the app is signed out.
+- Card detail's Delete and edit's Discard use the shared confirm sheet.
+- A card detail's values are not cut at the largest text size.
 
 ## Epic 17: Apple Wallet Pass Support
 
