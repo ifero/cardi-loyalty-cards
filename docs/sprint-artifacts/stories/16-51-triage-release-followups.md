@@ -39,14 +39,14 @@ context:
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-| -------- | ------------- | ------------------------- | -------------- |
-| Production release | A `vX.Y.Z` release is published | The Play release starts staged, not at 100 % | The rollout fails loudly rather than silently completing |
-| RC release | An RC tag is published | The lane still uploads a `draft` to `alpha` | Unchanged |
-| Nightly | The nightly workflow fires | It still ships `completed` to `internal` | Unchanged |
-| App Store dry run | The lane runs with the dry-run flag | The IPA is built and validated; nothing is uploaded; no build number is consumed | The lane reports the dry run explicitly |
-| App Store release | The lane runs without the dry-run flag | The IPA is uploaded to App Store Connect; submission for review stays a human step | Unchanged |
-| App Store verification failure | `verify_only` reports a validation problem | The run fails before any upload | The lane surfaces the error |
+| Scenario                       | Input / State                              | Expected Output / Behavior                                                         | Error Handling                                           |
+| ------------------------------ | ------------------------------------------ | ---------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Production release             | A `vX.Y.Z` release is published            | The Play release starts staged, not at 100 %                                       | The rollout fails loudly rather than silently completing |
+| RC release                     | An RC tag is published                     | The lane still uploads a `draft` to `alpha`                                        | Unchanged                                                |
+| Nightly                        | The nightly workflow fires                 | It still ships `completed` to `internal`                                           | Unchanged                                                |
+| App Store dry run              | The lane runs with the dry-run flag        | The IPA is built and validated; nothing is uploaded; no build number is consumed   | The lane reports the dry run explicitly                  |
+| App Store release              | The lane runs without the dry-run flag     | The IPA is uploaded to App Store Connect; submission for review stays a human step | Unchanged                                                |
+| App Store verification failure | `verify_only` reports a validation problem | The run fails before any upload                                                    | The lane surfaces the error                              |
 
 </frozen-after-approval>
 
@@ -60,8 +60,8 @@ context:
 - `fastlane/Fastfile:778-798` -- the `nightly` lane: `ship_android!(track: "internal", release_status: "completed", upload: !options[:dry_run])`, with the comment that a nightly's `completed` is deliberate and must not be made consistent with the RC's `draft`.
 - `fastlane/Fastfile:180-215` -- `ship_ios!`: `build_number: next_ios_build_number(...)` (`:181`), `build_app` (`:183`), the `unless upload` dry-run branch (`:195-200`, which skips the upload but still consumes the build number query), and `upload_to_app_store` (`:206-211`) with `skip_metadata: true`, `skip_screenshots: true`, `precheck_include_in_app_purchases: false` -- and no `verify_only`.
 - `fastlane/Fastfile.test.rb` -- the Fastfile's own test suite (`yarn test:fastlane`, run in CI by `.github/workflows/ci-quality-gates.yml:191-192`).
-- `docs/epics.md:4278` -- *"⛔ **`expo.version` is bumped and the release tag is named.**"* -- the rule ifero overruled on 2026-09-29.
-- `docs/epics.md:3855` -- *"The in-app mark draws its stem in `currentColor` so one asset serves a cream surface and an ink one"*; `:4296` still asks for its device check. No shipped SVG uses `currentColor` (`grep -rn currentColor assets/images/*.svg` returns nothing).
+- `docs/epics.md:4278` -- _"⛔ **`expo.version` is bumped and the release tag is named.**"_ -- the rule ifero overruled on 2026-09-29.
+- `docs/epics.md:3855` -- _"The in-app mark draws its stem in `currentColor` so one asset serves a cream surface and an ink one"_; `:4296` still asks for its device check. No shipped SVG uses `currentColor` (`grep -rn currentColor assets/images/*.svg` returns nothing).
 - `docs/style.css:3` (`--color-primary: #1a73e8;`), `:4` (`--color-primary-strong: #1967d2;`), `:14` (`--color-accent: #16a34a;`), `:15-16`, `:40-41`, `:51-53` -- the pre-rebrand palette. The file is live: `docs/index.html:18` and `docs/privacy-policy.html:11` both link it.
 - `docs/design/cardi/cardi-design-system.md` -- the Cardì palette the site should carry.
 - Do not change: the tag patterns, the concurrency group, the version-code bands, the release copy, `app.json`'s `version`.
@@ -90,7 +90,7 @@ context:
 
 The release path is the one place where a mistake is irreversible, so the three mechanics here all point the same way: build once, verify, and promote what was verified -- with a brake on the rollout.
 
-"Promote the tested binary" is the deepest of the three and is deliberately left as a decision rather than a diff. It changes what the release workflow *is*: today it is a builder that uploads, and it would become a promoter that uploads an artifact built earlier. That has consequences for the version-code bands (a promoted build carries the number it was built with), for the Wear companion (the phone AAB and the Wear APK must be promoted together, and Play sees one app whose release must list both version codes -- the 16.35 failure class), and for the Xcode version the build was made with. The scoping note exists so the decision is made with those consequences in view.
+"Promote the tested binary" is the deepest of the three and is deliberately left as a decision rather than a diff. It changes what the release workflow _is_: today it is a builder that uploads, and it would become a promoter that uploads an artifact built earlier. That has consequences for the version-code bands (a promoted build carries the number it was built with), for the Wear companion (the phone AAB and the Wear APK must be promoted together, and Play sees one app whose release must list both version codes -- the 16.35 failure class), and for the Xcode version the build was made with. The scoping note exists so the decision is made with those consequences in view.
 
 The staged rollout and the dry run are the two halves of the same brake: one limits how many devices get a bad build, the other proves the upload path works before it runs for real.
 
@@ -100,12 +100,12 @@ The staged rollout and the dry run are the two halves of the same brake: one lim
   `21-7-single-rebrand-release`), with its AC8 device and store table still at "not yet performed"; the
   release mechanics this story touches are the ones that table depends on.
 - `docs/style.css` was last touched by `4f7b0c1 feat(brand): the Tessera mark across every icon, the wordmark
-  and brand moment D (Story 20.6) (#290)` and `da43fab feat(store): store listings, screenshots and site
-  captures (Story 24.6) (#308)`; neither migrated the palette. Story 18.9 (`7d6a0dd`) moved the site to
+and brand moment D (Story 20.6) (#290)` and `da43fab feat(store): store listings, screenshots and site
+captures (Story 24.6) (#308)`; neither migrated the palette. Story 18.9 (`7d6a0dd`) moved the site to
   cardiapp.eu but left the colours alone, and its own tracker note records that no story owned them.
 - The Fastfile's dry-run branch (`fastlane/Fastfile:195-200`) already skips the upload for iOS, but the
-  comment there is explicit that *"A TestFlight build number is consumed by an UPLOAD, not by asking for the
-  last one"* -- so the dry run costs minutes, not a build number. The App Store path is the one missing
+  comment there is explicit that _"A TestFlight build number is consumed by an UPLOAD, not by asking for the
+  last one"_ -- so the dry run costs minutes, not a build number. The App Store path is the one missing
   `verify_only`, which is what the action offers for exactly this.
 - The `upload_to_play_store` action's `rollout` parameter is what the production lane needs; the RC lane's
   `draft` and the nightly's `completed` must not gain one, or the nightly's behaviour changes (the Fastfile's

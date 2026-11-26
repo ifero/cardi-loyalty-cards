@@ -33,15 +33,15 @@ context:
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-| -------- | ------------- | ------------------------- | -------------- |
-| Home and the list | The wallet mounts | One `useCards()` subscription feeds both; the guest banner's threshold matches the list | N/A |
-| Offline with pending changes | The device is offline and changes are queued | The offline strip shows on Home | N/A |
-| Migration banner | The banner is visible | Its Retry and dismiss are at least 48pt tall and wide | N/A |
-| Load error | The cards fail to load | The state offers a retry; the raw message is logged, not printed | The failure is logged |
-| Add a card | The person adds a card | One Home is on the stack; going back from the new wallet does not land on an older one | N/A |
-| Just-added ring | The new card sorts below the viewport | The ring is not missed: either the card scrolls into view or the ring starts when the tile is visible | N/A |
-| Sort preference | The person changes the sort | The preference persists as today | N/A |
+| Scenario                     | Input / State                                | Expected Output / Behavior                                                                            | Error Handling        |
+| ---------------------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------------------- | --------------------- |
+| Home and the list            | The wallet mounts                            | One `useCards()` subscription feeds both; the guest banner's threshold matches the list               | N/A                   |
+| Offline with pending changes | The device is offline and changes are queued | The offline strip shows on Home                                                                       | N/A                   |
+| Migration banner             | The banner is visible                        | Its Retry and dismiss are at least 48pt tall and wide                                                 | N/A                   |
+| Load error                   | The cards fail to load                       | The state offers a retry; the raw message is logged, not printed                                      | The failure is logged |
+| Add a card                   | The person adds a card                       | One Home is on the stack; going back from the new wallet does not land on an older one                | N/A                   |
+| Just-added ring              | The new card sorts below the viewport        | The ring is not missed: either the card scrolls into view or the ring starts when the tile is visible | N/A                   |
+| Sort preference              | The person changes the sort                  | The preference persists as today                                                                      | N/A                   |
 
 </frozen-after-approval>
 

@@ -22,28 +22,28 @@ context:
 **Decisions (pending ifero's approval):**
 
 - **The frames match the shipped sheet.** Three stacked actions in the shipped order: keep (secondary), erase (destructive), Cancel (outlined). The body is the shipped copy.
-- **Keep and Cancel must not look identical.** This is the note the issue raises and the 16.45 review logged as row 11 (*"Keep and Cancel are both outlined `secondary` buttons and look the same"*, routed *"to the human"*). The frame cannot be updated until this is settled, and the settled rule must also be applied to the shipped `SignOutSheet.tsx` so the frame and the screen agree.
+- **Keep and Cancel must not look identical.** This is the note the issue raises and the 16.45 review logged as row 11 (_"Keep and Cancel are both outlined `secondary` buttons and look the same"_, routed _"to the human"_). The frame cannot be updated until this is settled, and the settled rule must also be applied to the shipped `SignOutSheet.tsx` so the frame and the screen agree.
 
 ## Boundaries & Constraints
 
 **Always:** The frame's geometry follows the Cardì sheet pattern (the sheet body, the action stack, the 48pt targets). The Stitch prompt describes the same layout in the same terms as the other sheets in that file, so the two sources stay in step. Any change to the shipped sheet's button variants is applied to the frame and the prompt together.
 
-**Never:** Change the sign-out *behaviour* -- keep, erase and Cancel keep their 16.45 semantics, and the erase still runs only after a successful sign-out. Change the sign-out body copy. Touch the other settings sheets' frames. Change the shipped `SignOutSheet.tsx` behaviour to match the old frame. Commit, push, or change sprint-status.yaml or any other tracker file: the orchestrator owns all three.
+**Never:** Change the sign-out _behaviour_ -- keep, erase and Cancel keep their 16.45 semantics, and the erase still runs only after a successful sign-out. Change the sign-out body copy. Touch the other settings sheets' frames. Change the shipped `SignOutSheet.tsx` behaviour to match the old frame. Commit, push, or change sprint-status.yaml or any other tracker file: the orchestrator owns all three.
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-| -------- | ------------- | ------------------------- | -------------- |
-| Frame D | The settings frames are read | The sign-out sheet shows three actions and the shipped body | N/A |
-| Stitch prompt | The prompt is read | The sign-out sheet is described as three actions, with the same order | N/A |
-| Keep vs Cancel | The sheet is open | Keep and Cancel are visually distinguishable | N/A |
-| Shipped screen | The sign-out sheet is opened | It matches the updated frame | N/A |
+| Scenario       | Input / State                | Expected Output / Behavior                                            | Error Handling |
+| -------------- | ---------------------------- | --------------------------------------------------------------------- | -------------- |
+| Frame D        | The settings frames are read | The sign-out sheet shows three actions and the shipped body           | N/A            |
+| Stitch prompt  | The prompt is read           | The sign-out sheet is described as three actions, with the same order | N/A            |
+| Keep vs Cancel | The sheet is open            | Keep and Cancel are visually distinguishable                          | N/A            |
+| Shipped screen | The sign-out sheet is opened | It matches the updated frame                                          | N/A            |
 
 </frozen-after-approval>
 
 ## Code Map
 
-- `docs/design/cardi/frames/cardi-settings-frames.html:1479-1497` -- frame D, the sign-out sheet: `<span class="sheet-title">Sign Out?</span>`, the body *"You will return to guest mode. Your cards will remain on this device."*, `<button class="btn-destructive">Sign Out</button>`, `<button class="btn-outline">Cancel</button>`. The caption at `:1496` reads *"D -- Sheet: confirm"*.
+- `docs/design/cardi/frames/cardi-settings-frames.html:1479-1497` -- frame D, the sign-out sheet: `<span class="sheet-title">Sign Out?</span>`, the body _"You will return to guest mode. Your cards will remain on this device."_, `<button class="btn-destructive">Sign Out</button>`, `<button class="btn-outline">Cancel</button>`. The caption at `:1496` reads _"D -- Sheet: confirm"_.
 - `docs/design/cardi/stitch-prompts-settings.txt:213-217` -- the sign-out sheet prompt: the title in Space Grotesk 20px bold and the two-button CONFIRM spec; `:31` lists the sheets that use the two-button CONFIRM pattern ("ExportConfirmationSheet, SignOutSheet, ImportPreviewSheet,").
 - `docs/design/cardi/stitch-prompts-settings.txt:168` -- the frame that has no Sign Out at all (the guest settings frame); unchanged.
 - `features/settings/components/SignOutSheet.tsx` -- the shipped sheet: `:51` `signout-keep`, `:62` `signout-erase`, `:73` `signout-cancel`. The variant each button uses decides the Keep-vs-Cancel ruling.
@@ -80,14 +80,14 @@ The Keep-vs-Cancel collision is the one thing that needs a human ruling. Three b
 
 - Source issue: #313, filed from
   `docs/sprint-artifacts/stories/16-45-signout-keep-or-erase-cards.md` section "Found, not fixed".
-- The 16.45 review logged it as row 13: *"Frame D and the Stitch settings prompt still show the
-  two-button sheet; story 22-7 names `signout-confirm`"* -- verdict **defer**, with the note *"the design
-  files (Found, not fixed); 22-7 is a historical record of a merged story, not a live reference"*. This
+- The 16.45 review logged it as row 13: _"Frame D and the Stitch settings prompt still show the
+  two-button sheet; story 22-7 names `signout-confirm`"_ -- verdict **defer**, with the note _"the design
+  files (Found, not fixed); 22-7 is a historical record of a merged story, not a live reference"_. This
   story discharges that deferral.
 - The shipped sheet's button order is keep (`:51`), erase (`:62`), Cancel (`:73`): destructive in the
   middle, Cancel last. The frame must show that order, not the conventional destructive-last one.
-- The 16.45 story's frozen decision recorded the body as warning that *"cards not yet synced to it are
-  lost for good if you erase"*. The frame's body must carry that warning, or the frame understates what
+- The 16.45 story's frozen decision recorded the body as warning that _"cards not yet synced to it are
+  lost for good if you erase"_. The frame's body must carry that warning, or the frame understates what
   the screen says.
 - `docs/design/cardi/tools/verify.py` is the frame gate (`yarn frames:check` in
   `.github/workflows/ci-quality-gates.yml:106`). It compares the frames against their generators, so a

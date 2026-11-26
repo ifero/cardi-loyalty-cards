@@ -32,11 +32,11 @@ context:
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-| -------- | ------------- | ------------------------- | -------------- |
-| Clean checkout | No `expo-env.d.ts`, no `.expo/types` | `yarn typecheck` reports no errors | N/A |
-| After `expo start` | Both generated files present | `yarn typecheck` reports no errors | N/A |
-| Test behaviour | A temp git repo is created and staged by the test | The staging script runs with `NODE_ENV=test` and without `GIT_DIR` inherited | Unchanged |
+| Scenario           | Input / State                                     | Expected Output / Behavior                                                   | Error Handling |
+| ------------------ | ------------------------------------------------- | ---------------------------------------------------------------------------- | -------------- |
+| Clean checkout     | No `expo-env.d.ts`, no `.expo/types`              | `yarn typecheck` reports no errors                                           | N/A            |
+| After `expo start` | Both generated files present                      | `yarn typecheck` reports no errors                                           | N/A            |
+| Test behaviour     | A temp git repo is created and staged by the test | The staging script runs with `NODE_ENV=test` and without `GIT_DIR` inherited | Unchanged      |
 
 </frozen-after-approval>
 
@@ -73,7 +73,7 @@ The cast is the right shape: the test genuinely wants a `NODE_ENV` of `'test'` a
 - Source issue: #312, filed from
   `docs/sprint-artifacts/stories/16-45-signout-keep-or-erase-cards.md` section "Found, not fixed".
 - The 16.45 story's own verification records the workaround it used:
-  *"Typecheck was run after setting aside the Metro-generated files above"* -- the story's final
+  _"Typecheck was run after setting aside the Metro-generated files above"_ -- the story's final
   verification could not run `yarn typecheck` in the state a developer is normally in.
 - The exact generated declaration could not be read in the environment this spec was drafted in
   (`node_modules/` was absent and `expo-env.d.ts` / `.expo/types` are git-ignored and not present), so

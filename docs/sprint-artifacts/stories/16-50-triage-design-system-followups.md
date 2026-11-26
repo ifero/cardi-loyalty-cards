@@ -15,7 +15,7 @@ context:
 
 ## Intent
 
-**Problem:** Story 22.1 (design-system components) left fifteen items behind and the form pattern (22.6) and the auth redesign (22.9) added four more of the same kind. Nine are still open. Three are one-line defects: `ActionRow`'s outlined variant is radius 14, which is on neither of the design system's two radii; the confirm sheets stack Cancel *above* the destructive action, the reverse of what the Cardì frames draw; and three shared tests mock a `TOUCH_TARGET` shape the theme no longer has. Three are structural: a scanner component with no production consumer, a Storybook canvas that is only as tall as its content (so a sheet's scrim lies over the bare iframe page), and two agent-context files that now contradict the code they describe. Two are the auth screens' `hasError` prop and the shared `TextField`'s monospace gap, which the form work made reachable but the auth work left dead.
+**Problem:** Story 22.1 (design-system components) left fifteen items behind and the form pattern (22.6) and the auth redesign (22.9) added four more of the same kind. Nine are still open. Three are one-line defects: `ActionRow`'s outlined variant is radius 14, which is on neither of the design system's two radii; the confirm sheets stack Cancel _above_ the destructive action, the reverse of what the Cardì frames draw; and three shared tests mock a `TOUCH_TARGET` shape the theme no longer has. Three are structural: a scanner component with no production consumer, a Storybook canvas that is only as tall as its content (so a sheet's scrim lies over the bare iframe page), and two agent-context files that now contradict the code they describe. Two are the auth screens' `hasError` prop and the shared `TextField`'s monospace gap, which the form work made reachable but the auth work left dead.
 
 **Approach:** One cleanup pass over the items that need no decision, plus an explicit decision on the two that do: the destructive-row pressed state, and whether the settings sheets keep drawing their own bodies or move onto the shared document ground.
 
@@ -33,14 +33,14 @@ context:
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-| -------- | ------------- | ------------------------- | -------------- |
-| `ActionRow` outlined | The row renders | Its radius is 12 or 16, per the design system | N/A |
-| Confirm sheet | The sheet is open | The destructive action comes first, Cancel below -- the frames' order | N/A |
-| Theme mock | A shared test renders the component | The mock matches the real `TOUCH_TARGET` shape | N/A |
-| Storybook sheet story | The story is opened | The canvas is tall enough for the sheet, so the scrim lies over the app, not over bare page | N/A |
-| `hasError` | The auth screens render | The prop is either used by a caller or removed from `TextField` | N/A |
-| Agent context | An agent reads `docs/project-context.md` | The palette and the styling instruction match the code | N/A |
+| Scenario              | Input / State                            | Expected Output / Behavior                                                                  | Error Handling |
+| --------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------------- | -------------- |
+| `ActionRow` outlined  | The row renders                          | Its radius is 12 or 16, per the design system                                               | N/A            |
+| Confirm sheet         | The sheet is open                        | The destructive action comes first, Cancel below -- the frames' order                       | N/A            |
+| Theme mock            | A shared test renders the component      | The mock matches the real `TOUCH_TARGET` shape                                              | N/A            |
+| Storybook sheet story | The story is opened                      | The canvas is tall enough for the sheet, so the scrim lies over the app, not over bare page | N/A            |
+| `hasError`            | The auth screens render                  | The prop is either used by a caller or removed from `TextField`                             | N/A            |
+| Agent context         | An agent reads `docs/project-context.md` | The palette and the styling instruction match the code                                      | N/A            |
 
 </frozen-after-approval>
 
@@ -48,7 +48,7 @@ context:
 
 - `shared/components/ui/ActionRow.tsx:196-203` -- the `outlined` style: `borderRadius: 14`, `borderWidth: 1`, `paddingHorizontal: SPACING.smMd`, `paddingVertical: 6`. The `plain` style (`:193-197`) uses no radius.
 - `shared/components/ui/ActionRow.tsx:104-105` -- the pressed fill: `backgroundColor: isPressed ? … : …` with `surfaceElevated` for a destructive row, where a destructive button takes an 8 % wash of its label colour.
-- `shared/components/ui/ActionRow.tsx:17` -- the comment *"1.353 and the first accessibility size at 1.786, so 1.5 is the first of the accessibility sizes."* -- 1.5 is a cut-off between them, not the first accessibility size.
+- `shared/components/ui/ActionRow.tsx:17` -- the comment _"1.353 and the first accessibility size at 1.786, so 1.5 is the first of the accessibility sizes."_ -- 1.5 is a cut-off between them, not the first accessibility size.
 - `features/settings/components/SignOutSheet.tsx:51` (`signout-keep`), `:62` (`signout-erase`), `:73` (`signout-cancel`) -- the shipped order is keep, erase, Cancel.
 - `features/settings/components/DeleteAccountSheet.tsx:79` and `:91` (the destructive action), `:102` (`delete-cancel-step1` / `delete-cancel-step2`) -- the destructive action is above Cancel, while the frames draw it first.
 - `docs/design/cardi/frames/cardi-settings-frames.html:1479-1497` -- frame D: the destructive action first, then the outlined Cancel.
@@ -58,11 +58,11 @@ context:
 - `shared/components/ui/SearchBar.tsx:133` -- `height: TOUCH_TARGET.min` -- a fixed 48pt field, which at the largest text size lets the typed text overflow it.
 - `shared/components/ui/DocumentScreen.tsx:60-75` -- the shared document ground (a `ScreenHeader` plus a `ScrollView`); `features/settings/components/AboutSection.tsx` does not use it, so the settings screen builds its own ground.
 - `shared/components/ui/TextField.tsx:31`, `:115`, `:143`, `:147` -- the `hasError` prop, declared, defaulted and consumed, with **no** caller outside `TextField.tsx` itself.
-- `shared/components/ui/TextField.tsx:242-244` -- `gap: SPACING.sm` with the comment *"The form frame's label-to-control gap (Story 22.6; it was 6, off the grid)."*; `:19` `INPUT_PADDING_X = SPACING.md`; `:198` the fill is `theme.colors.surface`.
-- `shared/components/ui/PrimaryActionFooter.tsx:16-20` -- the comment naming *"the `CardSetupScreen` shape"*; `shared/components/ui/Button.test.tsx:157` -- the comment naming `CardSetupScreen` passing `disabled` with `loading`.
+- `shared/components/ui/TextField.tsx:242-244` -- `gap: SPACING.sm` with the comment _"The form frame's label-to-control gap (Story 22.6; it was 6, off the grid)."_; `:19` `INPUT_PADDING_X = SPACING.md`; `:198` the fill is `theme.colors.surface`.
+- `shared/components/ui/PrimaryActionFooter.tsx:16-20` -- the comment naming _"the `CardSetupScreen` shape"_; `shared/components/ui/Button.test.tsx:157` -- the comment naming `CardSetupScreen` passing `disabled` with `loading`.
 - `.storybook/StoryDecorator.tsx:27` -- `<View testID="story-canvas" style={{ flex: 1, padding: 16, backgroundColor: theme.background }}>`. The sheet stories are 32pt tall, so their scrim lies over the bare iframe page.
-- `docs/project-context.md:431` (`| Blue | \`#1A73E8\` |`), `:441` (`| Light | \`#1A73E8\` |`), `:225-243` (the Unistyles `StyleSheet.create((theme) => …)` prescription), `:26` and `:41` (NativeWind references).
-- `docs/architecture.md:73` (*"NativeWind (Tailwind CSS) for styling ⚠️ **Under evaluation**"*), `:399`, `:500`, `:1488`.
+- `docs/project-context.md:431` (`| Blue | \`#1A73E8\` |`), `:441` (`| Light | \`#1A73E8\` |`), `:225-243`(the Unistyles`StyleSheet.create((theme) => …)`prescription),`:26`and`:41` (NativeWind references).
+- `docs/architecture.md:73` (_"NativeWind (Tailwind CSS) for styling ⚠️ **Under evaluation**"_), `:399`, `:500`, `:1488`.
 - `docs/design/CONTRIBUTING-DESIGN.md:48`, `:92` -- the `SEMANTIC_COLORS` reference (also #248 item 5).
 - Do not change: the design system's scales, `shared/theme/tokens.generated.ts` (generated), the watch.
 
@@ -116,11 +116,11 @@ The Storybook canvas is worth fixing for one reason: a Chromatic snapshot of a s
   class of dead prop.
 - The `Button`'s wrapped-label alignment is recorded under #248 item 10 and #271 item 18, and is
   **not** duplicated here -- it is fixed in `16-49-triage-theme-followups.md`.
-- `docs/architecture.md:1774` records the 2026-04-11 decision that NativeWind was *under evaluation*;
+- `docs/architecture.md:1774` records the 2026-04-11 decision that NativeWind was _under evaluation_;
   the rebrand and the Epic 22 redesign settled that in Unistyles. The correction is a documentation
   fix to match the code, not a new architectural decision.
 - `.storybook/StoryDecorator.tsx` last changed in `8679b35 feat(storybook): add web component gallery with
-  Storybook + Chromatic (Story 16.5) (#146)`; the sheet stories came later, with the Epic 22 sheets.
+Storybook + Chromatic (Story 16.5) (#146)`; the sheet stories came later, with the Epic 22 sheets.
 - The Storybook dev-mode failure (#251 item 10) looks **fixed** by `.storybook/main.ts:83-110`, which now
   stubs Expo's type declarations and keeps `expo-modules-core` out of pre-bundling. It could not be
   re-run here (`node_modules/` was absent), so it is not part of this story's scope -- but it is worth

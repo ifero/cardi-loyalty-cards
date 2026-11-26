@@ -35,16 +35,16 @@ The rest are accessibility and documentation defects in the shared primitives th
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-| -------- | ------------- | ------------------------- | -------------- |
-| An OTA is published from `main` | `app.json` still says `version: 1.0.0` with `runtimeVersion.policy: appVersion` | The publish is blocked, or the version has moved first | The hazard is recorded in the story and in the tracker |
-| Carousel page change | The person swipes to the next highlight | The new page is announced | N/A |
-| Carousel role | The carousel is focused | It does not claim an "adjustable" role with no actions | N/A |
-| Recommended option | The recommended mode card is focused | Its spoken name is one sentence, with no doubled full stop | N/A |
-| Highlight title | The screen is read top to bottom | The highlight title is announced as a heading | N/A |
-| Sheet opened in Italian | A sheet with a noun label is opened | The announcement reads correctly, e.g. "Lingua aperta" | N/A |
-| Reduce motion on | The person taps Next on the highlights | The carousel does not animate the scroll | N/A |
-| Comments | The source is read | No comment cites a component that does not exist | N/A |
+| Scenario                        | Input / State                                                                   | Expected Output / Behavior                                 | Error Handling                                         |
+| ------------------------------- | ------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------ |
+| An OTA is published from `main` | `app.json` still says `version: 1.0.0` with `runtimeVersion.policy: appVersion` | The publish is blocked, or the version has moved first     | The hazard is recorded in the story and in the tracker |
+| Carousel page change            | The person swipes to the next highlight                                         | The new page is announced                                  | N/A                                                    |
+| Carousel role                   | The carousel is focused                                                         | It does not claim an "adjustable" role with no actions     | N/A                                                    |
+| Recommended option              | The recommended mode card is focused                                            | Its spoken name is one sentence, with no doubled full stop | N/A                                                    |
+| Highlight title                 | The screen is read top to bottom                                                | The highlight title is announced as a heading              | N/A                                                    |
+| Sheet opened in Italian         | A sheet with a noun label is opened                                             | The announcement reads correctly, e.g. "Lingua aperta"     | N/A                                                    |
+| Reduce motion on                | The person taps Next on the highlights                                          | The carousel does not animate the scroll                   | N/A                                                    |
+| Comments                        | The source is read                                                              | No comment cites a component that does not exist           | N/A                                                    |
 
 </frozen-after-approval>
 
@@ -53,13 +53,13 @@ The rest are accessibility and documentation defects in the shared primitives th
 - `app.json:5` -- `"version": "1.0.0"`; `:213-215` -- `"runtimeVersion": { "policy": "appVersion" }`; `:216-218` -- the `updates.url`. `package.json:94` -- `"lottie-react-native": "~7.3.4"`, the native module Story 22.10 added.
 - `features/onboarding/screens/FeatureHighlightsScreen.tsx:113` -- `flatListRef.current?.scrollToIndex({ index: nextIndex, animated: true });` -- no reduce-motion check (the file imports no `useReducedMotion`; the hook is used in `features/onboarding/components/OnboardingAnimation.tsx:67`).
 - `features/onboarding/screens/FeatureHighlightsScreen.tsx:156-159` -- `<View style={styles.carousel} accessibilityRole="adjustable" accessibilityHint={t('onboarding.highlights.swipeAccessibilityHint')}>` -- an "adjustable" role with no `accessibilityActions`, and nothing announced when `currentIndex` changes.
-- `features/onboarding/components/ModeOptionCard.tsx:78` -- `` accessibilityLabel={`${title}. ${subtitle}${recommended ? t('onboarding.modeOption.recommendedAccessibilitySuffix') : ''}`} `` with `shared/i18n/locales/en.ts:84` -- `recommendedAccessibilitySuffix: '. Recommended option.',` and `it.ts:85` -- `'. Opzione consigliata.'` -- so a subtitle ending in a full stop yields a doubled stop.
+- `features/onboarding/components/ModeOptionCard.tsx:78` -- ``accessibilityLabel={`${title}. ${subtitle}${recommended ? t('onboarding.modeOption.recommendedAccessibilitySuffix') : ''}`}`` with `shared/i18n/locales/en.ts:84` -- `recommendedAccessibilitySuffix: '. Recommended option.',` and `it.ts:85` -- `'. Opzione consigliata.'` -- so a subtitle ending in a full stop yields a doubled stop.
 - `features/onboarding/components/HighlightSlide.tsx:44` -- `<Text style={[styles.title, { color: theme.textPrimary }]}>{title}</Text>` with no `accessibilityRole="header"`, unlike `features/onboarding/screens/ModeSelectionScreen.tsx:64` and `features/onboarding/screens/WelcomeScreen.tsx:104`.
 - `shared/i18n/locales/it.ts:284-285` -- `expandedAccessibilityValue: 'aperto', collapsedAccessibilityValue: 'chiuso'`; `:297-298` -- `openedAnnouncement: '{{label}} aperto', closedAnnouncement: '{{label}} chiuso'`. Applied to a label that is already a noun, the result is "Lingua aperto".
 - `shared/components/ui/BottomSheet.tsx` -- the shared sheet; `grep -n "AccessibilityFocus\|focus"` returns nothing, so the sheet moves no screen-reader focus when it closes.
 - `app/_layout.tsx:165-170` -- the welcome screen's `animation: 'fade'`; `:115` -- `router.replace('/welcome');` -- the gate that shows Home's header and spinner through the fade.
-- `docs/design/cardi/lottie/README.md:49` -- *"`lottie-react-native` is not installed yet."*, while `package.json:94` lists it.
-- `shared/components/launch/AppLaunchScreen.tsx:144` -- *"Both props, per FannedCardIllustration. */"*; `shared/components/launch/AppLaunchScreen.test.tsx:192` -- the same. `grep -rn "FannedCardIllustration" shared/` finds only these two comments.
+- `docs/design/cardi/lottie/README.md:49` -- _"`lottie-react-native` is not installed yet."_, while `package.json:94` lists it.
+- `shared/components/launch/AppLaunchScreen.tsx:144` -- *"Both props, per FannedCardIllustration. _/"_; `shared/components/launch/AppLaunchScreen.test.tsx:192` -- the same. `grep -rn "FannedCardIllustration" shared/` finds only these two comments.
 - `features/cards/screens/HomeScreen.test.tsx:124-126` -- `jest.mock('@/features/onboarding', () => ({ OnboardingOverlay: () => null }));`, while `features/onboarding/index.ts` exports `WelcomeScreen`, `ModeSelectionScreen`, `FeatureHighlightsScreen`, `ModeOptionCard`, `HighlightSlide`, `PaginationDots`, `useModeSelection`, `useHighlightPagination`, `TOTAL_HIGHLIGHT_SLIDES` -- and no `OnboardingOverlay`.
 - `docs/design/cardi/frames/cardi-auth-frames.html:349-381` -- the hand-built mark in the auth frames; `docs/design/cardi/stitch-prompts-auth.txt:45` -- the stock glyphs (see also `16-50`, which records the same as the auth design sources).
 - Do not change: the onboarding drawings, the Lottie files in `assets/animations/onboarding/`, `app.json`'s `runtimeVersion.policy`.
@@ -109,7 +109,7 @@ The shared sheet is the widest-reaching of these, because every sheet in the app
   `16-50-triage-design-system-followups.md`; the shared primitive changes live here, and the design-system
   document changes live there.
 - The onboarding Lottie files are in `assets/animations/onboarding/` (nine files, added in `f888a3c chore(design):
-  add onboarding Lottie animations and their generator (#278)`), and `assets/animations/` is in
+add onboarding Lottie animations and their generator (#278)`), and `assets/animations/` is in
   `.prettierignore`.
 - `docs/design/cardi/lottie/README.md` documents the generator's constraints (one shape layer per file, no
   masks, mattes, expressions, images or text) -- the "not installed" sentence at `:49` is the only stale part.

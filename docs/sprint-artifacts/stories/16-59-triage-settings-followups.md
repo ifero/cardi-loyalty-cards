@@ -15,7 +15,7 @@ context:
 
 ## Intent
 
-**Problem:** Story 22.7 (the settings screen and its sheets) left twenty items behind. Four were closed by later work. Sixteen are still open, and they are the residue of a screen that was rebuilt without a cleanup pass: a screen that has been dead since Story 13.6 is still exported, a failed import can leave two sheets on screen at once, the Sync row's relative time is hard-coded in two languages outside i18n, a request keeps running after its sheet is closed, and a deletion that *succeeded* can be reported as failed because the local sign-out is treated as part of the deletion.
+**Problem:** Story 22.7 (the settings screen and its sheets) left twenty items behind. Four were closed by later work. Sixteen are still open, and they are the residue of a screen that was rebuilt without a cleanup pass: a screen that has been dead since Story 13.6 is still exported, a failed import can leave two sheets on screen at once, the Sync row's relative time is hard-coded in two languages outside i18n, a request keeps running after its sheet is closed, and a deletion that _succeeded_ can be reported as failed because the local sign-out is treated as part of the deletion.
 
 **Approach:** One pass over the settings screen and its sheets. The three items that need a decision -- the destructive row's pressed state, the sheet's own copy of the action order, and the Italian `DELETE` keyword -- are called out with a recommendation.
 
@@ -34,15 +34,15 @@ context:
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-| -------- | ------------- | ------------------------- | -------------- |
-| The app starts | The routes register | No dead language list screen is registered | N/A |
-| An import fails | The preview sheet was open | The preview closes; the error sheet opens | The error sheet shows the message |
-| An import succeeds | The preview sheet was open | The preview closes; the result is reported | As today |
-| The Sync row | A last-sync time exists | The relative time comes from the locale file | N/A |
-| A sheet is closed mid-request | The sign-out, delete or export request is running | The request completes; the sheet's busy state says so | The request's own error path still applies |
-| The delete succeeds but the sign-out fails | The server erased the account; the local sign-out returned a network error | The person is told the account is gone, not that the delete failed | The local session is cleared anyway |
-| The delete field | The person types the keyword | The keyboard does not autocorrect or predict | N/A |
+| Scenario                                   | Input / State                                                              | Expected Output / Behavior                                         | Error Handling                             |
+| ------------------------------------------ | -------------------------------------------------------------------------- | ------------------------------------------------------------------ | ------------------------------------------ |
+| The app starts                             | The routes register                                                        | No dead language list screen is registered                         | N/A                                        |
+| An import fails                            | The preview sheet was open                                                 | The preview closes; the error sheet opens                          | The error sheet shows the message          |
+| An import succeeds                         | The preview sheet was open                                                 | The preview closes; the result is reported                         | As today                                   |
+| The Sync row                               | A last-sync time exists                                                    | The relative time comes from the locale file                       | N/A                                        |
+| A sheet is closed mid-request              | The sign-out, delete or export request is running                          | The request completes; the sheet's busy state says so              | The request's own error path still applies |
+| The delete succeeds but the sign-out fails | The server erased the account; the local sign-out returned a network error | The person is told the account is gone, not that the delete failed | The local session is cleared anyway        |
+| The delete field                           | The person types the keyword                                               | The keyboard does not autocorrect or predict                       | N/A                                        |
 
 </frozen-after-approval>
 
@@ -121,7 +121,7 @@ The dark-mode secondary button is a design-system gap rather than a bug. The des
 - The `BottomSheet`'s prop-forwarding behaviour could not be read in the environment this spec was drafted
   in (`node_modules/react-native` was absent), so the item is recorded from the issue's reading of
   `Modal.js:326-347`. The fix does not depend on the diagnosis.
-- `shared/supabase/auth.ts:439`'s `signOut({ scope: 'local' })` is the *local* scope, which should not need
+- `shared/supabase/auth.ts:439`'s `signOut({ scope: 'local' })` is the _local_ scope, which should not need
   the server at all -- but `@supabase/auth-js` 2.105.1 still calls the server's logout in that path
   (`dist/main/GoTrueClient.js:3191`), and a 404/401/403 is ignored while a network failure returns an error.
   The fix can be either to treat the confirmed erasure as the outcome, or to make the local sign-out genuinely
@@ -131,8 +131,8 @@ The dark-mode secondary button is a design-system gap rather than a bug. The des
 - The `OptionList` primitive already exists with a test (`shared/components/ui/OptionList.test.tsx`), so
   moving the sort sheet onto it is an adoption, not a build.
 - Card detail's Delete and edit's Discard use the platform `Alert` because 22.7's decision deferred them:
-  *"every confirmation is the confirm sheet, with card detail's Delete and edit's Discard moving in a
-  follow-up"*. This is that follow-up.
+  _"every confirmation is the confirm sheet, with card detail's Delete and edit's Discard moving in a
+  follow-up"_. This is that follow-up.
 
 ## Spec Change Log
 

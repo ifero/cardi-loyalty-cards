@@ -17,7 +17,7 @@ context:
 
 **Problem:** Story 16.38 (the Wear OS barcode uses the whole screen) left two items behind.
 
-1. **A Code 39 over 80 characters shows "Invalid barcode" instead of the value.** ZXing 3.5.4's `Code39Writer` rejects content longer than 80 characters. `WearBarcodeGenerator.measure` returns `BarcodeResult.InvalidValue`, and `BarcodeRenderPipeline.render` turns a failed *measurement* into `BarcodeRender.Failed` -- the error screen -- before any layout runs. Story 16.38 decided that a symbol too long to draw shows its value as text, so it can be keyed in (watchOS's `canRender` contract). This case never reaches that decision: it is still the error screen.
+1. **A Code 39 over 80 characters shows "Invalid barcode" instead of the value.** ZXing 3.5.4's `Code39Writer` rejects content longer than 80 characters. `WearBarcodeGenerator.measure` returns `BarcodeResult.InvalidValue`, and `BarcodeRenderPipeline.render` turns a failed _measurement_ into `BarcodeRender.Failed` -- the error screen -- before any layout runs. Story 16.38 decided that a symbol too long to draw shows its value as text, so it can be keyed in (watchOS's `canRender` contract). This case never reaches that decision: it is still the error screen.
 2. **No Compose UI test pins the barcode's on-screen placement.** `Modifier.placeSymbol` places the symbol at the plan's leading quiet zone, in exact pixels. The JVM tests cover the plan and the drawn matrix, but nothing checks the composed layout. A regression such as `place(0, 0)` would pass every test.
 
 **Approach:** Map an over-length Code 39 whose characters are otherwise valid onto the value-only path, so the value is shown instead of an error; and give the Wear module a Compose UI-test harness with one test that asserts the image's x offset and size against `BarcodeLayoutMetrics`.
@@ -35,19 +35,19 @@ context:
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-| -------- | ------------- | ------------------------- | -------------- |
-| Code 39, 80 characters | The value is exactly at the limit | The symbol draws | Unchanged |
-| Code 39, 81 characters, all encodable | The value is over the limit | The value is shown as text, so it can be keyed in | Not an error |
-| Code 39, over the limit, with an unencodable character | The value cannot be represented at all | The error screen | The existing invalid-value screen |
-| Code 128, over its own limit | The value is long | The value-only path, as today | Unchanged |
-| The symbol is placed | The barcode screen renders | The image's x offset equals the plan's leading quiet zone, and its size equals the plan's | The Compose test fails |
+| Scenario                                               | Input / State                          | Expected Output / Behavior                                                                | Error Handling                    |
+| ------------------------------------------------------ | -------------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------- |
+| Code 39, 80 characters                                 | The value is exactly at the limit      | The symbol draws                                                                          | Unchanged                         |
+| Code 39, 81 characters, all encodable                  | The value is over the limit            | The value is shown as text, so it can be keyed in                                         | Not an error                      |
+| Code 39, over the limit, with an unencodable character | The value cannot be represented at all | The error screen                                                                          | The existing invalid-value screen |
+| Code 128, over its own limit                           | The value is long                      | The value-only path, as today                                                             | Unchanged                         |
+| The symbol is placed                                   | The barcode screen renders             | The image's x offset equals the plan's leading quiet zone, and its size equals the plan's | The Compose test fails            |
 
 </frozen-after-approval>
 
 ## Code Map
 
-- `watch-android/app/src/main/kotlin/com/iferoporefi/myloyaltycards/wear/barcode/WearBarcodeGenerator.kt:92-98` -- `encode` catches `WriterException` and `IllegalArgumentException` and returns `BarcodeResult.InvalidValue` for both: *"Content too large for the symbology, or otherwise unencodable"* and *"The 1D writers throw IAE for bad content (wrong length, failed checksum, out-of-charset)"*. `measure` (`:87-89`) is `generate(value, format, 1, 1)` -- the same path, so a measurement fails exactly where a render would.
+- `watch-android/app/src/main/kotlin/com/iferoporefi/myloyaltycards/wear/barcode/WearBarcodeGenerator.kt:92-98` -- `encode` catches `WriterException` and `IllegalArgumentException` and returns `BarcodeResult.InvalidValue` for both: _"Content too large for the symbology, or otherwise unencodable"_ and _"The 1D writers throw IAE for bad content (wrong length, failed checksum, out-of-charset)"_. `measure` (`:87-89`) is `generate(value, format, 1, 1)` -- the same path, so a measurement fails exactly where a render would.
 - `watch-android/app/src/main/kotlin/com/iferoporefi/myloyaltycards/wear/barcode/BarcodeRenderPipeline.kt:55` -- `if (measured !is BarcodeResult.Success) return BarcodeRender.Failed(measured)`, and `:63` -- `if (!metrics.canRender) return BarcodeRender.ValueOnly(metrics)`. The value-only branch is only reachable when the **metrics** cannot render, never when the **measurement** failed -- which is why the over-length Code 39 lands on the error screen.
 - `watch-android/app/src/main/kotlin/com/iferoporefi/myloyaltycards/wear/barcode/BarcodeRenderPipeline.kt:35` -- `data class ValueOnly(val metrics: BarcodeLayoutMetrics) : BarcodeRender`.
 - `watch-android/app/src/main/kotlin/com/iferoporefi/myloyaltycards/wear/presentation/BarcodeScreen.kt:396-424` -- the `BarcodeRenderState.ValueOnly` branch and `:544` -- `BarcodeValueOnlyContent`; `:663` -- the `BarcodeResult.InvalidValue` branch of the error screen.
@@ -95,7 +95,7 @@ The second is the classic "the plan is right and the placement is wrong" gap. Th
   throws at 81 characters, while Code 128 accepts 120. The fix's comment should name that limit and its
   source, so a future reader knows it is a symbology property and not a local choice.
 - `BarcodeRenderPipelineTest.kt:80-91`'s existing `tooLong_isValueOnly_neverEncodedNorAnError` test already
-  covers a 52-character CODE39 value, which is *under* 80 and therefore fails the metrics rather than the
+  covers a 52-character CODE39 value, which is _under_ 80 and therefore fails the metrics rather than the
   measurement. The new test uses a value over 80 so it exercises the new classification.
 - The Compose UI-test harness needs an `androidTest` source set, which the Wear module does not have
   (`find watch-android -type d -name androidTest` returns nothing), and the `androidx.compose.ui:ui-test-junit4`

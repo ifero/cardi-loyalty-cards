@@ -17,7 +17,7 @@ context:
 
 **Problem:** Three release-path hazards survive in the repository.
 
-1. **Nothing verifies the store build output.** Story 24.2's tests read only *inputs* -- `app.json`, the `.xcprivacy` sources, `build.gradle.kts`. The generated phone `PrivacyInfo.xcprivacy`, the Gradle SDK properties, each watch bundle's copied manifest and the `with-watch-privacy-manifest` strip were verified once, by hand. An `expo-build-properties` option rename, an apple-targets upgrade or an RN aggregation change would pass every test and break the upload.
+1. **Nothing verifies the store build output.** Story 24.2's tests read only _inputs_ -- `app.json`, the `.xcprivacy` sources, `build.gradle.kts`. The generated phone `PrivacyInfo.xcprivacy`, the Gradle SDK properties, each watch bundle's copied manifest and the `with-watch-privacy-manifest` strip were verified once, by hand. An `expo-build-properties` option rename, an apple-targets upgrade or an RN aggregation change would pass every test and break the upload.
 2. **The runtime version never moves with a native change.** `app.json` uses `runtimeVersion.policy: "appVersion"` and `version` has been `1.0.0` since the first commit. Story 24.4 moved `react-native-screens` to 4.25.2 -- a native change -- so an `eas update` from `main` would give installed 4.23.0 binaries JavaScript built for 4.25.2. **Until a new store binary ships, no OTA may be published from `main`.**
 3. **The Wear snapshot reports an expected failure as an error.** `core/wear-connectivity.ts:251` sends a Sentry warning on every snapshot push from a phone without the Wearable API (`ApiException` 17, `API_UNAVAILABLE`). That is expected and permanent -- most phones do not have the API -- so the channel fills with noise that hides the real events.
 
@@ -37,24 +37,24 @@ context:
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-| -------- | ------------- | ------------------------- | -------------- |
-| A prebuild changes the manifest | The generated `PrivacyInfo.xcprivacy` differs from what the sources imply | The CI check fails with the difference | The job fails |
-| A watch bundle loses its manifest | The copied manifest is missing after `pod install` | The CI check fails | The job fails |
-| An OTA is published | The runtime version is fingerprint-derived | The OTA is offered only to binaries that match it | N/A |
-| `expo install --check` runs | `react-native-screens` is excluded | The exclusion is skipped, as today, and the reason is written down | N/A |
-| A phone without the Wearable API syncs | The snapshot publish fails with `API_UNAVAILABLE` | Nothing is reported to Sentry; the failure is logged once | N/A |
-| A phone with the Wearable API syncs | The publish fails for another reason | The failure is reported, as today | N/A |
+| Scenario                               | Input / State                                                             | Expected Output / Behavior                                         | Error Handling |
+| -------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------------ | -------------- |
+| A prebuild changes the manifest        | The generated `PrivacyInfo.xcprivacy` differs from what the sources imply | The CI check fails with the difference                             | The job fails  |
+| A watch bundle loses its manifest      | The copied manifest is missing after `pod install`                        | The CI check fails                                                 | The job fails  |
+| An OTA is published                    | The runtime version is fingerprint-derived                                | The OTA is offered only to binaries that match it                  | N/A            |
+| `expo install --check` runs            | `react-native-screens` is excluded                                        | The exclusion is skipped, as today, and the reason is written down | N/A            |
+| A phone without the Wearable API syncs | The snapshot publish fails with `API_UNAVAILABLE`                         | Nothing is reported to Sentry; the failure is logged once          | N/A            |
+| A phone with the Wearable API syncs    | The publish fails for another reason                                      | The failure is reported, as today                                  | N/A            |
 
 </frozen-after-approval>
 
 ## Code Map
 
-- `test/store-platform-requirements.test.ts:6` -- `import appJson from '../app.json';`; `:158` -- `path.join('targets', target, 'PrivacyInfo.xcprivacy')`; the header at `:11-18` states the scope: *"phone app's manifest is declared in `app.json` and written by `withPrivacyInfo` at prebuild"*. It reads the **sources**, never the generated output.
+- `test/store-platform-requirements.test.ts:6` -- `import appJson from '../app.json';`; `:158` -- `path.join('targets', target, 'PrivacyInfo.xcprivacy')`; the header at `:11-18` states the scope: _"phone app's manifest is declared in `app.json` and written by `withPrivacyInfo` at prebuild"_. It reads the **sources**, never the generated output.
 - `app.json` -- the phone's privacy manifest declaration and the SDK pins; `:12` `"supportsTablet": false`; the `expo.privacyManifests` block.
 - `targets/watch/PrivacyInfo.xcprivacy`, `targets/watch-widget/PrivacyInfo.xcprivacy` -- the watch bundles' own manifests.
 - `package.json:164-170` -- `"expo": { "install": { "exclude": ["react-native-screens"] } }`; `:108` -- `"react-native-screens": "~4.25.2"`.
-- `AGENTS.md:100-125` -- the "Library Installation (Expo Projects)" rule: *"ALWAYS use the following process … `npx expo install`"* and *"NEVER use `yarn add` or `npm install` directly"*. It does not mention the exclusion.
+- `AGENTS.md:100-125` -- the "Library Installation (Expo Projects)" rule: _"ALWAYS use the following process … `npx expo install`"_ and _"NEVER use `yarn add` or `npm install` directly"_. It does not mention the exclusion.
 - `app.json:5` -- `"version": "1.0.0"`; `:213-215` -- `"runtimeVersion": { "policy": "appVersion" }`; `:216-218` -- the `updates.url`. `package.json:3` is also `1.0.0`.
 - `core/wear-connectivity.ts:245-257` -- `catch (error) { logger.notify('Wear OS card snapshot publish failed', { tags: { surface: 'wear-sync', outcome: 'publish-error' }, context: [{ error: String(error) }] }); return false; }` -- no filter for `ApiException` 17 / `API_UNAVAILABLE`.
 - `core/observability/sentry.ts` -- the `logger.notify` path; the Sentry configuration and the scrubbing are out of scope.
@@ -98,10 +98,10 @@ The Wearable-API noise is the smallest of the three and the most certain: the AP
 
 - Source issues: #294 (all three items) and #298 (all five items).
 - The `expo.install.exclude` entry came from Story 24.4 (`f6d2df7 fix(deps): bump react-native-screens to
-  4.25.2 for the Android DecorView crash (Story 24.4) (#299)`), whose tracker note records the reasoning:
+4.25.2 for the Android DecorView crash (Story 24.4) (#299)`), whose tracker note records the reasoning:
   the SDK 55 pin would put `react-native-screens` back to `~4.23.0` and bring the crash back.
-- The runtime version hazard is recorded in the 24.4 tracker note: *"Until a new store binary ships,
-  publish no OTA update from main."* Moving to `fingerprint` is the lasting fix the issue asks for.
+- The runtime version hazard is recorded in the 24.4 tracker note: _"Until a new store binary ships,
+  publish no OTA update from main."_ Moving to `fingerprint` is the lasting fix the issue asks for.
 - `app.json:12` `"supportsTablet": false` is Story 24.6's decision (`da43fab`) and is unaffected.
 - `core/wear-connectivity.ts:251` is the **only** `logger.notify` on the snapshot path; `logger.notify` is
   the Sentry-reporting wrapper (`core/utils/logger.ts`), so the filter belongs where the exception is

@@ -15,7 +15,7 @@ context:
 
 ## Intent
 
-**Problem:** Sign-out leaves two pieces of per-account sync state on the device, and both of them act on the *next* account that signs in.
+**Problem:** Sign-out leaves two pieces of per-account sync state on the device, and both of them act on the _next_ account that signs in.
 
 1. **An in-flight sync can resurrect erased cards.** `performSync` (`shared/hooks/useCloudSync.ts:148-208`) awaits its cloud fetch and then writes the merged result with `await batchUpsertCards(downloadResult.mergeResult.merged)` (`:194`). Nothing cancels that write or checks that the session is still the one the sync started under. If the fetch outlasts opening Settings, the sign-out sheet and the "Sign out and erase cards" tap, the merged cards are re-inserted into a database that was just emptied -- so the person signs out, sees the empty state, and the cards come back.
 2. **The pending-deletion queue survives sign-out.** `core/sync/deletion-tracker.ts:3` keys the queue on a single, account-agnostic AsyncStorage key (`syncPendingDeletions`). `clearPendingDeletions` has no production caller: it is defined at `:40`, exported at `core/sync/index.ts:39`, and called only from its own test. So a card deleted under account A stays queued, and account B signing in next drains A's queue against B's cloud data -- deleting cards B owns that happen to share a card id with A's queue.
@@ -27,9 +27,9 @@ context:
 
 **Decisions (pending ifero's approval):**
 
-- **The guard is a generation counter, not an abort signal.** The download is a Supabase REST call that the client does not abort (`shared/supabase/client.ts:197-204` sets no timeout and no signal), so cancelling the request would mean changing the client for every caller. Refusing to *write* after the fact is the smaller, safer change: the fetch still completes, it just cannot mutate the local database under a stale session.
+- **The guard is a generation counter, not an abort signal.** The download is a Supabase REST call that the client does not abort (`shared/supabase/client.ts:197-204` sets no timeout and no signal), so cancelling the request would mean changing the client for every caller. Refusing to _write_ after the fact is the smaller, safer change: the fetch still completes, it just cannot mutate the local database under a stale session.
 - **The sign-out path invalidates the sync before `deleteAllCards`**, so the erase is the last writer, not a race between two writers.
-- **The deletion queue is keyed by user id**, and a queue belonging to another account is ignored rather than drained. Clearing it wholesale on sign-out is the simpler alternative; keying it is what prevents a *concurrent* sign-in from replaying it.
+- **The deletion queue is keyed by user id**, and a queue belonging to another account is ignored rather than drained. Clearing it wholesale on sign-out is the simpler alternative; keying it is what prevents a _concurrent_ sign-in from replaying it.
 
 ## Boundaries & Constraints
 
@@ -39,16 +39,16 @@ context:
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-| -------- | ------------- | ------------------------- | -------------- |
-| Sync in flight, keep | Signed in, a cloud fetch in flight, the person signs out keeping the cards | The sync may complete its fetch but writes nothing; the cards stay on the device | No error surfaced; the write is skipped silently |
-| Sync in flight, erase | Signed in, a cloud fetch in flight, the person signs out erasing the cards | The sync writes nothing after the erase; the list stays empty | No error surfaced |
-| Sync in flight, another account signs in | Account A's fetch in flight; account B signs in and syncs | A's sync writes nothing; B's sync is unaffected | No error surfaced |
-| Sync in flight, no sign-out | A normal sync completes | The merge is written as today | Unchanged |
-| Deletion queue, other account | Account A deleted a card (queued); account B signs in | B's sync ignores A's queued ids; B's own cloud data is untouched | No error surfaced |
-| Deletion queue, same account | Account A deleted a card; A signs out and back in | A's queue is still A's and drains as today | Unchanged |
-| Deletion queue, empty | No deletions queued | Nothing changes | N/A |
-| Erase, sync not in flight | Signed in, no sync running; the person signs out erasing | The cards are gone and stay gone | The existing 16.45 erase-failed toast still covers a failing delete |
+| Scenario                                 | Input / State                                                              | Expected Output / Behavior                                                       | Error Handling                                                      |
+| ---------------------------------------- | -------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Sync in flight, keep                     | Signed in, a cloud fetch in flight, the person signs out keeping the cards | The sync may complete its fetch but writes nothing; the cards stay on the device | No error surfaced; the write is skipped silently                    |
+| Sync in flight, erase                    | Signed in, a cloud fetch in flight, the person signs out erasing the cards | The sync writes nothing after the erase; the list stays empty                    | No error surfaced                                                   |
+| Sync in flight, another account signs in | Account A's fetch in flight; account B signs in and syncs                  | A's sync writes nothing; B's sync is unaffected                                  | No error surfaced                                                   |
+| Sync in flight, no sign-out              | A normal sync completes                                                    | The merge is written as today                                                    | Unchanged                                                           |
+| Deletion queue, other account            | Account A deleted a card (queued); account B signs in                      | B's sync ignores A's queued ids; B's own cloud data is untouched                 | No error surfaced                                                   |
+| Deletion queue, same account             | Account A deleted a card; A signs out and back in                          | A's queue is still A's and drains as today                                       | Unchanged                                                           |
+| Deletion queue, empty                    | No deletions queued                                                        | Nothing changes                                                                  | N/A                                                                 |
+| Erase, sync not in flight                | Signed in, no sync running; the person signs out erasing                   | The cards are gone and stay gone                                                 | The existing 16.45 erase-failed toast still covers a failing delete |
 
 </frozen-after-approval>
 
@@ -85,7 +85,7 @@ context:
 
 ## Design Notes
 
-The two defects share one root: sync state that belongs to an account lives in a module or a storage key that does not name one. The generation counter fixes the *write* half, the account-scoped key fixes the *queue* half, and both are deliberately small.
+The two defects share one root: sync state that belongs to an account lives in a module or a storage key that does not name one. The generation counter fixes the _write_ half, the account-scoped key fixes the _queue_ half, and both are deliberately small.
 
 A generation counter rather than an abort: the Supabase client is shared by every caller (`shared/supabase/client.ts`), and adding a timeout or a signal to it to solve a sign-out race would change behaviour everywhere. Refusing the write is local to the sync store.
 
@@ -99,10 +99,10 @@ The queue is keyed rather than cleared because clearing is a data-loss risk in t
   `docs/sprint-artifacts/stories/16-45-signout-keep-or-erase-cards.md` section "Found, not fixed" and are
   deliberately one story: the guard and the key are one change to "sync state belongs to an account".
 - The 16.45 review log already routed this: row 6 ("A sync already downloading when erase runs can
-  `batchUpsertCards` after the DELETE and bring cards back") was **rejected** with the note *"the fix is
-  a new sync-cancellation guard"*; row 9 ("The pending-deletion queue and other per-account state survive
-  the erase") was **deferred** as *"pre-existing on every sign-out, and the frozen Never list keeps the
-  deletion tracker out of scope"*. This story is that guard.
+  `batchUpsertCards` after the DELETE and bring cards back") was **rejected** with the note _"the fix is
+  a new sync-cancellation guard"_; row 9 ("The pending-deletion queue and other per-account state survive
+  the erase") was **deferred** as _"pre-existing on every sign-out, and the frozen Never list keeps the
+  deletion tracker out of scope"_. This story is that guard.
 - `deleteAllCards` pushes the empty list to the watch (`core/database/card-repository.ts:207`); the
   generation guard must not interfere with that push.
 - `clearLastSyncAt()` (`core/sync/sync-timestamp`) clears the throttle timestamp. The 16.45 review

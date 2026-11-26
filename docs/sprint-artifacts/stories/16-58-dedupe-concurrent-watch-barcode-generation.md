@@ -15,7 +15,7 @@ context:
 
 ## Intent
 
-**Problem:** `BarcodeGenerator.generateImage` caches its *results* in an `NSCache` but keeps no record of work *in progress*. Two requests for the same value, format, size and orientation that arrive before the first one caches its image each do the full render -- the module maths, the quiet zone, the `CGImage` construction and the rasterisation -- and the second one's work is thrown away when the first one populates the cache.
+**Problem:** `BarcodeGenerator.generateImage` caches its _results_ in an `NSCache` but keeps no record of work _in progress_. Two requests for the same value, format, size and orientation that arrive before the first one caches its image each do the full render -- the module maths, the quiet zone, the `CGImage` construction and the rasterisation -- and the second one's work is thrown away when the first one populates the cache.
 
 **Approach:** Keep a map of ongoing renders, keyed by the same cache key, so a concurrent request for the same barcode joins the render already running instead of starting a second one. The map is removed when the render finishes, whether it succeeded or failed.
 
@@ -32,14 +32,14 @@ context:
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-| -------- | ------------- | ------------------------- | -------------- |
-| Two identical requests | They arrive before the first caches | One render; both callers get the same image | N/A |
-| Two different barcodes | Two renders are needed | Both render; neither waits | N/A |
-| The render fails | The value cannot be encoded | Both callers get `nil`; the map is emptied | As today |
-| A caller is cancelled | The view's task is cancelled | The render is not left in the map; the caller gets `nil` | N/A |
-| The cache is warm | The image is already cached | The cached image is returned; no render, no map entry | N/A |
-| A third request joins | A render is in flight | It joins the same render | N/A |
+| Scenario               | Input / State                       | Expected Output / Behavior                               | Error Handling |
+| ---------------------- | ----------------------------------- | -------------------------------------------------------- | -------------- |
+| Two identical requests | They arrive before the first caches | One render; both callers get the same image              | N/A            |
+| Two different barcodes | Two renders are needed              | Both render; neither waits                               | N/A            |
+| The render fails       | The value cannot be encoded         | Both callers get `nil`; the map is emptied               | As today       |
+| A caller is cancelled  | The view's task is cancelled        | The render is not left in the map; the caller gets `nil` | N/A            |
+| The cache is warm      | The image is already cached         | The cached image is returned; no render, no map entry    | N/A            |
+| A third request joins  | A render is in flight               | It joins the same render                                 | N/A            |
 
 </frozen-after-approval>
 
@@ -87,7 +87,7 @@ Joining the in-flight render rather than cancelling it is the right shape, becau
   `watch-ios/Tests/BarcodeGeneratorTests.swift:120,135,153` pin the reference symbols.
 - The issue's file paths (`watch-ios/MyLoyaltyCardsWatch/BarcodeGenerator.swift`) are stale: the watch
   sources moved to `targets/watch/` in `e775241 feat(11-6): remove watch-ios/, update all references, add
-  watch README, tick ACs`. The test folders it names still exist (`watch-ios/Tests/`, `watch-ios/UITests/`).
+watch README, tick ACs`. The test folders it names still exist (`watch-ios/Tests/`, `watch-ios/UITests/`).
 - The issue also asks for "performance tests (measure display latency <= 1s under cold/cached conditions) and
   memory/cost assertions for the cache". The latency half is already covered by the UI test's own assertion
   (`watch-ios/UITests/CardListUITests.swift:95-96` -- the barcode must appear within 1s). The cache-cost half
@@ -101,7 +101,7 @@ Joining the in-flight render rather than cancelling it is the right shape, becau
   outlive a version change either, which is another reason to key it on the existing key (which carries the
   version).
 - `BarcodeFlashView.swift:314` already runs the render inside `.task(id: renderTaskID)`, and SwiftUI cancels
-  it when the id changes, so the *view* is protected against the most common duplicate. The gap is two
+  it when the id changes, so the _view_ is protected against the most common duplicate. The gap is two
   requests that are not the same view -- a pager transition and a fresh mount can overlap.
 
 ## Spec Change Log

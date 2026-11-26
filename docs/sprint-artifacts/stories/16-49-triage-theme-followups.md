@@ -17,7 +17,7 @@ context:
 
 **Problem:** Story 21.6 (bundle and adopt the brand typefaces) left fourteen items behind, and the wallet redesign (22.2) added two more of the same kind. Nine of them are still open: three components have no production consumer and exist only because they were migrated anyway; two files still hard-code English that the app otherwise routes through i18n; one component masks its own design tokens with `??` fallbacks; one design document names a token that was deleted; the app has no screen that credits the bundled fonts; a button label that wraps is not centred; the typefaces have never been run on an Android device; and one test suite depends on its own test order.
 
-**Approach:** One pass over the items that do not need a decision, in the order that removes the most risk per change. The two items that *do* need a decision -- the font credit screen and the wrapped-label alignment -- are called out and routed.
+**Approach:** One pass over the items that do not need a decision, in the order that removes the most risk per change. The two items that _do_ need a decision -- the font credit screen and the wrapped-label alignment -- are called out and routed.
 
 **Decisions (pending ifero's approval):**
 
@@ -33,13 +33,13 @@ context:
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-| -------- | ------------- | ------------------------- | -------------- |
-| Token fallback | A theme without `spacing.xs` | A type error at build time, not a silent `?? 4` | Build fails |
-| Hard-coded English | A sync failure or a migration message | The message comes from the locale file, in the active language | N/A |
-| Dead component | Nothing imports it | It is gone, and the lint guard no longer needs an exception | N/A |
-| SDK patch train | `npx expo install --check` | The measured number is recorded, and each outdated package is updated | N/A |
-| Android device pass | The typefaces on an Android device | Inter 400/600/700, Space Grotesk 700 and JetBrains Mono 500 all resolve | Recorded as a defect if not |
+| Scenario            | Input / State                         | Expected Output / Behavior                                              | Error Handling              |
+| ------------------- | ------------------------------------- | ----------------------------------------------------------------------- | --------------------------- |
+| Token fallback      | A theme without `spacing.xs`          | A type error at build time, not a silent `?? 4`                         | Build fails                 |
+| Hard-coded English  | A sync failure or a migration message | The message comes from the locale file, in the active language          | N/A                         |
+| Dead component      | Nothing imports it                    | It is gone, and the lint guard no longer needs an exception             | N/A                         |
+| SDK patch train     | `npx expo install --check`            | The measured number is recorded, and each outdated package is updated   | N/A                         |
+| Android device pass | The typefaces on an Android device    | Inter 400/600/700, Space Grotesk 700 and JetBrains Mono 500 all resolve | Recorded as a defect if not |
 
 </frozen-after-approval>
 
@@ -53,7 +53,7 @@ context:
 - `docs/design/CONTRIBUTING-DESIGN.md:48` and `:92` -- both still name `SEMANTIC_COLORS`, deleted by Story 21.2.
 - `shared/components/ui/Button.tsx:169-176` -- the label `<Text style={{ ...TYPOGRAPHY.bodyLgStrong, color: … }}>` with no `textAlign`, so a wrapped label inherits the container's alignment.
 - `features/cards/components/SortFilterRow.tsx:68-77` -- the wallet's count row (`cardCountText` plus the sort control), which shares one row with no shrink allowance.
-- `features/auth/VerifyEmailScreen.test.tsx:915` -- the comment *"Fake timers last: a fake-timer test early in a file can stall the async tests after it."*; the fake-timer `describe` block is at `:915-970` and calls `jest.useFakeTimers()` at `:918` and `:962`.
+- `features/auth/VerifyEmailScreen.test.tsx:915` -- the comment _"Fake timers last: a fake-timer test early in a file can stall the async tests after it."_; the fake-timer `describe` block is at `:915-970` and calls `jest.useFakeTimers()` at `:918` and `:962`.
 - `features/auth/VerifyEmailScreen.test.tsx:190-206` -- the `beforeEach`/`afterEach` pair; the `afterEach` calls `jest.useRealTimers()` at `:202`.
 - `docs/design/cardi/cardi-design-system.md` -- the OFL FAQ's "good practice" credit line and the app's lack of a licences screen (no licence surface exists in `features/`, `app/` or `shared/i18n/locales/en.ts`).
 - `shared/theme/tokens.generated.ts:83` -- `export const TOUCH_TARGET = { min: 48 } as const;` -- the token the fallbacks mask.
@@ -104,7 +104,7 @@ The Android device pass and the SDK patch train are both "measure, then fix": th
 - #248 item 14 is **closed**: `features/auth/VerifyEmailScreen.tsx:547-549` picks the resend label on `remainingSeconds > 0` alone.
 - #248 items 9 and 11 are **accepted platform limits**, recorded in the issue as such.
 - #258 item 9 is **closed**: `jest.setup.js:360` keeps one shared value for the component's life.
-- The token fallbacks in `GuestModeBanner` currently produce the *right* values -- `spacing.xs` is 4, `spacing.sm` is 8, `spacing.md` is 16, and `TOUCH_TARGET.min` is 48 (`shared/theme/tokens.generated.ts:83`). Removing them changes nothing visually; it only makes the type system honest.
+- The token fallbacks in `GuestModeBanner` currently produce the _right_ values -- `spacing.xs` is 4, `spacing.sm` is 8, `spacing.md` is 16, and `TOUCH_TARGET.min` is 48 (`shared/theme/tokens.generated.ts:83`). Removing them changes nothing visually; it only makes the type system honest.
 - `shared/theme/tokens.generated.ts` is **generated** (`yarn tokens:build` owns it, `yarn tokens:check` guards drift). Edit `tokens/*.json`, never the generated file.
 - The `expo install --check` count could not be measured in the environment this spec was drafted in (`node_modules/` was absent), so the story's acceptance requires the measurement, not a fixed number.
 - The `useCards` arrow-function conversion (#258 item 7) is a one-line change to

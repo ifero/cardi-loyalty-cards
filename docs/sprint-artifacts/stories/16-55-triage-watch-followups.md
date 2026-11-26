@@ -35,15 +35,15 @@ The rest are stale documentation and small watch defects: the `native-watchos` s
 
 ## I/O & Edge-Case Matrix
 
-| Scenario | Input / State | Expected Output / Behavior | Error Handling |
-| -------- | ------------- | ------------------------- | -------------- |
-| PR to `main` | The watch source changed | The watch unit tests run and pass | The job fails on a red test |
-| PR to `main` | The watch source changed | The watch UI tests run and pass | The job fails on a red test |
-| Barcode screen | A screen reader or the UI test looks for `barcode-image` | The image is addressable, not hidden behind the parent's identifier | N/A |
-| Empty state | The DEBUG import button is present | The UI test finds exactly one such button | N/A |
-| An agent reads the skill | Before touching `BarcodeFlashView` | It is told the swipe or the back chevron dismisses, and that the crown pages | N/A |
-| An unresolvable card colour | The card's colour cannot be resolved | The watch uses the azure fallback, and the schema's comment says so | N/A |
-| The Stroili row | The catalogue row renders | The brand's own logo renders, not a flat rectangle | N/A |
+| Scenario                    | Input / State                                            | Expected Output / Behavior                                                   | Error Handling              |
+| --------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------------- |
+| PR to `main`                | The watch source changed                                 | The watch unit tests run and pass                                            | The job fails on a red test |
+| PR to `main`                | The watch source changed                                 | The watch UI tests run and pass                                              | The job fails on a red test |
+| Barcode screen              | A screen reader or the UI test looks for `barcode-image` | The image is addressable, not hidden behind the parent's identifier          | N/A                         |
+| Empty state                 | The DEBUG import button is present                       | The UI test finds exactly one such button                                    | N/A                         |
+| An agent reads the skill    | Before touching `BarcodeFlashView`                       | It is told the swipe or the back chevron dismisses, and that the crown pages | N/A                         |
+| An unresolvable card colour | The card's colour cannot be resolved                     | The watch uses the azure fallback, and the schema's comment says so          | N/A                         |
+| The Stroili row             | The catalogue row renders                                | The brand's own logo renders, not a flat rectangle                           | N/A                         |
 
 </frozen-after-approval>
 
@@ -56,8 +56,8 @@ The rest are stale documentation and small watch defects: the `native-watchos` s
 - `watch-ios/UITests/CardListUITests.swift:94-104` -- the failing `test_tapCard_displaysBarcode`: it looks for `app.otherElements["barcode-view"]` **and** `app.images["barcode-image"]`; `targets/watch/BarcodeFlashView.swift:288` puts `.accessibilityIdentifier("barcode-view")` on the outer view, which contains `:182` `"barcode-image"` and `:222` `"barcode-number"` -- the outer identifier replaces the children's.
 - `watch-ios/UITests/CardListUITests.swift:66` -- the failing `test_importSampleCards_buttonAddsCards`: `app.buttons["import-sample-cards"]`; `targets/watch/CardListView.swift:683-686` puts that identifier on the DEBUG toolbar button, in a `ToolbarItem(placement: .topBarLeading)` alongside the sort button (`:670-673`).
 - `watch-ios/Tests/CardRowHelpersTests.swift:72,77,200` -- `XCTAssertNotNil(color)` on a non-optional `Color`; `:82,87,91,96` -- `let _ = parseHexColor(...)`, four tests that assert nothing.
-- `.agents/skills/native-watchos/SKILL.md:52` -- *"**Exit**: Tap screen or crown to return."* -- Story 23.2's decision 1 made a tap no longer dismiss the barcode, and the crown now pages.
-- `core/schemas/card.ts:71-77` -- *"⚠️ watchOS does NOT yet agree … `CardListView` resolves `mapColor(hex:) ?? .gray`"* -- the code moved on: `targets/watch/CardListView.swift:343-345` resolves to the azure default.
+- `.agents/skills/native-watchos/SKILL.md:52` -- _"**Exit**: Tap screen or crown to return."_ -- Story 23.2's decision 1 made a tap no longer dismiss the barcode, and the crown now pages.
+- `core/schemas/card.ts:71-77` -- _"⚠️ watchOS does NOT yet agree … `CardListView` resolves `mapColor(hex:) ?? .gray`"_ -- the code moved on: `targets/watch/CardListView.swift:343-345` resolves to the azure default.
 - `targets/watch/Assets.xcassets/BrandLogo-stroili.imageset/brand-logo-stroili@2x.png` -- 128x43 RGBA whose inflated scanline data holds only six distinct byte values: a flat rectangle. The same asset is duplicated in `targets/watch-widget/Assets.xcassets/BrandLogo-stroili.imageset/`. The source vector is `assets/images/brands/stroili.svg`.
 - `targets/watch/CardListView.swift:670-673` -- the sort `Image(systemName: "arrow.up.arrow.down")` carries no `foregroundStyle`, so it takes the system's white; `:683-686` -- the DEBUG import button shares the leading toolbar slot.
 - `targets/watch/BarcodePagerView.swift:172` -- `.id(card.id)` re-keys each page, with no `@AccessibilityFocusState` and no announcement (the VoiceOver item).
@@ -105,7 +105,7 @@ The agent-context file matters more than its size suggests. `.agents/skills/nati
 - #284 item 3 is **closed**: `docs/sprint-artifacts/stories/23-3-wear-os-implementation.md` was amended before it
   was built -- `:29`, the matrix row at `:85` and decision 4 at `:111` all describe rotary paging on the Wear
   barcode screen, and Story 23.3 merged as `7f5cbb7 feat(watch): the Cardì watch grammar and rotary paging on
-  Wear OS (Story 23.3) (#286)`.
+Wear OS (Story 23.3) (#286)`.
 - #284 items 1 and 2 need a **real Apple Watch**: the simulator runs no VoiceOver and cannot force Always-On.
   They are recorded here as open and device-dependent, not as tasks this story can close.
 - The watch UI tests need a shared scheme. `.github/workflows/watchos-tests.yml:94-95` records that no
