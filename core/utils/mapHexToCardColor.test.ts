@@ -179,6 +179,9 @@ describe('mapHexToCardColor', () => {
    *
    * If a brand is added or recoloured, this fails. Update the numbers HERE and in the
    * story's AC3 notes together — that coupling is the point.
+   *
+   * The 15 brands added on 2026-11-27 are all chromatic, so the default accent's
+   * share DROPPED from 46% to 38% even though the catalogue grew by a quarter.
    */
   describe('the catalogue distribution the story documents (AC3)', () => {
     const tally = (keys: string[]): Record<string, number> =>
@@ -190,7 +193,7 @@ describe('mapHexToCardColor', () => {
     it('matches the table in the story record', () => {
       const counts = tally(catalogue.brands.map((brand) => mapHexToCardColor(brand.color)));
 
-      expect(counts).toEqual({ grey: 26, blue: 12, red: 10, orange: 6, green: 3 });
+      expect(counts).toEqual({ grey: 27, blue: 17, red: 15, orange: 7, green: 6 });
       expect(Object.values(counts).reduce((a, b) => a + b, 0)).toBe(catalogue.brands.length);
     });
 

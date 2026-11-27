@@ -68,6 +68,21 @@ enum WatchBrands {
     .init(id: "paghi-poco", name: "Paghi Poco", aliases: ["supermarket", "grocery", "supermercati", "gruppo rocchetta", "sicilia"]),
     .init(id: "il-centesimo", name: "il Centesimo", aliases: ["supermarket", "grocery", "discount", "spicciolo d'oro", "sicilia"]),
     .init(id: "codice-fiscale", name: "Codice Fiscale", aliases: ["tessera sanitaria", "cf", "partita iva", "documenti"]),
-    .init(id: "upim", name: "Upim", aliases: ["department", "fashion", "home", "grandi magazzini"])
+    .init(id: "upim", name: "Upim", aliases: ["department", "fashion", "home", "grandi magazzini"]),
+    .init(id: "famila", name: "Famila", aliases: ["supermarket", "grocery", "carta famila club", "famila nordest"]),
+    .init(id: "sidis", name: "Sidis", aliases: ["supermarket", "grocery", "sidis card", "maxisidis", "ipersidis"]),
+    .init(id: "unes", name: "Unes", aliases: ["supermarket", "grocery", "unes family", "unes card"]),
+    .init(id: "naturasi", name: "NaturaSì", aliases: ["beauty", "cosmetics", "natural", "community card", "erboristeria"]),
+    .init(id: "brico-ok", name: "Brico OK", aliases: ["bricolage", "fai da te", "casa", "giardino", "brico ok club card"]),
+    .init(id: "bricofer", name: "Bricofer", aliases: ["bricolage", "fai da te", "casa", "giardino", "payback"]),
+    .init(id: "brico-io", name: "Brico io", aliases: ["bricolage", "fai da te", "casa", "giardino"]),
+    .init(id: "marionnaud", name: "Marionnaud", aliases: ["beauty", "perfume", "cosmetics", "carta fedelta"]),
+    .init(id: "thun", name: "Thun", aliases: ["gifts", "home", "decor", "thun lovers", "thun card"]),
+    .init(id: "uci-cinemas", name: "UCI Cinemas", aliases: ["cinema", "cinemas", "myuci", "film"]),
+    .init(id: "trenitalia", name: "Trenitalia", aliases: ["train", "railway", "treni", "cartafreccia", "frecciarossa"]),
+    .init(id: "telepass", name: "Telepass", aliases: ["motorway", "toll", "autostrade", "membership premium"]),
+    .init(id: "autogrill", name: "Autogrill", aliases: ["restaurant", "motorway", "bar", "my autogrill", "travel"]),
+    .init(id: "q8", name: "Q8", aliases: ["fuel", "carburanti", "petrol", "payback", "clubq8"]),
+    .init(id: "tamoil", name: "Tamoil", aliases: ["fuel", "carburanti", "petrol", "mycard"])
   ]
 }

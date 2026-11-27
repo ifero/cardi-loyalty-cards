@@ -1,5 +1,5 @@
 {
-  "version": "2026-08-02",
+  "version": "2026-11-27",
   "brands": [
     {
       "id": "esselunga",
@@ -409,6 +409,111 @@
       "aliases": ["department", "fashion", "home", "grandi magazzini"],
       "logo": "upim",
       "color": "#333F48"
+    },
+    {
+      "id": "famila",
+      "name": "Famila",
+      "aliases": ["supermarket", "grocery", "carta famila club", "famila nordest"],
+      "logo": "famila",
+      "color": "#E55204"
+    },
+    {
+      "id": "sidis",
+      "name": "Sidis",
+      "aliases": ["supermarket", "grocery", "sidis card", "maxisidis", "ipersidis"],
+      "logo": "sidis",
+      "color": "#004489"
+    },
+    {
+      "id": "unes",
+      "name": "Unes",
+      "aliases": ["supermarket", "grocery", "unes family", "unes card"],
+      "logo": "unes",
+      "color": "#F15A22"
+    },
+    {
+      "id": "naturasi",
+      "name": "NaturaSì",
+      "aliases": ["beauty", "cosmetics", "natural", "community card", "erboristeria"],
+      "logo": "naturasi",
+      "color": "#487629"
+    },
+    {
+      "id": "brico-ok",
+      "name": "Brico OK",
+      "aliases": ["bricolage", "fai da te", "casa", "giardino", "brico ok club card"],
+      "logo": "brico-ok",
+      "color": "#D20A10"
+    },
+    {
+      "id": "bricofer",
+      "name": "Bricofer",
+      "aliases": ["bricolage", "fai da te", "casa", "giardino", "payback"],
+      "logo": "bricofer",
+      "color": "#003772"
+    },
+    {
+      "id": "brico-io",
+      "name": "Brico io",
+      "aliases": ["bricolage", "fai da te", "casa", "giardino"],
+      "logo": "brico-io",
+      "color": "#F52837"
+    },
+    {
+      "id": "marionnaud",
+      "name": "Marionnaud",
+      "aliases": ["beauty", "perfume", "cosmetics", "carta fedelta"],
+      "logo": "marionnaud",
+      "color": "#631B4B"
+    },
+    {
+      "id": "thun",
+      "name": "Thun",
+      "aliases": ["gifts", "home", "decor", "thun lovers", "thun card"],
+      "logo": "thun",
+      "color": "#007D7B"
+    },
+    {
+      "id": "uci-cinemas",
+      "name": "UCI Cinemas",
+      "aliases": ["cinema", "cinemas", "myuci", "film"],
+      "logo": "uci-cinemas",
+      "color": "#FFED00"
+    },
+    {
+      "id": "trenitalia",
+      "name": "Trenitalia",
+      "aliases": ["train", "railway", "treni", "cartafreccia", "frecciarossa"],
+      "logo": "trenitalia",
+      "color": "#006A6A"
+    },
+    {
+      "id": "telepass",
+      "name": "Telepass",
+      "aliases": ["motorway", "toll", "autostrade", "membership premium"],
+      "logo": "telepass",
+      "color": "#0057B7"
+    },
+    {
+      "id": "autogrill",
+      "name": "Autogrill",
+      "aliases": ["restaurant", "motorway", "bar", "my autogrill", "travel"],
+      "logo": "autogrill",
+      "color": "#ED1C2E"
+    },
+    {
+      "id": "q8",
+      "name": "Q8",
+      "aliases": ["fuel", "carburanti", "petrol", "payback", "clubq8"],
+      "logo": "q8",
+      "color": "#214199"
+    },
+    {
+      "id": "tamoil",
+      "name": "Tamoil",
+      "aliases": ["fuel", "carburanti", "petrol", "mycard"],
+      "logo": "tamoil",
+      "color": "#106AA9"
     }
   ]
 }

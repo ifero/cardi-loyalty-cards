@@ -49,13 +49,17 @@ object WearBrands {
      * **not** receive the over-the-air catalogue updates the phone gets (Story 3-5). This
      * value is what makes that asymmetry diagnosable when sync misbehaves.
      */
-    const val VERSION: String = "2026-08-02"
+    const val VERSION: String = "2026-11-27"
 
     /** Every catalogue brand, ordered by [WearBrand.id]. */
     val ALL: List<WearBrand> = listOf(
         WearBrand(id = "acqua-e-sapone", name = "Acqua e Sapone", aliases = listOf("beauty", "clean", "home"), logo = "acqua-e-sapone", color = "#00A7E1", defaultFormat = null),
+        WearBrand(id = "autogrill", name = "Autogrill", aliases = listOf("restaurant", "motorway", "bar", "my autogrill", "travel"), logo = "autogrill", color = "#ED1C2E", defaultFormat = null),
         WearBrand(id = "bennet", name = "Bennet", aliases = listOf("bennet club", "galimberti"), logo = "bennet", color = "#E3000F", defaultFormat = null),
         WearBrand(id = "blukids", name = "Blukids", aliases = listOf("kids", "fashion", "children"), logo = "blukids", color = "#ffffff", defaultFormat = null),
+        WearBrand(id = "brico-io", name = "Brico io", aliases = listOf("bricolage", "fai da te", "casa", "giardino"), logo = "brico-io", color = "#F52837", defaultFormat = null),
+        WearBrand(id = "brico-ok", name = "Brico OK", aliases = listOf("bricolage", "fai da te", "casa", "giardino", "brico ok club card"), logo = "brico-ok", color = "#D20A10", defaultFormat = null),
+        WearBrand(id = "bricofer", name = "Bricofer", aliases = listOf("bricolage", "fai da te", "casa", "giardino", "payback"), logo = "bricofer", color = "#003772", defaultFormat = null),
         WearBrand(id = "burger-king", name = "Burger King", aliases = listOf("restaurant", "fast food", "burger"), logo = "burger-king", color = "#F4E9DB", defaultFormat = null),
         WearBrand(id = "calliope", name = "Calliope", aliases = listOf("fashion", "clothing", "retail"), logo = "calliope", color = "#000000", defaultFormat = null),
         WearBrand(id = "calzedonia", name = "Calzedonia", aliases = listOf("hosiery", "fashion", "lingerie"), logo = "calzedonia", color = "#000000", defaultFormat = null),
@@ -75,6 +79,7 @@ object WearBrands {
         WearBrand(id = "esselunga", name = "Esselunga", aliases = listOf("fidaty", "market", "grocery"), logo = "esselunga", color = "#FFCC00", defaultFormat = null),
         WearBrand(id = "euronics", name = "Euronics", aliases = listOf("electronics", "tech", "appliances"), logo = "euronics", color = "#1D428A", defaultFormat = null),
         WearBrand(id = "eurospin", name = "Eurospin", aliases = listOf("discount", "market"), logo = "eurospin", color = "#0069B1", defaultFormat = null),
+        WearBrand(id = "famila", name = "Famila", aliases = listOf("supermarket", "grocery", "carta famila club", "famila nordest"), logo = "famila", color = "#E55204", defaultFormat = null),
         WearBrand(id = "hm", name = "H&M", aliases = listOf("fashion", "clothing", "member"), logo = "hm", color = "#CD1125", defaultFormat = null),
         WearBrand(id = "ido", name = "iDO", aliases = listOf("kids", "fashion", "children"), logo = "ido", color = "#0057A4", defaultFormat = null),
         WearBrand(id = "ikea", name = "IKEA", aliases = listOf("family", "furniture", "home"), logo = "ikea", color = "#0051BA", defaultFormat = "QR"),
@@ -85,9 +90,11 @@ object WearBrands {
         WearBrand(id = "leroy-merlin", name = "Leroy Merlin", aliases = listOf("bricolage", "fai da te", "casa", "giardino"), logo = "leroy-merlin", color = "#FFFFFF", defaultFormat = null),
         WearBrand(id = "lidl", name = "Lidl", aliases = listOf("plus", "discount"), logo = "lidl", color = "#0050AA", defaultFormat = "QR"),
         WearBrand(id = "lotteria-degli-scontrini", name = "Lotteria degli scontrini", aliases = listOf("government", "fiscal", "lottery"), logo = "lotteria-degli-scontrini", color = "#1D4F91", defaultFormat = null),
+        WearBrand(id = "marionnaud", name = "Marionnaud", aliases = listOf("beauty", "perfume", "cosmetics", "carta fedelta"), logo = "marionnaud", color = "#631B4B", defaultFormat = null),
         WearBrand(id = "md", name = "MD", aliases = listOf("supermarket", "discount", "grocery"), logo = "md", color = "#3276c2", defaultFormat = null),
         WearBrand(id = "mediaworld", name = "MediaWorld", aliases = listOf("mediamarkt", "tech", "club"), logo = "mediaworld", color = "#DF0000", defaultFormat = null),
         WearBrand(id = "motivi", name = "Motivi", aliases = listOf("fashion", "clothing", "women"), logo = "motivi", color = "#D09361", defaultFormat = null),
+        WearBrand(id = "naturasi", name = "NaturaSì", aliases = listOf("beauty", "cosmetics", "natural", "community card", "erboristeria"), logo = "naturasi", color = "#487629", defaultFormat = null),
         WearBrand(id = "old-wild-west", name = "Old Wild West", aliases = listOf("restaurant", "burger", "food"), logo = "old-wild-west", color = "#6B3F1D", defaultFormat = null),
         WearBrand(id = "oltre", name = "Oltre", aliases = listOf("fashion", "clothing", "women"), logo = "oltre", color = "#FFDF7E", defaultFormat = null),
         WearBrand(id = "original-marines", name = "Original Marines", aliases = listOf("kids", "fashion", "children"), logo = "original-marines", color = "#FFFFFF", defaultFormat = null),
@@ -99,13 +106,21 @@ object WearBrands {
         WearBrand(id = "piazza-italia", name = "Piazza Italia", aliases = listOf("fashion", "clothing", "retail"), logo = "piazza-italia", color = "#004A93", defaultFormat = null),
         WearBrand(id = "pitta-rosso", name = "Pitta Rosso", aliases = listOf("shoes", "fashion", "footwear"), logo = "pitta-rosso", color = "#ffffff", defaultFormat = null),
         WearBrand(id = "prenatal", name = "Prenatal", aliases = listOf("baby", "kids", "maternity"), logo = "prenatal", color = "#E5007D", defaultFormat = null),
+        WearBrand(id = "q8", name = "Q8", aliases = listOf("fuel", "carburanti", "petrol", "payback", "clubq8"), logo = "q8", color = "#214199", defaultFormat = null),
         WearBrand(id = "rinascente", name = "Rinascente", aliases = listOf("department", "fashion", "luxury"), logo = "rinascente", color = "#000000", defaultFormat = null),
         WearBrand(id = "sephora", name = "Sephora", aliases = listOf("beauty", "makeup", "cosmetics"), logo = "sephora", color = "#000000", defaultFormat = null),
+        WearBrand(id = "sidis", name = "Sidis", aliases = listOf("supermarket", "grocery", "sidis card", "maxisidis", "ipersidis"), logo = "sidis", color = "#004489", defaultFormat = null),
         WearBrand(id = "stroili", name = "Stroili", aliases = listOf("jewelry", "fashion", "oro"), logo = "stroili", color = "#B08A3C", defaultFormat = null),
         WearBrand(id = "super-conveniente", name = "Super Conveniente", aliases = listOf("supermarket", "grocery", "discount"), logo = "super-conveniente", color = "#FFED00", defaultFormat = null),
+        WearBrand(id = "tamoil", name = "Tamoil", aliases = listOf("fuel", "carburanti", "petrol", "mycard"), logo = "tamoil", color = "#106AA9", defaultFormat = null),
+        WearBrand(id = "telepass", name = "Telepass", aliases = listOf("motorway", "toll", "autostrade", "membership premium"), logo = "telepass", color = "#0057B7", defaultFormat = null),
+        WearBrand(id = "thun", name = "Thun", aliases = listOf("gifts", "home", "decor", "thun lovers", "thun card"), logo = "thun", color = "#007D7B", defaultFormat = null),
         WearBrand(id = "tigota", name = "Tigotà", aliases = listOf("beauty", "clean", "home"), logo = "tigota", color = "#005596", defaultFormat = "EAN13"),
         WearBrand(id = "tommy-hilfiger", name = "Tommy Hilfiger", aliases = listOf("fashion", "clothing", "premium"), logo = "tommy-hilfiger", color = "#ffffff", defaultFormat = null),
         WearBrand(id = "toys-center", name = "Toys Center", aliases = listOf("toys", "kids", "games"), logo = "toys-center", color = "#E30613", defaultFormat = null),
+        WearBrand(id = "trenitalia", name = "Trenitalia", aliases = listOf("train", "railway", "treni", "cartafreccia", "frecciarossa"), logo = "trenitalia", color = "#006A6A", defaultFormat = null),
+        WearBrand(id = "uci-cinemas", name = "UCI Cinemas", aliases = listOf("cinema", "cinemas", "myuci", "film"), logo = "uci-cinemas", color = "#FFED00", defaultFormat = null),
+        WearBrand(id = "unes", name = "Unes", aliases = listOf("supermarket", "grocery", "unes family", "unes card"), logo = "unes", color = "#F15A22", defaultFormat = null),
         WearBrand(id = "uniclub", name = "UniClub", aliases = listOf("loyalty", "rewards", "catalog"), logo = "uniclub", color = "#005DAA", defaultFormat = null),
         WearBrand(id = "unieuro", name = "Unieuro", aliases = listOf("electronics", "tech", "club"), logo = "unieuro", color = "#151B26", defaultFormat = null),
         WearBrand(id = "upim", name = "Upim", aliases = listOf("department", "fashion", "home", "grandi magazzini"), logo = "upim", color = "#333F48", defaultFormat = null),
