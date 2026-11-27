@@ -68,6 +68,7 @@ enum BrandLogoCatalogData {
     "prenatal",
     "q8",
     "rinascente",
+    "scarpamondo",
     "sephora",
     "sidis",
     "stroili",

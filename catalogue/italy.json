@@ -514,6 +514,13 @@
       "aliases": ["fuel", "carburanti", "petrol", "mycard"],
       "logo": "tamoil",
       "color": "#106AA9"
+    },
+    {
+      "id": "scarpamondo",
+      "name": "Scarpamondo",
+      "aliases": ["shoes", "calzature", "fashion", "myemotions", "scarpamondo it"],
+      "logo": "scarpamondo",
+      "color": "#F9B123"
     }
   ]
 }

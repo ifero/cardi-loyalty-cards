@@ -83,6 +83,7 @@ enum WatchBrands {
     .init(id: "telepass", name: "Telepass", aliases: ["motorway", "toll", "autostrade", "membership premium"]),
     .init(id: "autogrill", name: "Autogrill", aliases: ["restaurant", "motorway", "bar", "my autogrill", "travel"]),
     .init(id: "q8", name: "Q8", aliases: ["fuel", "carburanti", "petrol", "payback", "clubq8"]),
-    .init(id: "tamoil", name: "Tamoil", aliases: ["fuel", "carburanti", "petrol", "mycard"])
+    .init(id: "tamoil", name: "Tamoil", aliases: ["fuel", "carburanti", "petrol", "mycard"]),
+    .init(id: "scarpamondo", name: "Scarpamondo", aliases: ["shoes", "calzature", "fashion", "myemotions", "scarpamondo it"])
   ]
 }

@@ -319,7 +319,7 @@ on drift.
 The six `.toBe('grey')` cases did **not** move: the key is frozen and the achromatic branch still
 routes there. The story predicted otherwise, but that prediction assumed renaming.
 
-Where the catalogue lands, **measured by calling the shipped function over all 72 brands** (an
+Where the catalogue lands, **measured by calling the shipped function over all 73 brands** (an
 earlier draft of this note quoted a tally from the first experiment, before the lightness weight and
 the achromatic branch existed; it was wrong and is corrected here):
 
@@ -328,21 +328,21 @@ the achromatic branch existed; it was wrong and is corrected here):
 | `grey` (azure)     | 27     | 20                                 |
 | `blue` (deep blue) | 17     | —                                  |
 | `red`              | 15     | —                                  |
-| `orange` (yellow)  | 7      | —                                  |
+| `orange` (yellow)  | 8      | —                                  |
 | `green`            | 6      | —                                  |
 
-Azure takes 27 of 72 (38%), because 20 brands are neutral — 15 of them pure `#000000` or `#FFFFFF` —
+Azure takes 27 of 73 (37%), because 20 brands are neutral — 15 of them pure `#000000` or `#FFFFFF` —
 and a colour with no hue cannot be placed on a five-hue palette. **That concentration is invisible in
 the app**: all of it is fallback-only, and a branded tile renders `brand.color` with no token
 interposed (AC8). It matters only if a brand's catalogue entry goes missing.
 
-> **Updated 2026-11-27 — 15 brands added.** The table above was measured over 57 brands; the
-> catalogue now holds 72 (Famila, Sidis, Unes, NaturaSì, Brico OK, Bricofer, Brico io, Marionnaud,
-> Thun, UCI Cinemas, Trenitalia, Telepass, Autogrill, Q8, Tamoil). Every one of the fifteen has a
-> chromatic brand colour, so the achromatic count is unchanged at 20 and the default accent's share
-> **fell** from 46% to 38% even though the catalogue grew by a quarter. The distribution assertion in
-> `core/utils/mapHexToCardColor.test.ts` was updated in the same change — that coupling is the point
-> of that test.
+> **Updated 2026-11-27 — 16 brands added.** The table above was measured over 57 brands; the
+> catalogue now holds 73 (Famila, Sidis, Unes, NaturaSì, Brico OK, Bricofer, Brico io, Marionnaud,
+> Thun, UCI Cinemas, Trenitalia, Telepass, Autogrill, Q8, Tamoil, Scarpamondo). Every one of the
+> sixteen has a chromatic brand colour, so the achromatic count is unchanged at 20 and the default
+> accent's share **fell** from 46% to 37% even though the catalogue grew by a quarter. The
+> distribution assertion in `core/utils/mapHexToCardColor.test.ts` was updated in the same change —
+> that coupling is the point of that test.
 
 #### AC4 — five fallbacks, one named default
 

@@ -108,6 +108,7 @@ object WearBrands {
         WearBrand(id = "prenatal", name = "Prenatal", aliases = listOf("baby", "kids", "maternity"), logo = "prenatal", color = "#E5007D", defaultFormat = null),
         WearBrand(id = "q8", name = "Q8", aliases = listOf("fuel", "carburanti", "petrol", "payback", "clubq8"), logo = "q8", color = "#214199", defaultFormat = null),
         WearBrand(id = "rinascente", name = "Rinascente", aliases = listOf("department", "fashion", "luxury"), logo = "rinascente", color = "#000000", defaultFormat = null),
+        WearBrand(id = "scarpamondo", name = "Scarpamondo", aliases = listOf("shoes", "calzature", "fashion", "myemotions", "scarpamondo it"), logo = "scarpamondo", color = "#F9B123", defaultFormat = null),
         WearBrand(id = "sephora", name = "Sephora", aliases = listOf("beauty", "makeup", "cosmetics"), logo = "sephora", color = "#000000", defaultFormat = null),
         WearBrand(id = "sidis", name = "Sidis", aliases = listOf("supermarket", "grocery", "sidis card", "maxisidis", "ipersidis"), logo = "sidis", color = "#004489", defaultFormat = null),
         WearBrand(id = "stroili", name = "Stroili", aliases = listOf("jewelry", "fashion", "oro"), logo = "stroili", color = "#B08A3C", defaultFormat = null),

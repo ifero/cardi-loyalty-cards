@@ -1,6 +1,6 @@
 # Brand catalogue additions — 2026-11-27
 
-Fifteen brands added to `catalogue/italy.json` (57 → 72).
+Sixteen brands added to `catalogue/italy.json` (57 → 73).
 
 Every brand below issues a **physical loyalty card**, verified on the brand's own
 domain. The evidence URL was fetched and the quote read in the page content.
@@ -22,6 +22,26 @@ domain. The evidence URL was fetched and the quote read in the page content.
 | Autogrill   | My Autogrill                                              | yes           | Autostrade / Ristorazione                    |
 | Q8          | Carta PAYBACK Q8 (ClubQ8 / StarQ8)                        | yes           | Carburanti                                   |
 | Tamoil      | mycard Tamoil Ricaricabile                                | yes           | Carburanti                                   |
+
+### Scarpamondo (`scarpamondo`)
+
+- **Card**: MyEmotions
+- **Evidence**: https://scarpamondo.it/regolamento-myemotions.html
+- **Quote**: "In caso di adesione presso i Punti Vendita (punto 4a) la carta fisica verrà rilasciata contestualmente alla registrazione del profilo e sarà attiva da subito."
+- **Physical card**: yes — the official regulation states the physical card is
+  issued on sign-up at the till, alongside a virtual card carrying a numeric
+  code shown at the till.
+- **Barcode**: numeric code printed on the card — no `defaultFormat` is
+  declared, because the symbology was not read off the card's own printed
+  payload (Story 2.9 removed 11 guessed values for exactly this reason).
+- **Colour**: `#F9B123` — the golden swoosh in Scarpamondo's own logo SVG,
+  `https://scarpamondo.it/on/demandware.static/Sites-Scarpamondo-Site/-/default/dw609a1f79/images/logo-scarpa-black.svg`
+  (the wordmark itself is near-black `#171515`)
+- **Logo**: the brand's own domain, not Wikimedia Commons — Commons has no
+  Scarpamondo file. The source SVG's viewBox clipped the outer strokes of the
+  first and last letters, and it used `mix-blend-mode:exclusion`, which
+  react-native-svg does not implement; both were fixed before shipping.
+- **Confidence**: high
 
 ## Evidence
 

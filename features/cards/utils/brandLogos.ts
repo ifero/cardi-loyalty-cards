@@ -57,6 +57,7 @@ import PittaRossoLogo from '@/assets/images/brands/pitta-rosso.svg';
 import PrenatalLogo from '@/assets/images/brands/prenatal.svg';
 import Q8Logo from '@/assets/images/brands/q8.svg';
 import RinascenteLogo from '@/assets/images/brands/rinascente.svg';
+import ScarpamondoLogo from '@/assets/images/brands/scarpamondo.svg';
 import SephoraLogo from '@/assets/images/brands/sephora.svg';
 import SidisLogo from '@/assets/images/brands/sidis.png';
 import StroiliLogo from '@/assets/images/brands/stroili.svg';
@@ -134,6 +135,7 @@ const BRAND_LOGOS: Record<string, BrandLogoSource> = {
   prenatal: PrenatalLogo,
   q8: Q8Logo,
   rinascente: RinascenteLogo,
+  scarpamondo: ScarpamondoLogo,
   sephora: SephoraLogo,
   sidis: SidisLogo,
   stroili: StroiliLogo,
