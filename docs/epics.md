@@ -12,7 +12,7 @@ project_name: 'myLoyaltyCards'
 user_name: 'Ifero'
 date: '2025-01-03'
 totalEpics: 24
-totalStories: 230 # counted from `### Story` headings on 2026-11-25 (14 added by the GitHub issue audit)
+totalStories: 231 # counted from `### Story` headings on 2026-11-28 (14 added by the GitHub issue audit on 2026-11-25, 1 by Story 16.60)
 aligned_with_tracker: '2026-08-02'
 authoritative_source: 'docs/sprint-artifacts/sprint-status.yaml'
 ---
@@ -3556,6 +3556,32 @@ It is **narrower still** than watchOS was. On a round display it additionally in
 - A delete whose server call succeeded but whose local sign-out failed is reported as a success, and the app is signed out.
 - Card detail's Delete and edit's Discard use the shared confirm sheet.
 - A card detail's values are not cut at the largest text size.
+
+### Story 16.60: EAS Update — publish the catalogue over the air instead of rebuilding a binary, and make the runtime version track the native layer
+
+**As a** maintainer who just added sixteen brands to the catalogue, **I want** to publish them to installed apps as an over-the-air JavaScript update, **So that** a catalogue change reaches users without cutting a release candidate, waiting on TestFlight, and burning a store review.
+
+**This carries out a decision three tracker entries already flagged as a blocker.** Stories 16.54 and 16.56 record, in their own words, that "**Until a new store binary ships, no OTA may be published from `main`**" — because `app.json` pins `runtimeVersion.policy` to `appVersion` with `version: 1.0.0`, a number that has not moved since the first commit, while the native layer has moved repeatedly (`react-native-screens` to `~4.25.2` in Story 24.4, plus `expo-camera`, `expo-sqlite`, `expo-secure-store`, `@sentry/react-native`, `expo-build-properties` at SDK 36, `@bacons/apple-targets` and two local config plugins). Under `appVersion`, every one of those native changes leaves the runtime version at `1.0.0`, so an OTA bundle would be offered to binaries that lack the native module it calls.
+
+**And the publishing side was never built.** Story 3.5 marked "Update Catalogue via OTA" **done** in February 2026 with "Validate new brand appears after OTA update" ticked — the client half is real (`app/_layout.tsx:429-468` performs a bounded boot-time `checkForUpdateAsync` / `fetchUpdateAsync` / `reloadAsync`, Stories 16.10/16.12/16.14) — but `eas update` appears nowhere in `.github/workflows/`, and `docs/catalogue-ota-updates.md` tells a maintainer to run `eas update --branch <branch> --message "…"`. **That command cannot work**: `--branch` publishes onto a branch that no channel points at, so no build ever receives it. The project is already linked to Expo (`extra.eas.projectId` and `updates.url` both carry `1861d36e-…`, committed in `d68830b`), so what is missing is the channel, the policy and the lane — not the account.
+
+**Measured on this repository, not assumed.** `@expo/fingerprint` hashes the resolved Expo config, and `app.config.ts:30-41` computes `android.versionCode` as `Math.floor(Date.now() / 1000)` when `ANDROID_VERSION_CODE` is unset. Two fingerprints 2.5 seconds apart produced `6af24a51…` and `ed6e3ac9…`; diffing the source lists, exactly **one** entry differed — `expoConfig`, whose `versionCode` read `1795879028` then `1795879036`. With `fingerprint.config.js` carrying `sourceSkips: ['ExpoConfigVersions']`, two runs three seconds apart both produced `0c03bb3b…` and the config is still hashed (only the version fields are skipped). The fingerprint also tracks the **installed** package, not the declared range: changing `package.json` alone leaves the hash unchanged, while changing the installed `node_modules/react-native-screens` moves it to `8099c2ea…`.
+
+**Acceptance Criteria:**
+
+- **AC1 — the runtime version policy moves to `fingerprint`,** so it is derived from the native layer instead of from a human remembering to bump a store-facing number. `updates.url`, `extra.eas.projectId` and `expo.version` are unchanged.
+- **AC2 — the fingerprint hash is stable, and that is proven rather than assumed.** A CI gate computes it twice, seconds apart, with `ANDROID_VERSION_CODE` unset, and fails if the hashes differ — and fails if it does **not** change when an installed native dependency changes, and if it **does** change when only a JavaScript file changes. The last two are what make the policy mean what it says.
+- **AC3 — `fingerprint.config.js` is committed** with `sourceSkips: ['ExpoConfigVersions']` and the reason in a comment, because the churn it suppresses is this repository's own `Date.now()` version code.
+- **AC4 — `eas.json` exists and declares the channels** the built binaries request, with `cli.appVersionSource` reconciled against `app.config.ts`'s local `android.versionCode` rather than left to a default.
+- **AC5 — a fourth release lane publishes an update instead of building a binary.** A new `ota-publish.yml` publishes on a `v*-ota.*` tag on `main` and on manual dispatch; it authenticates with the `EXPO_TOKEN` repository secret, passes `--channel`, `--message`, `--environment production`, `--non-interactive` and `--json`, and **never** `--auto` (CI runs on a detached HEAD) and **never** `--branch`. It builds nothing: no `fastlane`, no TestFlight, no Play.
+- **AC6 — the trigger is a tag, not a push.** `mark-story-done.yml` lands `chore(sprint): mark story done after merge [skip ci]` on `main` after most merges; a `push`-triggered publish workflow would fire on that commit and ship an update nobody asked for.
+- **AC7 — the publish job refuses to run when the configuration is inconsistent.** The fingerprint-stability gate, a clean-working-tree check, an ISO-date check on the catalogue's `version`, and an assertion that the runtime version being published is one a shipped binary actually carries — each failing the job **before** anything is published.
+- **AC8 — the update-config gate runs in the always-on CI job,** so a broken update configuration is red on the pull request that causes it. Nothing today guards `runtimeVersion`, the channel, or the agreement between `projectId` and `updates.url`.
+- **AC9 — the runbook stops giving a command that cannot work.** `docs/catalogue-ota-updates.md` is rewritten around `--channel production`, keeps the manual procedure for a maintainer who prefers it, and records the sequencing rule — an OTA reaches only binaries sharing its runtime version, so it is published **after** the binary carrying that version is on the store — together with `eas update:republish --destination-channel production` for rollback and `eas channel:pause production` as the kill-switch.
+- **AC10 — the first publish is a human decision.** A channel with no build is a supported state, but no installed app receives an update for a runtime version no installed binary has. The first OTA therefore follows a shipped binary, and its dry-run output is reviewed before it reaches a user.
+- **AC11 — `docs/cicd.md` and `AGENTS.md` follow.** The pipeline diagram gains the OTA lane; the rule that a native change moves the runtime version is stated mechanically, by the fingerprint, rather than as a discipline a human must remember.
+
+**Notes:** the full analysis, the measured fingerprint behaviour and the EAS CLI source references live in [`docs/sprint-artifacts/stories/16-60-eas-update-ota-publish-lane.md`](sprint-artifacts/stories/16-60-eas-update-ota-publish-lane.md) and in [`docs/eas-update-setup.md`](eas-update-setup.md) (1107 lines; every claim quoted from live Expo documentation or the `eas-cli` 27.11.0 source, fetched 2026-11-28). **Out of scope and flagged:** a Settings row offering a manual "check for updates" — the app checks on cold start only, which is frequent enough for a weekly catalogue, but the row is a product decision and is recorded as a follow-up rather than added silently. **The one thing that cannot be proven from this repository** is whether the first OTA reaches a device — that needs a shipped binary on the same runtime version, which is why AC10 makes it a human decision.
 
 ## Epic 17: Apple Wallet Pass Support
 
