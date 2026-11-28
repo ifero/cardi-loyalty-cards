@@ -36,9 +36,19 @@ installed and `app/_layout.tsx` performs a real boot-time update check, but:
    OTA bundle would be offered to binaries that lack the native module it calls. This is
    recorded three times in the tracker — stories 16.54, 16.56 and the 24.4 note — each as a
    reason not to publish.
-3. **The app has no channel.** `app.json` sets `updates.url` and `runtimeVersion` but no
-   `expo-channel-name`, so a shipped binary does not request a named channel. Without a channel
-   the app cannot be told which branch to follow.
+3. **The app requests no channel, and the channel is baked into the binary.** `app.json` sets
+   `updates.url` and `runtimeVersion` but no `updates.requestHeaders`, and the native client
+   reads the channel from exactly that header —
+   `node_modules/expo-updates/ios/EXUpdates/AppController.swift:79`:
+   `"channel": requestHeaders["expo-channel-name"] ?? ""`, and
+   `node_modules/expo-updates/android/src/main/java/expo/modules/updates/IUpdatesController.kt:107`:
+   `this["channel"] = requestHeaders["expo-channel-name"] ?: ""`. With no header the client asks
+   for updates on the **empty-named channel**, so it would never see the `production` channel's
+   updates. The header reaches the native project through the config plugin
+   (`@expo/config-plugins/build/ios/Updates.js:123-125` writes `EXUpdatesRequestHeaders` into
+   `Expo.plist`; `android/Updates.js:153-155` writes it into the manifest's meta-data), which
+   means **the channel is fixed at prebuild time and cannot be changed in an installed app** —
+   the first OTA therefore needs a binary built after the header is added.
 4. **Nothing verifies the update configuration.** No test asserts that `runtimeVersion` is
    compatible with the native layer, that a channel exists, or that `projectId` and
    `updates.url` agree. Every one of those can silently regress.
@@ -73,6 +83,16 @@ installed and `app/_layout.tsx` performs a real boot-time update check, but:
   supported state, but no installed app receives an update for a runtime version that no
   installed binary has. The first OTA therefore needs a shipped binary on the same runtime
   version — which means shipping one binary before this lane can reach a user.
+- **The channel is added to `app.json`, not to `eas.json` alone.** This repo builds with Fastlane
+  and `expo prebuild`, not with EAS Build, so nothing injects the channel the way EAS Build
+  would. The client reads it from `updates.requestHeaders["expo-channel-name"]`, so that is
+  where it goes. **It is a native change**: the header is baked into the binary at prebuild, so
+  a device running a binary built before this lands keeps asking for the empty-named channel
+  and never sees the lane's updates.
+- **`--channel`, not `--branch`, in the publish command** — and never `--auto`. `--auto` derives
+  the branch name from `git rev-parse --abbrev-ref HEAD`, which returns the literal string
+  `HEAD` on a detached HEAD (a tag checkout, which is exactly what this workflow does). That
+  would publish to a stray branch named `HEAD`, create no error, and reach nobody.
 
 </frozen-after-approval>
 
@@ -165,9 +185,19 @@ is not `main`.
       the `build` profiles carry their `channel`, and `cli.appVersionSource` is set
       deliberately (see Design Notes — it interacts with `app.config.ts`'s local
       `android.versionCode`).
-- [ ] `app.json` — the channel the built binary requests. `expo-build-properties` or the
-      native config sets `expo-channel-name`; the channel name and the one the workflow
-      publishes to are the same string, and the CI check asserts it.
+- [ ] `app.json` — the channel the built binary requests:
+      `json
+"updates": {
+  "url": "https://u.expo.dev/1861d36e-c8a8-4912-8ce4-67ac585e74ee",
+  "requestHeaders": { "expo-channel-name": "production" }
+}
+`
+      **This is a NATIVE change, not a config change.** The header is written into `Expo.plist`
+      and the Android manifest's meta-data at prebuild, so it only reaches devices in a binary
+      built after this lands. Verified in the tree: `expo-updates/ios/EXUpdates/AppController.swift:79`
+      and `android/.../IUpdatesController.kt:107` read `requestHeaders["expo-channel-name"]`;
+      `@expo/config-plugins/build/{ios,android}/Updates.js` writes it. The channel name and the
+      one the workflow publishes to are the same string, and the CI check asserts it.
 - [ ] `.github/workflows/ota-publish.yml` (new) — publishes an EAS Update: - **Trigger:** a `v*-ota.*` tag pushed to `main`, plus `workflow_dispatch` with a
       `channel` input defaulting to `production` and a `dry_run` input. **Not** a `push` on
       `main` — the `mark-story-done.yml` commit would fire it. - **Auth:** `EXPO_TOKEN` from the repository secrets, passed to the CLI as an environment
@@ -325,18 +355,22 @@ jobs:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
 
-      # NOT `--auto`: it derives the branch name from the git branch, and CI runs on a
-      # detached HEAD. NOT `--branch`: that bypasses the channel, so no build would ever
-      # receive the update. `--environment` is REQUIRED in SDK 55 and later.
+      # NOT `--auto`: it fills the branch name from `git rev-parse --abbrev-ref HEAD`, which
+      # returns the literal string "HEAD" on a detached HEAD (a tag checkout) -- that would
+      # publish to a stray branch, error-free, and reach nobody. NOT `--branch`: that bypasses
+      # the channel, so no build would ever receive the update. `--environment` is REQUIRED in
+      # SDK 55 and later, and it is what injects the server-side variables into the bundle.
       - name: Publish the update
         run: |
-          eas update \
-            --channel "${{ github.event.inputs.channel || 'production' }}" \
-            --message "Catalogue ${{ github.ref_name }}" \
-            --environment production \
-            --non-interactive \
-            --json > eas-update.json
-          cat eas-update.json
+          set -euo pipefail
+          CHANNEL="${{ github.event.inputs.channel || 'production' }}"
+          VERSION=$(node -p "require('./catalogue/italy.json').version")
+          eas update \\
+            --channel "$CHANNEL" \\
+            --message "Catalogue $VERSION" \\
+            --environment production \\
+            --non-interactive \\
+            --json | tee eas-update.json
 
       - name: Confirm what is live on the channel
         run: eas update:list --channel "${{ github.event.inputs.channel || 'production' }}" --non-interactive
@@ -365,10 +399,11 @@ entirely.
 The catalogue ships inside the JavaScript bundle, so a new brand reaches installed apps as
 an over-the-air update -- no store release, no review queue.
 
-## Before anything: the runtime version rule
+## Before anything: two rules
 
-An update is offered to an app only when the runtime version matches **exactly**. The runtime
-version is derived from the native layer (`runtimeVersion.policy: "fingerprint"`), so:
+**The runtime version rule.** An update is offered to an app only when the runtime version
+matches **exactly**. The runtime version is derived from the native layer
+(`runtimeVersion.policy: "fingerprint"`), so:
 
 1. A native change moves the runtime version.
 2. The new binary must be built **and shipped** before an update for it reaches anybody.
@@ -376,6 +411,15 @@ version is derived from the native layer (`runtimeVersion.policy: "fingerprint"`
 
 Publishing an update for a runtime version no shipped binary has **succeeds and reaches
 nobody**. This is the most common way an OTA lane looks broken when it is fine.
+
+**The channel rule.** The app asks for updates on a channel named in its own binary
+(`updates.requestHeaders["expo-channel-name"]`). That name is written into the app at build
+time, so **a binary built before the channel was set keeps asking for the empty-named
+channel and never sees this lane's updates**. Check what a device is asking for before
+concluding an update failed to publish.
+
+The watch app is not covered: the catalogue reaches the watches as generated native code, so a
+catalogue OTA updates the phone only.
 
 ## Automatic (the CI lane)
 
@@ -504,6 +548,42 @@ a cold start is frequent enough that this is acceptable; a Settings row offering
 "check for updates" would make the lane visible to a maintainer verifying a publish. That row
 is **out of scope** here — it is a product decision, and the story records it as a
 follow-up rather than adding it silently.
+
+### `--auto` on a detached HEAD publishes to a branch named `HEAD`
+
+`--auto` fills in the branch name from the git branch. The EAS CLI gets it with
+`git rev-parse --abbrev-ref HEAD` (`packages/eas-cli/src/vcs/clients/git.ts:294`), and on a
+detached HEAD that returns the literal string `HEAD`:
+
+```
+$ git checkout -q v1.0.0
+$ git rev-parse --abbrev-ref HEAD
+HEAD
+```
+
+GitHub Actions checks out a **tag** as a detached HEAD by default — which is exactly what this
+workflow's tag trigger produces. So `eas update --auto` would publish to an Expo Update branch
+literally named `HEAD`: **no error, no warning, and no user ever receives the update**, because
+no channel points at that branch. It would also report the job as successful.
+
+This is the single most dangerous footgun in the lane, and it is why the workflow passes
+`--channel` and `--message` explicitly. The CLI enforces this in non-interactive mode
+(`packages/eas-cli/src/commands/update/index.ts:798`):
+
+> `--branch and --message, or --channel and --message are required when updating in
+non-interactive mode unless --auto is specified`
+
+### An OTA cannot deliver the watchOS or Wear OS halves
+
+The catalogue reaches the **phone** bundle as JavaScript — `import catalogueData from
+'@/catalogue/italy.json'`. The watches get a _generated_ Swift/Kotlin catalogue
+(`scripts/generate-wear-catalogue.mjs`), which is **native code** and therefore not OTA-eligible.
+An OTA that adds a brand updates the phone's card list and nothing on either watch.
+
+That is not a defect in this design; it is the boundary of what an OTA is. It is recorded here
+because the lane's name ("publish the catalogue") invites the assumption that a new brand
+appears everywhere at once. It does not: the watches need the next binary. The repo's own
+epics note says as much — _"OTA cannot deliver the native watchOS or Wear OS halves at all"_.
 
 ### What the workflow does NOT do
 
