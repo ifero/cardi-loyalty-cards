@@ -12,7 +12,7 @@ project_name: 'myLoyaltyCards'
 user_name: 'Ifero'
 date: '2025-01-03'
 totalEpics: 24
-totalStories: 216 # counted from `### Story` headings on 2026-11-24
+totalStories: 231 # counted from `### Story` headings on 2026-11-28 (14 added by the GitHub issue audit on 2026-11-25, 1 by Story 16.60)
 aligned_with_tracker: '2026-08-02'
 authoritative_source: 'docs/sprint-artifacts/sprint-status.yaml'
 ---
@@ -3355,6 +3355,233 @@ It is **narrower still** than watchOS was. On a round display it additionally in
 - Choosing to erase them signs out and removes every card stored on the device, so the card list is empty afterwards; cards already in the cloud account are not deleted.
 - A failed sign-out erases nothing.
 - English and Italian copy are updated together.
+
+### Story 16.46: Signing out leaves per-account sync state behind, so an in-flight sync restores erased cards and the next account drains the previous account's deletion queue
+
+**As a** person signing out of my Cardì account, **I want** the sync state that belongs to my account to go with it, **So that** signing out and erasing the cards really empties the device, and the next account on it is not charged with my deletions.
+
+**Found 2026-11-25 in the GitHub issue audit** (`docs/audit/issue-audit-2026-11-25.md`, issues #310 and #311), from Story 16.45's "Found, not fixed" list. `performSync` writes the merged cards with `batchUpsertCards` after its cloud fetch, and nothing cancels that write or checks the session is still the one the sync started under; the pending-deletion queue is keyed on a single account-agnostic storage key whose `clearPendingDeletions` has no production caller.
+
+**Acceptance Criteria:**
+
+- A sync whose download is still in flight when the person signs out writes nothing to the local database, whether they keep or erase the cards.
+- The pending-deletion queue is scoped to the account that filled it: another account signing in on the same device drains nothing of theirs.
+- The same account signing out and back in still drains its own queued deletions, as today.
+- A sync that finishes under a stale session surfaces no error to the person.
+
+### Story 16.47: `yarn typecheck` fails after `expo start`, because the generated Expo types narrow `process.env.NODE_ENV`
+
+**As a** developer, **I want** the typecheck gate to mean the same thing before and after `expo start`, **So that** a green typecheck is evidence on my machine and not only in CI.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #312), from Story 16.45's "Found, not fixed" list. Metro writes the git-ignored `expo-env.d.ts` and `.expo/types`, `tsconfig.json` includes both, and the generated `expo/types` reference narrows `process.env.NODE_ENV` -- so the test's environment literal no longer type-checks.
+
+**Acceptance Criteria:**
+
+- `yarn typecheck` reports no errors on a clean checkout, and reports no errors after `expo start` has written its generated files.
+- The site's temp-repository test keeps its behaviour: `NODE_ENV=test`, and no `GIT_*` variable inherited from the outer repository.
+
+### Story 16.48: The sign-out design frames still draw the old two-button sheet
+
+**As a** designer working from the Cardì frames, **I want** the sign-out frame to match the screen that ships, **So that** the frames stay a specification and not a contradiction.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #313), from Story 16.45's "Found, not fixed" list. Story 16.45 replaced the sheet with three stacked actions; frame D and the Stitch settings prompt still draw two.
+
+**Acceptance Criteria:**
+
+- Frame D in `docs/design/cardi/frames/cardi-settings-frames.html` and the sign-out section of `docs/design/cardi/stitch-prompts-settings.txt` show the three actions -- keep, erase, Cancel -- in the shipped order, with the shipped body.
+- The rule that keeps the three actions distinguishable from each other is recorded in the design system, and applied to the shipped sheet.
+- `yarn frames:check` passes.
+
+### Story 16.49: The theme and typography follow-ups: dead components, token fallbacks, hard-coded English and an unrun Android device pass
+
+**As a** maintainer, **I want** the residue the typefaces left behind cleared, **So that** the next migration is not slowed by components nothing uses and strings that bypass i18n.
+
+**Found 2026-11-25 in the GitHub issue audit** (issues #248 and #258), from the "Found, not fixed" lists of Stories 21.6 and 22.2.
+
+**Acceptance Criteria:**
+
+- `VirtualLogo`, `FormatPicker` and `CatalogueGrid` are gone, and no comment claims a route that no longer exists.
+- The theme's tokens are used directly, so a missing token is a compile error rather than a silent `??` fallback.
+- Every hard-coded English string in the sync and migration paths comes from the locale file, in both languages.
+- The deleted `SEMANTIC_COLORS` token is no longer named in `docs/design/CONTRIBUTING-DESIGN.md`.
+- A wrapped `Button` label stays centred.
+- The OTP suite no longer depends on its own test order.
+- The SDK patch train is measured and each outdated package updated.
+- The bundled typefaces are run on an Android device, and the result recorded; the fonts carry a licence credit.
+
+### Story 16.50: The design-system follow-ups: an off-grid radius, retired token mocks, a short Storybook canvas and stale agent-context files
+
+**As a** maintainer, **I want** the design system and the files that describe it to agree with the code, **So that** an agent -- or a person -- reading them is not misled.
+
+**Found 2026-11-25 in the GitHub issue audit** (issues #251, #268 and #275), from the "Found, not fixed" lists of Stories 22.1, 22.6 and 22.9.
+
+**Acceptance Criteria:**
+
+- `ActionRow`'s outlined radius is one of the design system's two radii, never 14.
+- The confirm sheets order their actions as the frames draw them, the destructive action first.
+- Every test that mocks `TOUCH_TARGET` mocks the shape that exists.
+- The scanner component with no production consumer is gone.
+- A sheet story's scrim lies over the app surface, not over bare page.
+- `docs/project-context.md` and `docs/architecture.md` describe the palette and the styling engine the code actually uses.
+
+### Story 16.51: The release follow-ups: the shipped binary is not the tested one, Play ships at 100 %, and the rebrand's own docs carry the old palette
+
+**As a** release owner, **I want** what ships to be what was tested, and the release to have a brake, **So that** 1.0 goes out on a result.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #253), from Story 21.7's "Found, not fixed" list.
+
+**Acceptance Criteria:**
+
+- A production release starts staged rather than reaching 100 % on approval; the RC and nightly lanes keep their behaviour.
+- The App Store lane can run a dry run that uploads nothing and consumes no build number.
+- `docs/epics.md` states the version rule that was decided and describes the mark that ships.
+- The public site carries the Cardì palette.
+
+### Story 16.52: The wallet follow-ups: two subscriptions for one list, an offline strip that can never show, and a 28pt retry target
+
+**As a** person using the wallet, **I want** it to reflect the state of my cards and to be operable, **So that** the screen I read is the screen I have.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #258), from Story 22.2's "Found, not fixed" list.
+
+**Acceptance Criteria:**
+
+- One card subscription feeds the wallet, and the guest banner's threshold matches the list.
+- The offline strip can show on Home.
+- The migration banner's Retry and dismiss reach the 48pt minimum.
+- The load-error state offers a retry and does not print the raw error string.
+- Adding a card leaves exactly one Home on the stack.
+- The wallet's tests assert the real theme colours.
+
+### Story 16.53: The capture and document follow-ups: a camera that never re-checks its permission, and a FAQ that names a deleted screen
+
+**As a** person adding a card, **I want** the scanner to recover when I fix a permission and to tell me what is happening, **So that** a refusal does not become a dead end and a scan always gives feedback.
+
+**Found 2026-11-25 in the GitHub issue audit** (issues #266 and #273), from the "Found, not fixed" lists of Stories 22.5 and 22.8.
+
+**Acceptance Criteria:**
+
+- Returning to the app after granting the camera permission in Settings re-reads it.
+- An image scan started from the camera-error state shows its progress and its no-code result.
+- The back control stays reachable while an image decodes.
+- The camera does not run under the card-setup screen.
+- The FAQ names screens that exist, in both languages.
+- The dead route file and the unused module barrel are gone.
+- Every claim the privacy policy makes about consent matches what the app does.
+
+### Story 16.54: The onboarding follow-ups: a carousel that announces nothing, and a runtime version that never moves with a native module
+
+**As a** person using the onboarding, **I want** it to be readable by a screen reader and to run on the binary it was built for, **So that** it works and it does not leave an unusable update in the channel.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #281), from Story 22.10's "Found, not fixed" list.
+
+**Acceptance Criteria:**
+
+- The runtime version moves off `1.0.0` before any OTA is published from `main`, so no update targets a binary without the onboarding's native module.
+- The highlights carousel announces a page change and does not claim a role it does not support.
+- The recommended mode card's spoken name is one sentence, in both languages.
+- The slide titles carry the header role the other onboarding titles carry.
+- A sheet's Italian announcement reads correctly with any sheet's name.
+- Under Reduce Motion the carousel does not animate.
+- Screen-reader focus returns to the trigger when a sheet closes.
+- No comment cites a component that does not exist.
+
+### Story 16.55: The watch follow-ups: no CI runs the watch tests, and two of them fail on the baseline
+
+**As a** maintainer of the watch app, **I want** its tests to run, **So that** a change to the crown or the barcode cannot pass every gate and still be wrong.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #284), from Story 23.2's "Found, not fixed" list.
+
+**Acceptance Criteria:**
+
+- CI runs the watch unit tests and the watch UI tests, not only a build.
+- Both failing UI tests pass: the barcode image is addressable, and the import button is found exactly once.
+- Every watch test asserts something.
+- `.agents/skills/native-watchos/SKILL.md` describes how the barcode screen is actually dismissed and paged.
+- `core/schemas/card.ts`'s comment matches the watch's azure fallback.
+- The Stroili row shows the brand's logo.
+
+### Story 16.56: The store and OTA follow-ups: nothing checks the generated manifests, and the runtime version never moves
+
+**As a** release owner, **I want** the build product verified and the OTA channel safe, **So that** a store upload is not rejected by a manifest nobody checked and no update ships to a binary it does not fit.
+
+**Found 2026-11-25 in the GitHub issue audit** (issues #294 and #298), from the "Found, not fixed" lists of Stories 24.2 and 24.4.
+
+**Acceptance Criteria:**
+
+- A CI check asserts the generated privacy manifests, the Gradle SDK properties and the watch bundles' copied manifests, not only their sources.
+- The runtime version policy tracks the native surface, so an OTA is offered only to binaries it matches.
+- `expo.install.exclude` carries its exit condition, and AGENTS.md says an excluded package is installed with Yarn on purpose.
+- A Wearable-API-absent snapshot publish is not reported to Sentry; every other failure still is.
+
+### Story 16.57: A Code 39 over 80 characters shows the error screen instead of the value, and nothing pins the Wear barcode's placement
+
+**As a** person whose card carries a long Code 39, **I want** to see the value and key it in, **So that** a symbology limit does not read as a broken card.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #303), from Story 16.38's "Found, not fixed" list. ZXing's `Code39Writer` rejects content longer than 80 characters, and the pipeline treats that rejection as an invalid value rather than as a symbol that does not fit.
+
+**Acceptance Criteria:**
+
+- An over-length Code 39 whose characters are otherwise valid shows the value as text, not the error screen.
+- A Code 39 with an unencodable character still shows the error screen.
+- A Compose UI test pins the barcode image's placement against the layout metrics.
+
+### Story 16.58: Two concurrent requests for the same barcode each render it, because the generator caches results but never in-flight work
+
+**As a** person on a 40 mm watch, **I want** the barcode drawn once, **So that** paging between cards does not spend the watch's battery rendering the same symbol twice.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #45, item 2), from Story 5.4's follow-ups. The EAN/UPC/CODE39 renderers (item 1) were closed by Story 16.28.
+
+**Acceptance Criteria:**
+
+- Two concurrent requests for the same barcode perform one render and both receive the same image.
+- Two requests for different barcodes do not wait for each other.
+- No pending render is left behind after a failure or a cancellation.
+- A warm cache returns the cached image without rendering.
+
+### Story 16.59: The settings follow-ups: a dead language screen, two import sheets at once, and a delete that can be reported as failed
+
+**As a** person in Settings, **I want** the screen to show one thing at a time and to tell me the truth about what happened, **So that** a failure I can act on is not hidden behind another sheet.
+
+**Found 2026-11-25 in the GitHub issue audit** (issue #271), from Story 22.7's "Found, not fixed" list. The screen was rebuilt without a cleanup pass: a screen that has been dead since Story 13.6 is still exported, a failed import leaves two sheets on screen, the Sync row's relative time is hard-coded outside i18n, and a deletion that succeeded can be reported as failed.
+
+**Acceptance Criteria:**
+
+- The dead language list screen is gone, and no route registers it.
+- A failed import shows the error sheet alone; the preview sheet is not left behind it.
+- The Sync row's relative time comes from the locale files.
+- A sheet's contents are not announced to a screen reader after it closes.
+- The sort sheet uses the shared option list.
+- The dark-mode secondary button follows a settled rule rather than being beam by accident.
+- The Italian delete keyword is decided and applied consistently, and the keyboard cannot change it.
+- A delete whose server call succeeded but whose local sign-out failed is reported as a success, and the app is signed out.
+- Card detail's Delete and edit's Discard use the shared confirm sheet.
+- A card detail's values are not cut at the largest text size.
+
+### Story 16.60: EAS Update — publish the catalogue over the air instead of rebuilding a binary, and make the runtime version track the native layer
+
+**As a** maintainer who just added sixteen brands to the catalogue, **I want** to publish them to installed apps as an over-the-air JavaScript update, **So that** a catalogue change reaches users without cutting a release candidate, waiting on TestFlight, and burning a store review.
+
+**This carries out a decision three tracker entries already flagged as a blocker.** Stories 16.54 and 16.56 record, in their own words, that "**Until a new store binary ships, no OTA may be published from `main`**" — because `app.json` pins `runtimeVersion.policy` to `appVersion` with `version: 1.0.0`, a number that has not moved since the first commit, while the native layer has moved repeatedly (`react-native-screens` to `~4.25.2` in Story 24.4, plus `expo-camera`, `expo-sqlite`, `expo-secure-store`, `@sentry/react-native`, `expo-build-properties` at SDK 36, `@bacons/apple-targets` and two local config plugins). Under `appVersion`, every one of those native changes leaves the runtime version at `1.0.0`, so an OTA bundle would be offered to binaries that lack the native module it calls.
+
+**And the publishing side was never built.** Story 3.5 marked "Update Catalogue via OTA" **done** in February 2026 with "Validate new brand appears after OTA update" ticked — the client half is real (`app/_layout.tsx:429-468` performs a bounded boot-time `checkForUpdateAsync` / `fetchUpdateAsync` / `reloadAsync`, Stories 16.10/16.12/16.14) — but `eas update` appears nowhere in `.github/workflows/`, and `docs/catalogue-ota-updates.md` tells a maintainer to run `eas update --branch <branch> --message "…"`. **That command cannot work**: `--branch` publishes onto a branch that no channel points at, so no build ever receives it. The project is already linked to Expo (`extra.eas.projectId` and `updates.url` both carry `1861d36e-…`, committed in `d68830b`), so what is missing is the channel, the policy and the lane — not the account.
+
+**Measured on this repository, not assumed.** `@expo/fingerprint` hashes the resolved Expo config, and `app.config.ts:30-41` computes `android.versionCode` as `Math.floor(Date.now() / 1000)` when `ANDROID_VERSION_CODE` is unset. Two fingerprints 2.5 seconds apart produced `6af24a51…` and `ed6e3ac9…`; diffing the source lists, exactly **one** entry differed — `expoConfig`, whose `versionCode` read `1795879028` then `1795879036`. With `fingerprint.config.js` carrying `sourceSkips: ['ExpoConfigVersions']`, two runs three seconds apart both produced `0c03bb3b…` and the config is still hashed (only the version fields are skipped). The fingerprint also tracks the **installed** package, not the declared range: changing `package.json` alone leaves the hash unchanged, while changing the installed `node_modules/react-native-screens` moves it to `8099c2ea…`.
+
+**Acceptance Criteria:**
+
+- **AC1 — the runtime version policy moves to `fingerprint`,** so it is derived from the native layer instead of from a human remembering to bump a store-facing number. `updates.url`, `extra.eas.projectId` and `expo.version` are unchanged.
+- **AC2 — the fingerprint hash is stable, and that is proven rather than assumed.** A CI gate computes it twice, seconds apart, with `ANDROID_VERSION_CODE` unset, and fails if the hashes differ — and fails if it does **not** change when an installed native dependency changes, and if it **does** change when only a JavaScript file changes. The last two are what make the policy mean what it says.
+- **AC3 — `fingerprint.config.js` is committed** with `sourceSkips: ['ExpoConfigVersions']` and the reason in a comment, because the churn it suppresses is this repository's own `Date.now()` version code.
+- **AC4 — the channel reaches the binary.** `app.json` gains `updates.requestHeaders["expo-channel-name"]`, because this repo builds with Fastlane and `expo prebuild` rather than EAS Build, so nothing injects the channel the way EAS Build would — the client reads it straight from that header (`expo-updates/ios/EXUpdates/AppController.swift:79`, `android/.../IUpdatesController.kt:107`), and the config plugin writes it into `Expo.plist` and the Android manifest at prebuild. **It is therefore a native change: a device on a binary built before this lands keeps asking for the empty-named channel and never sees the lane's updates.** `eas.json` is created too, with `cli.appVersionSource` reconciled against `app.config.ts`'s local `android.versionCode` rather than left to a default.
+- **AC5 — a fourth release lane publishes an update instead of building a binary.** A new `ota-publish.yml` publishes on a `v*-ota.*` tag on `main` and on manual dispatch; it authenticates with the `EXPO_TOKEN` repository secret, passes `--channel`, `--message`, `--environment production`, `--non-interactive` and `--json`, and **never** `--auto` and **never** `--branch`. It builds nothing: no `fastlane`, no TestFlight, no Play. `--auto` is banned because it fills the branch name from `git rev-parse --abbrev-ref HEAD`, which returns the literal string `HEAD` on a detached HEAD — a tag checkout — so it would publish to a stray branch, error-free, and reach nobody.
+- **AC6 — the trigger is a tag, not a push.** `mark-story-done.yml` lands `chore(sprint): mark story done after merge [skip ci]` on `main` after most merges; a `push`-triggered publish workflow would fire on that commit and ship an update nobody asked for.
+- **AC7 — the publish job refuses to run when the configuration is inconsistent.** The fingerprint-stability gate, a clean-working-tree check, an ISO-date check on the catalogue's `version`, and an assertion that the runtime version being published is one a shipped binary actually carries — each failing the job **before** anything is published.
+- **AC8 — the update-config gate runs in the always-on CI job,** so a broken update configuration is red on the pull request that causes it. Nothing today guards `runtimeVersion`, the channel, or the agreement between `projectId` and `updates.url`.
+- **AC9 — the runbook stops giving a command that cannot work.** `docs/catalogue-ota-updates.md` is rewritten around `--channel production`, keeps the manual procedure for a maintainer who prefers it, and records the sequencing rule — an OTA reaches only binaries sharing its runtime version, so it is published **after** the binary carrying that version is on the store — together with `eas update:republish --destination-channel production` for rollback and `eas channel:pause production` as the kill-switch.
+- **AC10 — the first publish is a human decision.** A channel with no build is a supported state, but no installed app receives an update for a runtime version no installed binary has. The first OTA therefore follows a shipped binary, and its dry-run output is reviewed before it reaches a user.
+- **AC11 — `docs/cicd.md` and `AGENTS.md` follow.** The pipeline diagram gains the OTA lane; the rule that a native change moves the runtime version is stated mechanically, by the fingerprint, rather than as a discipline a human must remember.
+
+**Notes:** the full analysis, the measured fingerprint behaviour and the EAS CLI source references live in [`docs/sprint-artifacts/stories/16-60-eas-update-ota-publish-lane.md`](sprint-artifacts/stories/16-60-eas-update-ota-publish-lane.md) and in [`docs/eas-update-setup.md`](eas-update-setup.md) (1107 lines; every claim quoted from live Expo documentation or the `eas-cli` 27.11.0 source, fetched 2026-11-28). **An OTA cannot deliver the watchOS or Wear OS halves**: the catalogue reaches the phone as JavaScript, while the watches get a _generated_ Swift/Kotlin catalogue, which is native code. A catalogue OTA therefore updates the phone's card list and nothing on either watch — the watches need the next binary. **Out of scope and flagged:** a Settings row offering a manual "check for updates" — the app checks on cold start only, which is frequent enough for a weekly catalogue, but the row is a product decision and is recorded as a follow-up rather than added silently. **The one thing that cannot be proven from this repository** is whether the first OTA reaches a device — that needs a shipped binary on the same runtime version, which is why AC10 makes it a human decision.
 
 ## Epic 17: Apple Wallet Pass Support
 
